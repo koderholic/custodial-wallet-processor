@@ -1,0 +1,700 @@
+#Resolved version of ./specs/crypto-wallet-adapter-service.yml
+swagger: '2.0'
+info:
+  description: Wallet Adapter Crypto Service API specification.
+  version: 1.0.0
+  title: Wallet Adapter Crypto Service API
+  contact:
+    email: developers@bundle.africa
+    name: Bundle Developers
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+host: assets.services.bundle.internal
+basePath: /crypto
+tags:
+  - name: service
+    description: Call available to other services
+schemes:
+  - https
+  - http
+securityDefinitions:
+  authToken:
+    type: apiKey
+    name: x-auth-token
+    in: header
+security:
+  - authToken: []
+paths:
+  /assets/create:
+    post:
+      tags:
+        - service
+      summary: Create user's crypto asset records
+      operationId: CreateUserCryptoAssets
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: userId
+          in: body
+          required: true
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+      responses:
+        '200':
+          description: User's crypto assets
+          schema:
+            $ref: '#/definitions/CryptoAssetsListResponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  '/users/{userId}/assets':
+    get:
+      tags:
+        - service
+      summary: Get user's assets
+      operationId: getUserCryptoAssets
+      produces:
+        - application/json
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+      responses:
+        '200':
+          description: assets for user
+          schema:
+            $ref: '#/definitions/CryptoAssetsListResponse'
+        '400':
+          description: Bad input parameter
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  '/users/{userId}/assets/{assetId}':
+    get:
+      tags:
+        - service
+      summary: Get user's asset details for a given assetId
+      produces:
+        - application/json
+      operationId: getUserCryptoAssetById
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          description: Asset ID
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+        - name: userId
+          in: path
+          required: true
+          description: Initiating User ID
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+      responses:
+        '200':
+          description: Asset information
+          schema:
+            $ref: '#/definitions/CryptoAsset'
+        '400':
+          description: bad input parameter
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+        '404':
+          description: specified asset not found for given user
+  /assets/buy:
+    post:
+      tags:
+        - service
+      summary: Buy crypto asset
+      operationId: BuyCrypto
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          schema:
+            $ref: '#/definitions/TradeCryptoAssetRequest'
+          name: tradeCryptoAssetRequest
+          required: true
+      responses:
+        '200':
+          description: Transaction details
+          schema:
+            $ref: '#/definitions/Transactionresponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  /assets/sell:
+    post:
+      tags:
+        - service
+      summary: Sell crypto asset
+      operationId: SellCrypto
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          schema:
+            $ref: '#/definitions/TradeCryptoAssetRequest'
+          name: traderyptoAssetRequest
+          required: true
+      responses:
+        '200':
+          description: Transaction details
+          schema:
+            $ref: '#/definitions/Transactionresponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  /assets/transfer-internal:
+    post:
+      tags:
+        - service
+      operationId: cryptoAssetInternalTransfer
+      summary: Transfer from initiatorId to recipientId
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: assetTransferRequest
+          in: body
+          required: true
+          description: Internal Asset Transfer Request
+          schema:
+            $ref: '#/definitions/InternalAssetTransferRequest'
+      responses:
+        '200':
+          description: Transaction details
+          schema:
+            $ref: '#/definitions/Transactionresponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  /assets/transfer-toself:
+    post:
+      tags:
+        - service
+      operationId: TransferWithinUserAssets
+      summary: Transfer within user assets from one user asset to another
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: transferToSelfRequest
+          in: body
+          required: true
+          description: Transfer To Self Request
+          schema:
+            $ref: '#/definitions/TransferToSelfRequest'
+      responses:
+        '200':
+          description: Transaction details
+          schema:
+            $ref: '#/definitions/Transactionresponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  /assets/transfer-external:
+    post:
+      tags:
+        - service
+      operationId: cryptoAssetExternalTransfer
+      summary: Transfer from initiatorId to external address
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: externalTransferRequest
+          in: body
+          required: true
+          description: External Asset Transfer Request
+          schema:
+            $ref: '#/definitions/ExternalAssetTransferRequest'
+      responses:
+        '200':
+          description: Transaction details
+          schema:
+            $ref: '#/definitions/Transactionresponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  /assets/deposit:
+    post:
+      tags:
+        - service
+      operationId: cryptoAssetDeposit
+      summary: Transfer from external address to internal address
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: assetDepositRequest
+          in: body
+          required: true
+          description: Asset Deposit Request
+          schema:
+            $ref: '#/definitions/AssetDepositRequest'
+      responses:
+        '200':
+          description: Transaction details
+          schema:
+            $ref: '#/definitions/Transactionresponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  '/users/{userId}/assets/transactions':
+    get:
+      tags:
+        - service
+      summary: Get all of a user's wallet transactions
+      operationId: getAllUserCryptoTransactions
+      produces:
+        - application/json
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+        - $ref: '#/parameters/pageNumber'
+        - $ref: '#/parameters/pageSize'
+      responses:
+        '200':
+          description: Crypto transactions
+          schema:
+            $ref: '#/definitions/TransactionListResponse'
+        '400':
+          description: Invalid user id supplied
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  '/users/{userId}/assets/{assetId}/transactions':
+    get:
+      tags:
+        - service
+      summary: Get user's transactions for asset for a specified crypto ID
+      operationId: getAllUserCryptoTransactionsById
+      produces:
+        - application/json
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+        - name: assetId
+          in: path
+          required: true
+          description: Crypto ID
+          type: string
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+          format: uuid
+        - $ref: '#/parameters/pageNumber'
+        - $ref: '#/parameters/pageSize'
+      responses:
+        '200':
+          description: Asset transactions
+          schema:
+            $ref: '#/definitions/TransactionListResponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+  /assets/transactions:
+    get:
+      tags:
+        - service
+      summary: Get crypto transactions
+      operationId: getCryptoTransactions
+      produces:
+        - application/json
+      parameters:
+        - $ref: '#/parameters/pageNumber'
+        - $ref: '#/parameters/pageSize'
+      responses:
+        '200':
+          description: Crypto transactions
+          schema:
+            $ref: '#/definitions/TransactionListResponse'
+        '400':
+          description: 'Error occured, see response'
+          schema:
+            $ref: '#/definitions/ErrorMessageDto'
+definitions:
+  ErrorMessageDto:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: string
+        description: Error code
+        example: RESOURCE_NOT_FOUND
+      message:
+        type: string
+        description: Descriptive error message
+        example: Request could not be completed due to an error
+      data:
+        type: object
+  Metadata:
+    type: object
+    required:
+      - name
+      - value
+    properties:
+      name:
+        type: string
+        description: name of metadata
+      value:
+        type: string
+        description: any value to represent
+  Paging:
+    type: object
+    discriminator: name
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: Descriptive name for the list
+      size:
+        description: Number of items returned
+        type: integer
+        format: int32
+        minimum: 0
+      totalItems:
+        description: Total number of items available
+        type: integer
+        format: int32
+        minimum: 0
+      nextPage:
+        description: Next page number
+        type: integer
+        format: int32
+        minimum: 0
+      previousPage:
+        description: Previous page number
+        type: integer
+        format: int32
+        minimum: 0
+  AssetDenomination:
+    type: object
+    properties:
+      type:
+        $ref: '#/definitions/DenominationType'
+      code:
+        type: string
+        example: NGN
+      name:
+        type: string
+        example: Nigerian Naira
+      tokenType:
+        type: string
+        example: TRC10
+      decimals:
+        type: integer
+        format: int32
+        default: 6
+        description: Number of decimal places for this currency
+      enabled:
+        type: boolean
+        description: Describes if the asset denomination is active.
+      version:
+        type: string
+        description: Version number for token
+        example: 1
+  DenominationType:
+    type: string
+    enum:
+      - FIAT
+      - CRYPTO
+  CryptoAsset:
+    type: object
+    required:
+      - id
+      - userId
+      - denomination
+      - ledgerBalance
+      - bookBalance
+    properties:
+      id:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      userId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      denomination:
+        $ref: '#/definitions/AssetDenomination'
+      ledgerBalance:
+        type: string
+        format: number
+        example: '3.441122091'
+      bookBalance:
+        type: string
+        format: number
+        example: '3.441122091'
+  CryptoAssetsListResponse:
+    type: object
+    required:
+      - assets
+    properties:
+      assets:
+        type: array
+        items:
+          $ref: '#/definitions/CryptoAsset'
+  TradeCryptoAssetRequest:
+    type: object
+    required:
+      - userId
+      - asset
+    properties:
+      userId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      asset:
+        $ref: '#/definitions/Crypto'
+        description: Asset to buy and the volume of asset to buy / sell
+  InternalAssetTransferRequest:
+    type: object
+    required:
+      - initiatorId
+      - recipientId
+      - asset
+    properties:
+      initiatorId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      recipientId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      asset:
+        $ref: '#/definitions/Crypto'
+        description: >-
+          Id of specific crypto asset to transfer and volume of asset to
+          transfer
+  Crypto:
+    type: object
+    properties:
+      assetId:
+        description: Id of specific crypto asset to transfer
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      volume:
+        description: Volume of asset to transfer
+        type: string
+        format: number
+        example: '3.441122091'
+  TransferToSelfRequest:
+    type: object
+    required:
+      - userId
+      - fromAsset
+      - toAsset
+    properties:
+      userId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      fromAsset:
+        $ref: '#/definitions/Crypto'
+        description: Asset to transfer (debit) from and the volume to transfer
+      toAsset:
+        $ref: '#/definitions/Crypto'
+        description: Asset to transfer (credit) to and the volume to credit
+  ExternalAssetTransferRequest:
+    type: object
+    required:
+      - initiatorId
+      - recipientAddress
+      - asset
+    properties:
+      initiatorId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      recipientAddress:
+        type: string
+        description: Address of the external crypto wallet
+      asset:
+        $ref: '#/definitions/Crypto'
+        description: >-
+          Id of specific crypto asset to transfer and the volume of asset to
+          transfer
+  AssetDepositRequest:
+    type: object
+    required:
+      - initiatorId
+      - assetId
+    properties:
+      initiatorId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      assetId:
+        description: Id of specific crypto asset to transfer
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+  TransactionType:
+    type: string
+    enum:
+      - OFFCHAIN
+      - ONCHAIN
+  TransactionTag:
+    type: string
+    enum:
+      - DEBIT
+      - CREDIT
+  TransactionStatus:
+    type: string
+    enum:
+      - PENDING
+      - ONGOING
+      - COMPLETED
+      - REJECTED
+      - TERMINATED
+  Transactionresponse:
+    type: object
+    readOnly: true
+    properties:
+      id:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      initiatorId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      recipientId:
+        type: string
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        format: uuid
+      asset:
+        $ref: '#/definitions/Crypto'
+        description: Asset and the volume of asset in transaction
+      reference:
+        type: string
+        description: internal crypto transaction reference
+      balance:
+        description: User's book balance during/after transaction
+        type: string
+        format: number
+        example: '3.441122091'
+      transactionStatus:
+        $ref: '#/definitions/TransactionStatus'
+      transactionStartDate:
+        type: string
+        format: date-time
+        readOnly: true
+      transactionEndDate:
+        type: string
+        format: date-time
+        readOnly: true
+      transactionType:
+        $ref: '#/definitions/TransactionType'
+      createdDate:
+        type: string
+        format: date-time
+        readOnly: true
+      updatedDate:
+        type: string
+        format: date-time
+        readOnly: true
+      transactionTag:
+        $ref: '#/definitions/TransactionTag'
+      metadata:
+        type: array
+        description: List of metadata for the on-chain transactions
+        items:
+          $ref: '#/definitions/Metadata'
+  TransactionListResponse:
+    allOf:
+      - $ref: '#/definitions/Paging'
+    properties:
+      transactions:
+        type: array
+        items:
+          $ref: '#/definitions/Transactionresponse'
+parameters:
+  assetType:
+    type: string
+    in: query
+    name: assetType
+    allowEmptyValue: true
+    enum:
+      - CRYPTO
+      - FIAT
+  fromDenom:
+    name: fromDenom
+    type: string
+    description: The denomination of the source asset.
+    in: query
+    required: false
+  toDenom:
+    name: toDenom
+    type: string
+    description: The denomination of the target asset.
+    in: query
+    required: false
+  sourceDenom:
+    type: string
+    description: The denomination of the source asset.
+    in: query
+    required: true
+    name: sourceDenom
+  targetDenom:
+    type: string
+    description: >-
+      The denomination of the target asset (for exchange & cash-in), account
+      (for cash out to FIAT) or address (for crypto cash-out).
+    in: query
+    required: true
+    name: targetDenom
+  pageNumber:
+    name: page
+    in: query
+    required: false
+    type: integer
+    format: int32
+    default: 1
+    description: Page number of items to return
+  pageSize:
+    name: size
+    in: query
+    required: false
+    type: integer
+    format: int32
+    default: 20
+    description: Number of items to return

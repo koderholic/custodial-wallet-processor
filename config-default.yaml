@@ -1,0 +1,5 @@
+appPort: 8100
+appName : "walletAdapterService"
+logFolder : "./logs"
+logfile: "log.json" 
+dbConnectionString: "user:password@(127.0.0.1:3306)/walletAdapter"
