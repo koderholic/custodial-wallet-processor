@@ -3,7 +3,7 @@ package app
 import (
 	"net/http"
 	"sync"
-	"walletAdapter/controllers"
+	"wallet-adapter/controllers"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )

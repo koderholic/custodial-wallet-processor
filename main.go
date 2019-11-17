@@ -1,10 +1,10 @@
 package main
 
 import (
-	"walletAdapter/app"
-	"walletAdapter/config"
-	"walletAdapter/database"
-	"walletAdapter/utility"
+	"wallet-adapter/app"
+	"wallet-adapter/config"
+	"wallet-adapter/database"
+	"wallet-adapter/utility"
 
 	"github.com/gorilla/handlers"
 

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"walletAdapter/config"
-	"walletAdapter/utility"
+	"wallet-adapter/config"
+	"wallet-adapter/utility"
 )
 
 //Controller : Controller struct

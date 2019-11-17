@@ -1,8 +1,8 @@
 package database
 
 import (
-	"walletAdapter/config"
-	"walletAdapter/utility"
+	"wallet-adapter/config"
+	"wallet-adapter/utility"
 	"database/sql"
 )
 

@@ -1,7 +1,7 @@
 package utility
 
 import (
-	"walletAdapter/config"
+	"wallet-adapter/config"
 )
 
 type MetaData struct {

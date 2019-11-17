@@ -1,8 +1,8 @@
 package app
 
 import (
-	"walletAdapter/config"
-	"walletAdapter/utility"
+	"wallet-adapter/config"
+	"wallet-adapter/utility"
 	"database/sql"
 
 	"github.com/gorilla/mux"
