@@ -13,6 +13,6 @@ Run "go install" to install packages and dependencies
 
 Run "go build" to compile into executable
 
-Double-click on executable, the golang web server will start and listen for connections on port : 8100. 
+Double-click on executable, the golang web server will start and listen for connections on the configured PORT
 
-API Specifications can be viewed on swagger here => localhost:8100/swagger/
+API Specifications can be viewed on swagger here => localhost:{PORT}/swagger/
