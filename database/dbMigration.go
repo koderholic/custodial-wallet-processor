@@ -5,5 +5,5 @@ import (
 )
 
 func (database *Database) RunDbMigrations() {
-	database.DB.AutoMigrate(&model.Asset{})
+	database.DB.AutoMigrate(&model.Asset{}, &model.BatchRequest{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserBalance{})
 }
