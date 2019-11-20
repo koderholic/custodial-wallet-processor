@@ -7,8 +7,8 @@ type Asset struct {
 	TokenType     string         `json:"tokenType"`
 	Decimal       int            `json:"decimal"`
 	IsEnabled     bool           `gorm:"default:1" json:"isEnabled"`
-	Transactions  []Transaction  `json:"transactions"`
-	BatchRequests []BatchRequest `json:"batchRequests"`
-	UserAddresses []UserAddress  `json:"userAddresses"`
-	UserBalances  []UserBalance  `json:"userBalances"`
+	Transactions  []Transaction  `json:"transactions,omitempty"`
+	BatchRequests []BatchRequest `json:"batchRequests,omitempty"`
+	UserAddresses []UserAddress  `json:"userAddresses,omitempty"`
+	UserBalances  []UserBalance  `json:"userBalances,omitempty"`
 }
