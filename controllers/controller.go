@@ -1,18 +1,27 @@
 package controllers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/utility"
 )
 
 //Controller : Controller struct
 type Controller struct {
-	Logger *utility.Logger
-	Config config.Data
-	DB     *sql.DB
+	Logger     *utility.Logger
+	Config     config.Data
+	Repository database.IRepository
+}
+
+func NewController(logger *utility.Logger, configData config.Data, repository database.IRepository) *Controller {
+	controller := &Controller{}
+	controller.Logger = logger
+	controller.Config = configData
+	controller.Repository = repository
+
+	return controller
 }
 
 //Ping : Ping function

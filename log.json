@@ -6,8 +6,8 @@
     "files": [{
         "enable": true,
         "level": "FINE",
-        "filename":"./logs/wallet-adapterService.log",
-        "category": "wallet-adapterService",		
+        "filename":"./logs/walletAdapterService.log",
+        "category": "walletAdapterService",		
         "pattern": "[%D %T] [%C] [%L] (%S) %M",
         "rotate": true,	
         "maxsize": "500M",

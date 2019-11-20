@@ -29,6 +29,8 @@ func main() {
 		Config: APP.Config,
 	}
 	Database.LoadDBInstance()
+	defer Database.CloseDBInstance()
+	Database.RunDbMigrations()
 
 	APP.DB = Database.DB
 	APP.RegisterRoutes()
