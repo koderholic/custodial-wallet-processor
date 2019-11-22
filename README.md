@@ -11,8 +11,8 @@ To get a quick feel and flow of the service, navigate to the project root :
 
 Run "go install" to install packages and dependencies
 
-Run "go build" to compile into executable
+Run "go build" to compile into executable. You can also run any of the bash script at the root, to cross-compile and executable will be saved to "build" folder
 
-Double-click on executable, the golang web server will start and listen for connections on port : 8100. 
+Double-click on executable, the golang web server will start and listen for connections on the configured PORT
 
-API Specifications can be viewed on swagger here => localhost:8100/swagger/
+API Specifications can be viewed on swagger here => localhost:{PORT}/swagger/

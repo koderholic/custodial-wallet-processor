@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sync"
 	"wallet-adapter/controllers"
+	"wallet-adapter/database"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -15,18 +16,19 @@ var (
 func (app *App) RegisterRoutes() {
 
 	once.Do(func() {
+		baseRepository := &database.BaseRepository{}
+		baseRepository.Logger = app.Logger
+		baseRepository.Config = app.Config
+		baseRepository.DB = app.DB
 
-		controller := controllers.Controller{
-			Logger: app.Logger,
-			Config: app.Config,
-			DB:     app.DB,
-		}
+		controller := controllers.NewController(app.Logger, app.Config, baseRepository)
 
 		baseURL := "/api/v1"
 
 		apiRouter := app.Router.PathPrefix(baseURL).Subrouter()
 		app.Router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
+		// General Routes
 		apiRouter.HandleFunc("/crypto/ping", controller.Ping).Methods(http.MethodGet)
 
 	})
