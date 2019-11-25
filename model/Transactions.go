@@ -6,6 +6,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+<<<<<<< HEAD
 // TxnType ...
 type TxnType struct{ OFFCHAIN, ONCHAIN string }
 
@@ -17,6 +18,17 @@ type TxnTag struct{ BUY, SELL, TRANSFER, DEPOSIT, WITHDRAW string }
 
 // TxnStatus ...
 type TxnStatus struct{ PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string }
+=======
+type TxnType struct {
+	OFFCHAIN, ONCHAIN string
+}
+type TxnStatus struct {
+	PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string
+}
+type TxnTag struct {
+	BUY, SELL, TRANSFER, DEPOSIT, WITHDRAW string
+}
+>>>>>>> origin/master
 
 var (
 	TransactionType = TxnType{

@@ -17,7 +17,7 @@ type Logger struct {
 func NewLogger(logSettingsPath, appName, folder string) *Logger {
 	appDir, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("Could not load log location >> ", err)
+		fmt.Printf("Could not load log location >> %s", err)
 	}
 
 	_ = os.Mkdir(folder, os.ModePerm)
