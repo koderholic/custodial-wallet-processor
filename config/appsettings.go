@@ -16,6 +16,7 @@ type Data struct {
 	LogFolder          string `mapstructure:"logFolder"  yaml:"logFolder,omitempty"`
 	AppName            string `mapstructure:"appName"  yaml:"appName,omitempty"`
 	DBConnectionString string `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
+	BasePath           string `mapstructure:"basePath"  yaml:"basePath,omitempty"`
 }
 
 //Init : initialize data

@@ -26,9 +26,9 @@ func (app *App) RegisterRoutes() {
 		assetController := controllers.NewAssetController(app.Logger, app.Config, &assetRepository)
 		userAssetController := controllers.NewUserAssetController(app.Logger, app.Config, &userAssetRepository)
 
-		baseURL := "/api/v1"
+		basePath := app.Config.BasePath
 
-		apiRouter := app.Router.PathPrefix(baseURL).Subrouter()
+		apiRouter := app.Router.PathPrefix(basePath).Subrouter()
 		app.Router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// General Routes
