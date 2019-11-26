@@ -25,7 +25,7 @@ type BaseRepository struct {
 func (repo *BaseRepository) GetCount(model, count interface{}) error {
 	if err := repo.DB.Model(model).Count(count).Error; err != nil {
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}
@@ -36,7 +36,7 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 func (repo *BaseRepository) Get(id interface{}, model interface{}) error {
 	if repo.DB.First(model, id).RecordNotFound() {
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     errors.New("No record found for provided Id"),
 		}
 	}
@@ -48,7 +48,7 @@ func (repo *BaseRepository) Fetch(model interface{}) error {
 	if err := repo.DB.Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository fetch %s", err)
 		return utility.AppError{
-			ErrType: utility.SYSTEMERROR,
+			ErrType: "SYSTEM_ERR",
 			Err:     err,
 		}
 	}
@@ -61,7 +61,7 @@ func (repo *BaseRepository) Create(model interface{}) error {
 	if result.Error != nil {
 		repo.Logger.Error("Error with repository create %s", result.Error)
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     errors.New(strings.Join(strings.Split(result.Error.Error(), " ")[2:], " ")),
 		}
 	}
@@ -74,7 +74,7 @@ func (repo *BaseRepository) Update(id, model interface{}) error {
 	if result := repo.DB.Model(model).Update(model); result.Error != nil {
 		repo.Logger.Error("Error with repository update %s", result.Error)
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     errors.New(strings.Join(strings.Split(result.Error.Error(), " ")[2:], " ")),
 		}
 	}
@@ -87,7 +87,7 @@ func (repo *BaseRepository) Delete(model interface{}) error {
 	if err := repo.DB.Delete(model).Error; err != nil {
 		repo.Logger.Error("Error (with repository delete %s", err)
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}

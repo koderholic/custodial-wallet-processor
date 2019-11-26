@@ -20,7 +20,7 @@ type UserAssetRepository struct {
 func (repo *UserAssetRepository) FindOrCreateUserAsset(checkExistOrUpdate interface{}, model interface{}) error {
 	if err := repo.DB.FirstOrCreate(model, checkExistOrUpdate).Error; err != nil {
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}
@@ -31,7 +31,7 @@ func (repo *UserAssetRepository) FindOrCreateUserAsset(checkExistOrUpdate interf
 func (repo *UserAssetRepository) GetAssetsByUserID(id, model interface{}) error {
 	if err := repo.DB.Select("assets.*,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error; err != nil {
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}

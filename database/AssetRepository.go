@@ -19,7 +19,7 @@ type AssetRepository struct {
 func (repo *AssetRepository) GetSupportedCrypto(model interface{}) error {
 	if err := repo.DB.Where("is_enabled = ? ", true).Find(model).Error; err != nil {
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}
