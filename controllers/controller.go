@@ -15,6 +15,13 @@ type Controller struct {
 	Repository database.IRepository
 }
 
+//AssetController : Asset controller struct
+type AssetController struct {
+	Logger     *utility.Logger
+	Config     config.Data
+	Repository database.IAssetRepository
+}
+
 //UserAssetController : UserAsset controller struct
 type UserAssetController struct {
 	Logger     *utility.Logger
@@ -25,6 +32,16 @@ type UserAssetController struct {
 // NewController ... Create a new base controller instance
 func NewController(logger *utility.Logger, configData config.Data, repository database.IRepository) *Controller {
 	controller := &Controller{}
+	controller.Logger = logger
+	controller.Config = configData
+	controller.Repository = repository
+
+	return controller
+}
+
+// NewAssetController ... Create a new asset controller instance
+func NewAssetController(logger *utility.Logger, configData config.Data, repository database.IAssetRepository) *AssetController {
+	controller := &AssetController{}
 	controller.Logger = logger
 	controller.Config = configData
 	controller.Repository = repository
@@ -50,5 +67,5 @@ func (c *Controller) Ping(w http.ResponseWriter, r *http.Request) {
 	c.Logger.Info("Ping request successful! Server is up and listening")
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(apiResponse.PlainSuccess(utility.SUCCESS, "Ping request successful! Server is up and listening"))
+	json.NewEncoder(w).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
 }

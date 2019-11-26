@@ -29,7 +29,7 @@ func (repo *UserAssetRepository) FindOrCreateUserAsset(checkExistOrUpdate interf
 
 // GetAssetsByUserID ...
 func (repo *UserAssetRepository) GetAssetsByUserID(id, model interface{}) error {
-	if err := repo.DB.Table("user_balances").Select("user_balances.id, user_balances.user_id, user_balances.available_balance, user_balances.reserved_balance, user_balances.asset_id, user_balances.created_at, user_balances.updated_at,assets.name, assets.symbol, assets.token_type, assets.decimal, assets.is_enabled").Joins("left join assets on assets.id = user_balances.asset_id").Where("user_balances.user_id = ?", id).Scan(model).Error; err != nil {
+	if err := repo.DB.Select("assets.*,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error; err != nil {
 		return utility.AppError{
 			ErrType: utility.INPUTERROR,
 			Err:     err,

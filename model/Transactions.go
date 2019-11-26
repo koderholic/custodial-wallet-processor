@@ -6,7 +6,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-<<<<<<< HEAD
 // TxnType ...
 type TxnType struct{ OFFCHAIN, ONCHAIN string }
 
@@ -18,17 +17,6 @@ type TxnTag struct{ BUY, SELL, TRANSFER, DEPOSIT, WITHDRAW string }
 
 // TxnStatus ...
 type TxnStatus struct{ PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string }
-=======
-type TxnType struct {
-	OFFCHAIN, ONCHAIN string
-}
-type TxnStatus struct {
-	PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string
-}
-type TxnTag struct {
-	BUY, SELL, TRANSFER, DEPOSIT, WITHDRAW string
-}
->>>>>>> origin/master
 
 var (
 	TransactionType = TxnType{
@@ -59,18 +47,18 @@ var (
 //Transaction ... This is the transaction model for all user request
 type Transaction struct {
 	BaseModel
-	AssetID              uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"assetId"`
-	InitiatorID          uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"initiatorId"`
-	Recipient            string    `json:"recipient"`
-	TransactionReference string    `gorm:"not null;" json:"transactionReference"`
-	TransactionType      string    `gorm:"not null;default:'Offchain'" json:"transactionType"`
-	TransactionStatus    string    `gorm:"not null;default:'Pending'" json:"transactionStatus"`
-	TransactionTag       string    `gorm:"not null;default:'Sell'" json:"transactionTag"`
-	Volume               string    `gorm:"not null;default:'Sell'" json:"volume"`
-	ReversedBalance      int64     `gorm:"type:BIGINT;not null" json:"reversedBalance"`
-	ProcessingType       string    `gorm:"not null;default:'Single'" json:"processingType"`
-	BatchID              uuid.UUID `gorm:"type:VARCHAR(36);" json:"batchId"`
-	TransactionStartDate time.Time `json:"transactionStartDate"`
-	TransactionEndDate   time.Time `json:"transactionEndDate"`
-	BatchRequest         `sql:"-"`
+	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"assetId"`
+	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiatorId"`
+	Recipient            string       `json:"recipient"`
+	TransactionReference string       `gorm:"not null;" json:"transactionReference"`
+	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transactionType"`
+	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transactionStatus"`
+	TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transactionTag"`
+	Volume               string       `gorm:"not null;default:'Sell'" json:"volume"`
+	ReversedBalance      int64        `gorm:"type:BIGINT;not null" json:"reversedBalance"`
+	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processingType"`
+	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batchId"`
+	TransactionStartDate time.Time    `json:"transactionStartDate"`
+	TransactionEndDate   time.Time    `json:"transactionEndDate"`
+	Batch                BatchRequest `sql:"-"`
 }

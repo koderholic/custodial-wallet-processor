@@ -34,7 +34,7 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 
 // Get ... Retrieves a specified record from the database for a given id
 func (repo *BaseRepository) Get(id interface{}, model interface{}) error {
-	if repo.DB.Where("id = ?", id).First(model).RecordNotFound() {
+	if repo.DB.First(model, id).RecordNotFound() {
 		return utility.AppError{
 			ErrType: utility.INPUTERROR,
 			Err:     errors.New("No record found for provided Id"),
