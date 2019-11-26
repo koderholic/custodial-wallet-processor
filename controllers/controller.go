@@ -60,12 +60,12 @@ func NewUserAssetController(logger *utility.Logger, configData config.Data, repo
 }
 
 //Ping : Ping function
-func (c *Controller) Ping(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) Ping(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
 
 	c.Logger.Info("Ping request successful! Server is up and listening")
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
 }

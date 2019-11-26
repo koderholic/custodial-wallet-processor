@@ -6,7 +6,6 @@
 *.dylib
 *.app
 *.DS_Store
-*/wallet-adapter
 
 # Test binary, build with `go test -c`
 *.test

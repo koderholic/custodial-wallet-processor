@@ -11,26 +11,26 @@ import (
 )
 
 // CreateUserAssets ... Creates all supported crypto asset record on the given user account
-func (c UserAssetController) CreateUserAssets(w http.ResponseWriter, r *http.Request) {
+func (c UserAssetController) CreateUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 	apiResponse := utility.NewResponse()
 	var supportedAssets []model.Asset
 
-	routeParams := mux.Vars(r)
+	routeParams := mux.Vars(requestReader)
 	userID, err := uuid.FromString(routeParams["userId"])
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(apiResponse.PlainError("UUID_CAST_ERR", utility.UUID_CAST_ERR))
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("UUID_CAST_ERR", utility.UUID_CAST_ERR))
 		return
 	}
 
 	if err := c.Repository.Fetch(&supportedAssets); err != nil {
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 			return
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
 		return
 	}
 	for i := 0; i < len(supportedAssets); i++ {
@@ -38,12 +38,12 @@ func (c UserAssetController) CreateUserAssets(w http.ResponseWriter, r *http.Req
 		userAsset := model.UserBalance{AssetID: assetID, UserID: userID}
 		if err := c.Repository.FindOrCreateUserAsset(userAsset, &userAsset); err != nil {
 			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 				return
 			}
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
 			return
 		}
 	}
@@ -53,39 +53,39 @@ func (c UserAssetController) CreateUserAssets(w http.ResponseWriter, r *http.Req
 
 	c.Logger.Info("Outgoing response to successful request %+v", responseData)
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
 
 }
 
 // GetUserAssets ... Get all user asset balance
-func (c UserAssetController) GetUserAssets(w http.ResponseWriter, r *http.Request) {
+func (c UserAssetController) GetUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.UserAssetBalance
 	apiResponse := utility.NewResponse()
 
-	routeParams := mux.Vars(r)
+	routeParams := mux.Vars(requestReader)
 	userID, err := uuid.FromString(routeParams["userId"])
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
 		return
 	}
 
 	if err := c.Repository.GetAssetsByUserID(&model.UserAssetBalance{UserID: userID}, &responseData); err != nil {
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 			return
 		}
 
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
 		return
 	}
 	c.Logger.Info("Outgoing response to successful request %+v", responseData)
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
 
 }
