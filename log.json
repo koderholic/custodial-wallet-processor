@@ -1,0 +1,18 @@
+{
+    "console": {
+        "enable": false, 
+        "level": "FINE"
+    },
+    "files": [{
+        "enable": true,
+        "level": "FINE",
+        "filename":"./logs/walletAdapterService.log",
+        "category": "walletAdapterService",		
+        "pattern": "[%D %T] [%C] [%L] (%S) %M",
+        "rotate": true,	
+        "maxsize": "500M",
+        "maxlines": "10K",
+        "daily": true,
+        "sanitize": true
+    }]
+}
