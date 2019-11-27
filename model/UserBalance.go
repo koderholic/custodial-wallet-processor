@@ -10,7 +10,8 @@ import (
 type UserBalance struct {
 	BaseModel
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"userId"`
-	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
+	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
+	Symbol           string     `sql:"-" json:"symbol"`
 	AvailableBalance int64      `gorm:"type:BIGINT" json:"availableBalance"`
 	ReservedBalance  int64      `gorm:"type:BIGINT" json:"reservedBalance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deletedAt,omitempty"`
@@ -20,7 +21,7 @@ type UserBalance struct {
 type UserAssetBalance struct {
 	BaseModel
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"userId"`
-	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
+	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
 	AvailableBalance int64      `gorm:"type:BIGINT" json:"availableBalance"`
 	ReservedBalance  int64      `gorm:"type:BIGINT" json:"reservedBalance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deletedAt,omitempty"`
@@ -28,6 +29,6 @@ type UserAssetBalance struct {
 }
 
 // TableName ... Change table name from default generated from UserAssetBalance
-func (u UserAssetBalance) TableName() string {
+func (model UserAssetBalance) TableName() string {
 	return "user_balances"
 }

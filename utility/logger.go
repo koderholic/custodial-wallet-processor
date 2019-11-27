@@ -5,27 +5,22 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/jeanphorn/log4go"
 	log "github.com/jeanphorn/log4go"
 )
 
 // Logger application logger
 type Logger struct {
-	logger *log.Filter
+	logger log4go.Logger
 }
 
 // NewLogger constructs a logger object
-func NewLogger(logSettingsPath, appName, folder string) *Logger {
-	appDir, err := os.Getwd()
-	if err != nil {
-		fmt.Printf("Could not load log location >> %s", err)
-	}
+func NewLogger() *Logger {
 
-	_ = os.Mkdir(folder, os.ModePerm)
-
-	log.LoadConfiguration(appDir + string(os.PathSeparator) + logSettingsPath)
+	logger := log.NewDefaultLogger(log.DEBUG)
 
 	return &Logger{
-		logger: log.LOGGER(appName),
+		logger: logger,
 	}
 }
 

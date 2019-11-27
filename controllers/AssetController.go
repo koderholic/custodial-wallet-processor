@@ -7,25 +7,20 @@ import (
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
-	uuid "github.com/satori/go.uuid"
 )
 
-func (c AssetController) GetAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
+// GetAsset ...
+func (controller AssetController) GetAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	responseData := model.Asset{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
-	assetID, err := uuid.FromString(routeParams["assetId"])
-	if err != nil {
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("UUID_CAST_ERR", utility.UUID_CAST_ERR))
-		return
-	}
+	assetSymbol := routeParams["asset"]
 
-	c.Logger.Info("Incoming request details: %+v", assetID)
+	controller.Logger.Info("Incoming request details for GetAsset : %s", assetSymbol)
 
-	if err := c.Repository.Get(assetID, &responseData); err != nil {
+	if err := controller.Repository.GetByFieldName(model.Asset{Symbol: assetSymbol}, &responseData); err != nil {
 
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -34,11 +29,11 @@ func (c AssetController) GetAsset(responseWriter http.ResponseWriter, requestRea
 		}
 
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", err.(utility.AppError).Error()))
 		return
 	}
 
-	c.Logger.Info("Outgoing response to successful request %+v", responseData)
+	controller.Logger.Info("Outgoing response to GetAsset request %+v", responseData)
 
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
@@ -46,12 +41,12 @@ func (c AssetController) GetAsset(responseWriter http.ResponseWriter, requestRea
 }
 
 // FetchSupportedAssets ...
-func (c AssetController) FetchSupportedAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller AssetController) FetchSupportedAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.Asset
 	apiResponse := utility.NewResponse()
 
-	if err := c.Repository.GetSupportedCrypto(&responseData); err != nil {
+	if err := controller.Repository.FetchByFieldName(&model.Asset{IsEnabled: true}, &responseData); err != nil {
 
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -60,11 +55,11 @@ func (c AssetController) FetchSupportedAssets(responseWriter http.ResponseWriter
 		}
 
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", err.(utility.AppError).Error()))
 		return
 	}
 
-	c.Logger.Info("Outgoing response to successful request %+v", responseData)
+	controller.Logger.Info("Outgoing response to FetchSupportedAssets request %+v", responseData)
 
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
@@ -72,12 +67,12 @@ func (c AssetController) FetchSupportedAssets(responseWriter http.ResponseWriter
 }
 
 // FetchAllAssets ...
-func (c AssetController) FetchAllAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller AssetController) FetchAllAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.Asset
 	apiResponse := utility.NewResponse()
 
-	if err := c.Repository.Fetch(&responseData); err != nil {
+	if err := controller.Repository.Fetch(&responseData); err != nil {
 
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -86,11 +81,11 @@ func (c AssetController) FetchAllAssets(responseWriter http.ResponseWriter, requ
 		}
 
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", err.(utility.AppError).Error()))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", err.(utility.AppError).Error()))
 		return
 	}
 
-	c.Logger.Info("Outgoing response to successful request %+v", responseData)
+	controller.Logger.Info("Outgoing response to FetchAllAssets request %+v", responseData)
 
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))

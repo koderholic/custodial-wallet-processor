@@ -5,8 +5,14 @@ import (
 	"sync"
 	"wallet-adapter/controllers"
 	"wallet-adapter/database"
+	"wallet-adapter/utility"
 
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
 	httpSwagger "github.com/swaggo/http-swagger"
+	validation "gopkg.in/go-playground/validator.v9"
+
+	Config "wallet-adapter/config"
 )
 
 var (
@@ -14,22 +20,22 @@ var (
 )
 
 // RegisterRoutes ... Adds router handle to general handler function
-func (app *App) RegisterRoutes() {
+func RegisterRoutes(router *mux.Router, validator *validation.Validate, config Config.Data, logger *utility.Logger, db *gorm.DB) {
 
 	once.Do(func() {
-		db := database.Database{Logger: app.Logger, Config: app.Config, DB: app.DB}
-		baseRepository := database.BaseRepository{Database: db}
+		DB := database.Database{Logger: logger, Config: config, DB: db}
+		baseRepository := database.BaseRepository{Database: DB}
 		assetRepository := database.AssetRepository{BaseRepository: baseRepository}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-		controller := controllers.NewController(app.Logger, app.Config, &baseRepository)
-		assetController := controllers.NewAssetController(app.Logger, app.Config, &assetRepository)
-		userAssetController := controllers.NewUserAssetController(app.Logger, app.Config, &userAssetRepository)
+		controller := controllers.NewController(logger, config, validator, &baseRepository)
+		assetController := controllers.NewAssetController(logger, config, validator, &assetRepository)
+		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
 
-		basePath := app.Config.BasePath
+		basePath := config.BasePath
 
-		apiRouter := app.Router.PathPrefix(basePath).Subrouter()
-		app.Router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
+		apiRouter := router.PathPrefix(basePath).Subrouter()
+		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// General Routes
 		apiRouter.HandleFunc("/crypto/ping", controller.Ping).Methods(http.MethodGet)
@@ -40,10 +46,10 @@ func (app *App) RegisterRoutes() {
 		apiRouter.HandleFunc("/crypto/assets/{assetId}", assetController.GetAsset).Methods(http.MethodGet)
 
 		// User Asset Routes
-		apiRouter.HandleFunc("/crypto/users/{userId}/create-assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/crypto/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/crypto/users/create-assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/crypto/users/{userId}/get-assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
 
 	})
 
-	app.Logger.Info("App routes registered successfully!")
+	logger.Info("App routes registered successfully!")
 }
