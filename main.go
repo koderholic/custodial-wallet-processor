@@ -2,41 +2,42 @@ package main
 
 import (
 	"wallet-adapter/app"
-	"wallet-adapter/config"
+	Config "wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/middlewares"
 	"wallet-adapter/utility"
-
-	"github.com/gorilla/handlers"
 
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	validation "gopkg.in/go-playground/validator.v9"
 )
 
 func main() {
-	APP := &app.App{}
+	config := Config.Data{}
+	config.Init("")
 
-	Config := config.Data{}
-	Config.Init("")
-	APP.Config = Config
-
-	APP.Logger = utility.NewLogger(Config.LogFile, Config.AppName, Config.LogFolder)
-	APP.Router = mux.NewRouter()
+	logger := utility.NewLogger()
+	router := mux.NewRouter()
+	validator := validation.New()
 
 	Database := &database.Database{
-		Logger: APP.Logger,
-		Config: APP.Config,
+		Logger: logger,
+		Config: config,
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
 	Database.RunDbMigrations()
 
-	APP.DB = Database.DB
-	APP.RegisterRoutes()
+	app.RegisterRoutes(router, validator, config, logger, Database.DB)
 
-	serviceAddress := ":" + Config.AppPort
+	serviceAddress := ":" + config.AppPort
 
-	APP.Logger.Info("Server started and listening on port %s", Config.AppPort)
-	log.Fatal(http.ListenAndServe(serviceAddress, handlers.CompressHandler(APP.Router)))
+	middleware := middlewares.NewMiddleware(logger, router).
+		LogAPIRequests().
+		Build()
+
+	logger.Info("Server started and listening on port %s", config.AppPort)
+	log.Fatal(http.ListenAndServe(serviceAddress, middleware))
 }

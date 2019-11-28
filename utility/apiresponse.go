@@ -1,26 +1,22 @@
 package utility
 
-import (
-	"gopkg.in/go-playground/validator.v9"
-)
-
-// ResponseObj... Response object definition without additional data field
+// ResponseObj ... Response object definition without additional data field
 type ResponseObj struct {
 	Status  bool
 	Code    string
 	Message string
 }
 
-// ResponseResultObj... Response object definition with additional data field
+// ResponseResultObj ... Response object definition with additional data field
 type ResponseResultObj struct {
 	ResponseObj
 	Data interface{}
 }
 
-// ResponseResultObj... Validation error object
+// ResponseResultObj ... Validation error object
 type ResponseValidateObj struct {
 	ResponseObj
-	ValidationErrors validator.ValidationErrors
+	ValidationErrors []map[string]string
 }
 
 // NewResponse ... Initializes a response object.
@@ -59,15 +55,15 @@ func (res ResponseResultObj) PlainError(code string, err string) ResponseObj {
 
 // Error ... Returns error response with additional data
 func (res ResponseResultObj) Error(code string, err string, data interface{}) ResponseResultObj {
-	res.Status = true
+	res.Status = false
 	res.Code = code
 	res.Message = err
 	res.Data = data
 	return res
 }
 
-// ValidateError... Returns error response with validation messages
-func (res ResponseResultObj) ValidateError(code string, err string, errors validator.ValidationErrors) ResponseValidateObj {
+// ValidateError ... Returns error response with validation messages
+func (res ResponseResultObj) ValidateError(code string, err string, errors []map[string]string) ResponseValidateObj {
 	response := ResponseValidateObj{}
 	response.Status = false
 	response.Code = code

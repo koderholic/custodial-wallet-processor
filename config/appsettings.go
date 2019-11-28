@@ -11,9 +11,7 @@ import (
 
 //Data : config data
 type Data struct {
-	LogFile            string `mapstructure:"logfile"  yaml:"logfile,omitempty"`
 	AppPort            string `mapstructure:"appPort"  yaml:"appPort,omitempty"`
-	LogFolder          string `mapstructure:"logFolder"  yaml:"logFolder,omitempty"`
 	AppName            string `mapstructure:"appName"  yaml:"appName,omitempty"`
 	DBConnectionString string `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
 	BasePath           string `mapstructure:"basePath"  yaml:"basePath,omitempty"`
