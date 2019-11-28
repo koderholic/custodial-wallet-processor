@@ -10,7 +10,7 @@ import (
 )
 
 // GetAsset ...
-func (controller AssetController) GetAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	responseData := model.Asset{}
 	apiResponse := utility.NewResponse()
@@ -41,7 +41,7 @@ func (controller AssetController) GetAsset(responseWriter http.ResponseWriter, r
 }
 
 // FetchSupportedAssets ...
-func (controller AssetController) FetchSupportedAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller BaseController) FetchSupportedAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.Asset
 	apiResponse := utility.NewResponse()
@@ -67,7 +67,7 @@ func (controller AssetController) FetchSupportedAssets(responseWriter http.Respo
 }
 
 // FetchAllAssets ...
-func (controller AssetController) FetchAllAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller BaseController) FetchAllAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.Asset
 	apiResponse := utility.NewResponse()

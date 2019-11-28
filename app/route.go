@@ -25,11 +25,9 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 	once.Do(func() {
 		DB := database.Database{Logger: logger, Config: config, DB: db}
 		baseRepository := database.BaseRepository{Database: DB}
-		assetRepository := database.AssetRepository{BaseRepository: baseRepository}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
 		controller := controllers.NewController(logger, config, validator, &baseRepository)
-		assetController := controllers.NewAssetController(logger, config, validator, &assetRepository)
 		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
 
 		basePath := config.BasePath
@@ -41,9 +39,9 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		apiRouter.HandleFunc("/crypto/ping", controller.Ping).Methods(http.MethodGet)
 
 		// Asset Routes
-		apiRouter.HandleFunc("/crypto/assets", assetController.FetchAllAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/supported", assetController.FetchSupportedAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/{assetId}", assetController.GetAsset).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/crypto/assets", controller.FetchAllAssets).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/crypto/assets/supported", controller.FetchSupportedAssets).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/crypto/assets/{assetId}", controller.GetAsset).Methods(http.MethodGet)
 
 		// User Asset Routes
 		apiRouter.HandleFunc("/crypto/users/create-assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)

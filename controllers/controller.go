@@ -23,12 +23,6 @@ type BaseController struct {
 	Repository database.IRepository
 }
 
-//AssetController : Asset controller struct
-type AssetController struct {
-	Controller
-	Repository database.IAssetRepository
-}
-
 //UserAssetController : UserAsset controller struct
 type UserAssetController struct {
 	Controller
@@ -38,17 +32,6 @@ type UserAssetController struct {
 // NewController ... Create a new base controller instance
 func NewController(logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
 	controller := &BaseController{}
-	controller.Logger = logger
-	controller.Config = configData
-	controller.Validator = validator
-	controller.Repository = repository
-
-	return controller
-}
-
-// NewAssetController ... Create a new asset controller instance
-func NewAssetController(logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IAssetRepository) *AssetController {
-	controller := &AssetController{}
 	controller.Logger = logger
 	controller.Config = configData
 	controller.Validator = validator
