@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// GetAsset ...
+// GetAsset ... This returns the crypto asset for the given id
 func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	responseData := model.Asset{}
@@ -40,7 +40,7 @@ func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, re
 
 }
 
-// FetchSupportedAssets ...
+// FetchSupportedAssets ... This returns all supported crypto assets on the system
 func (controller BaseController) FetchSupportedAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.Asset
@@ -66,7 +66,7 @@ func (controller BaseController) FetchSupportedAssets(responseWriter http.Respon
 
 }
 
-// FetchAllAssets ...
+// FetchAllAssets ... This fetch all crypto assets on the system
 func (controller BaseController) FetchAllAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData []model.Asset
