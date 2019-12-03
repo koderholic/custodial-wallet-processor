@@ -30,10 +30,6 @@ func (m *Middleware) Build() http.Handler {
 }
 
 var (
-	serviceFunctions = []string{
-		"create-assets",
-		"get-assets",
-	}
 	X_AUTH_TOKEN = "x-auth-token"
 )
 
@@ -47,7 +43,7 @@ func (m *Middleware) LogAPIRequests() *Middleware {
 	return &Middleware{logger: m.logger, config: m.config, next: nextHandler}
 }
 
-// ValidateAuthToken ... retrieves auth token from header and Verifies token permissions
+// ValidateAuthToken ... retrieves auth toke from header and Verifies token permissions
 func (m *Middleware) ValidateAuthToken() *Middleware {
 
 	nextHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, requestReader *http.Request) {

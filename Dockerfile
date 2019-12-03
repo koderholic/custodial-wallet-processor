@@ -1,7 +1,7 @@
 FROM golang:latest
 
-COPY ./ /go/src/weboluchi/wallet-adapter
-WORKDIR /go/src/weboluchi/wallet-adapter
+COPY ./ /go/src/wallet-adapter
+WORKDIR /go/src/wallet-adapter
 
 WORKDIR ./
 COPY go.mod go.sum ./
