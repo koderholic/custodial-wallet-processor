@@ -50,6 +50,7 @@ func GetAuthToken(logger *utility.Logger, config Config.Data, client *redis.Clie
 
 	tokenClaims := model.TokenClaims{}
 	if err := utility.VerifyJWT(authToken, config, &tokenClaims); err != nil {
+
 		logger.Error("Service auth error : %s", err)
 
 		authToken, err := UpdateAuthToken(logger, config, client)
