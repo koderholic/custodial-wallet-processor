@@ -30,8 +30,8 @@ func (m *Middleware) Build() http.Handler {
 }
 
 var (
-	X_AUTH_TOKEN = "x-auth-token4504@B1nanc3
-	
+	X_AUTH_TOKEN = "x-auth-token"
+)
 
 // LogAPIRequests ... Logs every incoming request
 func (m *Middleware) LogAPIRequests() *Middleware {
