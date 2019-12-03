@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -34,10 +33,7 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data, client *redis.C
 // GetAuthToken ...
 func GetAuthToken(logger *utility.Logger, config Config.Data, client *redis.Client) (model.UpdateAuthTokenResponse, error) {
 
-	logger.Info("Checking service auth token expiry")
-
 	authToken, err := client.Get("serviceAuth").Result()
-	fmt.Println("authToken >", authToken)
 	if err != nil {
 		logger.Error("Authentication token validation error : %s", err)
 		return authToken, err
