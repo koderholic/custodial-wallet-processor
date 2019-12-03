@@ -22,7 +22,7 @@ func ExternalAPICall(marshaledRequest []byte, requestFlag string, responseData i
 	if err != nil {
 		log.Error("Error From %s : %s", metaData.Endpoint, err)
 		return utility.AppError{
-			ErrType: utility.SYSTEMERROR,
+			ErrType: utility.SYSTEM_ERR,
 			Err:     err,
 		}
 	}
@@ -34,7 +34,7 @@ func ExternalAPICall(marshaledRequest []byte, requestFlag string, responseData i
 	if err != nil {
 		log.Error("Error From %s : %s", metaData.Endpoint, err)
 		return utility.AppError{
-			ErrType: utility.SYSTEMERROR,
+			ErrType: utility.SYSTEM_ERR,
 			Err:     err,
 		}
 	}
@@ -48,7 +48,7 @@ func ExternalAPICall(marshaledRequest []byte, requestFlag string, responseData i
 	if externalCallResponse.StatusCode != http.StatusOK {
 		err := "External request failed"
 		return utility.AppError{
-			ErrType: utility.INPUTERROR,
+			ErrType: utility.INPUT_ERR,
 			Err:     errors.New(err),
 		}
 	}

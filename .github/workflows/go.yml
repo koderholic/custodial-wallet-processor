@@ -16,5 +16,5 @@ jobs:
     - name: Check out source code
       uses: actions/checkout@v1
 
-    - name: Build and get dependencies
-      run: go build -v .
+    - name: Build app image
+      run: docker build -t walletadapter .

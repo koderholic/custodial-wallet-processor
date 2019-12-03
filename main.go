@@ -26,6 +26,7 @@ func main() {
 		Logger: logger,
 		Config: config,
 	}
+	Database.InitializeCache()
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
 	Database.RunDbMigrations()

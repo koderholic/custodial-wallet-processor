@@ -19,16 +19,21 @@ type CreateUserAssetResponse struct {
 	Errors []string      `json:"errors"`
 }
 
+//
+type AuthTokenRequestBody struct {
+	ServiceID string `json:"serviceId`
+	Payload   string `json:"payload`
+}
+
 // UpdateAuthTokenRequest ... Model definition for getting a new service auth token request
 type UpdateAuthTokenRequest struct {
-	ServiceID   string `json:"serviceId`
-	Description string `json:"description`
+	Body AuthTokenRequestBody `json:"body"`
 }
 
 // UpdateAuthTokenResponse ...
 type UpdateAuthTokenResponse struct {
 	ServiceID   string    `json:"serviceId`
-	Description string    `json:"description`
+	Token       string    `json:"token`
 	Permissions []string  `json:"permissions`
 	CreatedAt   time.Time `json:"createdAt`
 	ExpiresAt   time.Time `json:"expiresAt`

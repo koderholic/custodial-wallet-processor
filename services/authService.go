@@ -1,0 +1,66 @@
+package services
+
+import (
+	"encoding/json"
+	"fmt"
+	Config "wallet-adapter/config"
+	"wallet-adapter/model"
+	"wallet-adapter/utility"
+
+	"github.com/go-redis/redis/v7"
+)
+
+// UpdateAuthToken ...
+func UpdateAuthToken(logger *utility.Logger, config Config.Data, client *redis.Client) (model.UpdateAuthTokenResponse, error) {
+
+	requestData := model.UpdateAuthTokenRequest{Body: model.AuthTokenRequestBody{
+		ServiceID: config.ServiceID,
+		Payload:   "",
+	}}
+	authToken := model.UpdateAuthTokenResponse{}
+
+	marshaledRequest, _ := json.Marshal(requestData)
+
+	if err := ExternalAPICall(marshaledRequest, "generateToken", authToken, config, logger); err != nil {
+		return err
+	}
+	if err := client.Set("serviceAuth", authToken.Token, 0).Err(); err != nil {
+		return err
+	}
+
+	return authToken, nil
+}
+
+// GetAuthToken ...
+func GetAuthToken(logger *utility.Logger, config Config.Data, client *redis.Client) (model.UpdateAuthTokenResponse, error) {
+
+	logger.Info("Checking service auth token expiry")
+
+	authToken, err := client.Get("serviceAuth").Result()
+	fmt.Println("authToken >", authToken)
+	if err != nil {
+		logger.Error("Authentication token validation error : %s", err)
+		return authToken, err
+	}
+
+	if authToken == "" {
+		authToken, err := UpdateAuthToken(logger, config, client)
+		if err != nil {
+			logger.Error("Service auth token could not be retrieved, error : %s", err)
+			return authToken, err
+		}
+		return authToken.Token, nil
+	}
+
+	tokenClaims := model.TokenClaims{}
+	if err := utility.VerifyJWT(authToken, config, &tokenClaims); err != nil {
+		logger.Error("Service auth error : %s", err)
+
+		authToken, err := UpdateAuthToken(logger, config, client)
+		if err != nil {
+			logger.Error("Service auth token could not be retrieved, error : %s", err)
+			return authToken, err
+		}
+		return authToken.Token, nil
+	}
+}

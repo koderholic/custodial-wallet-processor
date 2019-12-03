@@ -8,6 +8,8 @@ import (
 	"wallet-adapter/config"
 	"wallet-adapter/utility"
 
+	"github.com/go-redis/redis/v7"
+	// "github.com/gomodule/redigo/redis"
 	"github.com/jinzhu/gorm"
 
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -15,9 +17,10 @@ import (
 
 //Database : database struct
 type Database struct {
-	Logger *utility.Logger
-	Config config.Data
-	DB     *gorm.DB
+	Logger      *utility.Logger
+	Config      config.Data
+	DB          *gorm.DB
+	RedisClient *redis.Client
 }
 
 var (
@@ -48,6 +51,26 @@ func (database *Database) LoadDBInstance() {
 	database.Logger.Info("Database connection successful!")
 }
 
+// CloseDBInstance ...
 func (database *Database) CloseDBInstance() {
 	database.DB.Close()
+}
+
+// InitializeCache ...
+func (database *Database) InitializeCache() {
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     database.Config.RedisConnectionString,
+		Password: "",
+		DB:       0,
+	})
+	_, err := client.Ping().Result()
+	if err != nil {
+		database.Logger.Error("Redis connection unsuccessful : ", err)
+		return
+	}
+	database.Logger.Info("Redis connection successful!")
+
+	database.RedisClient = client
+	return
 }
