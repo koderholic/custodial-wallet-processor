@@ -10,6 +10,10 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
+var (
+	X_AUTH_TOKEN = "x-auth-token"
+)
+
 // VerifyJWT ... This verrifies a JWT generated token
 func VerifyJWT(authToken string, config Config.Data, tokenClaims interface{}) error {
 

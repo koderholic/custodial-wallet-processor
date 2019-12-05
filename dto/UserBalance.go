@@ -1,4 +1,4 @@
-package model
+package dto
 
 import (
 	"time"
@@ -6,9 +6,9 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// UserBalance ... Model definition for user crypto record and their respective balances
+// UserBalance ... DTO definition for user crypto record and their respective balances
 type UserBalance struct {
-	BaseModel
+	BaseDTO
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"userId"`
 	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
 	Symbol           string     `sql:"-" json:"symbol"`
@@ -19,7 +19,7 @@ type UserBalance struct {
 
 // UserAssetBalance ... Fetch  user balance with corresponding asset details
 type UserAssetBalance struct {
-	BaseModel
+	BaseDTO
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"userId"`
 	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
 	AvailableBalance int64      `gorm:"type:BIGINT" json:"availableBalance"`
@@ -29,6 +29,6 @@ type UserAssetBalance struct {
 }
 
 // TableName ... Change table name from default generated from UserAssetBalance
-func (model UserAssetBalance) TableName() string {
+func (dto UserAssetBalance) TableName() string {
 	return "user_balances"
 }

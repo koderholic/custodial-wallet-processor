@@ -3,7 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
@@ -12,7 +12,7 @@ import (
 // GetAsset ... This returns the crypto asset for the given id
 func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	responseData := model.Asset{}
+	responseData := dto.Asset{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -20,7 +20,7 @@ func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, re
 
 	controller.Logger.Info("Incoming request details for GetAsset : %s", assetSymbol)
 
-	if err := controller.Repository.GetByFieldName(model.Asset{Symbol: assetSymbol}, &responseData); err != nil {
+	if err := controller.Repository.GetByFieldName(dto.Asset{Symbol: assetSymbol}, &responseData); err != nil {
 
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -43,10 +43,10 @@ func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, re
 // FetchSupportedAssets ... This returns all supported crypto assets on the system
 func (controller BaseController) FetchSupportedAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var responseData []model.Asset
+	var responseData []dto.Asset
 	apiResponse := utility.NewResponse()
 
-	if err := controller.Repository.FetchByFieldName(&model.Asset{IsEnabled: true}, &responseData); err != nil {
+	if err := controller.Repository.FetchByFieldName(&dto.Asset{IsEnabled: true}, &responseData); err != nil {
 
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -69,7 +69,7 @@ func (controller BaseController) FetchSupportedAssets(responseWriter http.Respon
 // FetchAllAssets ... This fetch all crypto assets on the system
 func (controller BaseController) FetchAllAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var responseData []model.Asset
+	var responseData []dto.Asset
 	apiResponse := utility.NewResponse()
 
 	if err := controller.Repository.Fetch(&responseData); err != nil {

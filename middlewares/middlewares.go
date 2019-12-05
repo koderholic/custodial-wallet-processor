@@ -29,9 +29,6 @@ func (m *Middleware) Build() http.Handler {
 	return m.next
 }
 
-var (
-	X_AUTH_TOKEN = "x-auth-token"
-)
 
 // LogAPIRequests ... Logs every incoming request
 func (m *Middleware) LogAPIRequests() *Middleware {
@@ -52,7 +49,7 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 			return
 		}
 
-		authToken := requestReader.Header.Get(X_AUTH_TOKEN)
+		authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
 		tokenClaims := model.TokenClaims{}
 		urlPathSlice := strings.Split(requestReader.URL.Path, "/")
 		requiredPermisionFromPathSlice := urlPathSlice[len(urlPathSlice)-1]

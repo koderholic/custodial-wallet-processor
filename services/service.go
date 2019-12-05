@@ -12,7 +12,7 @@ import (
 )
 
 //ExternalAPICall ... Makes call to an external API
-func ExternalAPICall(marshaledRequest []byte, requestFlag string, responseData interface{}, config Config.Data, log *utility.Logger) error {
+func ExternalAPICall(marshaledRequest []byte, requestFlag string, responseData interface{}, config Config.Data, log *utility.Logger, authToken string) error {
 
 	metaData := utility.GetRequestMetaData(requestFlag, config)
 	log.Info("Request body sent to %s : %s", metaData.Endpoint+metaData.Action, string(marshaledRequest))
@@ -28,7 +28,9 @@ func ExternalAPICall(marshaledRequest []byte, requestFlag string, responseData i
 	}
 
 	requestInstance.Header.Set("Content-Type", "application/json")
-	requestInstance.Header.Set("x-auth-token", "application/json")
+	if authToken != "" {
+		requestInstance.Header.Set(utility.X_AUTH_TOKEN, authToken)
+	}
 
 	externalCallResponse, err := client.Do(requestInstance)
 	if err != nil {

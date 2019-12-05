@@ -1,8 +1,8 @@
-package model
+package dto
 
-// Asset ... model definition for supported rypto assets on the system
+// Asset ... DTO definition for supported crypto assets on the system
 type Asset struct {
-	BaseModel
+	BaseDTO
 	Name          string         `json:"name,omitempty"`
 	Symbol        string         `gorm:"unique_index;not null" json:"symbol,omitempty"`
 	TokenType     string         `json:"tokenType,omitempty"`

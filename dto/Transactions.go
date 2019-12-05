@@ -1,4 +1,4 @@
-package model
+package dto
 
 import (
 	"time"
@@ -44,9 +44,9 @@ var (
 	}
 )
 
-//Transaction ... This is the transaction model for all user request
+//Transaction ... This is the transaction DTO for all user request
 type Transaction struct {
-	BaseModel
+	BaseDTO
 	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"assetId"`
 	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiatorId"`
 	Recipient            string       `json:"recipient"`

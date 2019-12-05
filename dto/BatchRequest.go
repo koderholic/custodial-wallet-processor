@@ -1,4 +1,4 @@
-package model
+package dto
 
 import (
 	"time"
@@ -22,9 +22,9 @@ var (
 	}
 )
 
-// BatchRequest ... Batch request model for batch created for both user and system transactions
+// BatchRequest ... Batch request DTO for batch created for both user and system transactions
 type BatchRequest struct {
-	BaseModel
+	BaseDTO
 	AssetID          uuid.UUID     `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
 	Status           string        `gorm:"index:status;not null;default:'Pending'" json:"status"`
 	DateOfprocessing time.Time     `json:"dateOfprocessing"`

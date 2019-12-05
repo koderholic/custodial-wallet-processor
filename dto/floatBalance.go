@@ -1,4 +1,4 @@
-package model
+package dto
 
 import (
 	"time"
@@ -6,9 +6,9 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// FloatBalance ... Model definition for float crypto record and their respective balances
+// FloatBalance ... DTO definition for float crypto record and their respective balances
 type FloatBalance struct {
-	BaseModel
+	BaseDTO
 	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
 	AvailableBalance int64      `gorm:"type:BIGINT" json:"availableBalance"`
 	ReservedBalance  int64      `gorm:"type:BIGINT" json:"reservedBalance"`
@@ -17,7 +17,7 @@ type FloatBalance struct {
 
 // FloatAssetBalance ... Fetch float balance with corresponding asset details
 type FloatAssetBalance struct {
-	BaseModel
+	BaseDTO
 	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
 	AvailableBalance int64      `gorm:"type:BIGINT" json:"availableBalance"`
 	ReservedBalance  int64      `gorm:"type:BIGINT" json:"reservedBalance"`
@@ -26,6 +26,6 @@ type FloatAssetBalance struct {
 }
 
 // TableName ... Change table name from the default generated to float_balances
-func (model FloatAssetBalance) TableName() string {
+func (dto FloatAssetBalance) TableName() string {
 	return "float_balances"
 }
