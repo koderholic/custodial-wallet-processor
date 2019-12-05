@@ -23,7 +23,7 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 		return authToken, err
 	}
 
-	purgeInterval := 5 * time.Second
+	purgeInterval := config.PurgeCacheInterval * time.Second
 	memorycache := utility.InitializeCache(authToken.ExpiresAt, purgeInterval)
 	memorycache.Set("serviceAuth", &authToken, true)
 	return authToken, nil
