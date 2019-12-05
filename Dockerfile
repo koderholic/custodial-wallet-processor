@@ -1,9 +1,8 @@
-FROM golang:latest
+FROM golang:1.13.4
 
 COPY ./ /go/src/wallet-adapter
 WORKDIR /go/src/wallet-adapter
 
-WORKDIR ./
 COPY go.mod go.sum ./
 
 # RUN go get -d -v ./...

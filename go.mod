@@ -16,6 +16,7 @@ require (
 	github.com/jinzhu/gorm v1.9.11
 	github.com/karagulamos/aescipher v0.0.0-20190728210219-868b2d3c9378
 	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/viper v1.5.0
 	github.com/swaggo/http-swagger v0.0.0-20190614090009-c2865af9083e

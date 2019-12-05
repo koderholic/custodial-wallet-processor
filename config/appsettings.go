@@ -20,7 +20,6 @@ type Data struct {
 	AuthenticatorKey      string `mapstructure:"authenticatorKey"  yaml:"authenticatorKey,omitempty"`
 	AuthenticationService string `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService  string `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
-	RedisConnectionString string `mapstructure:"redisConnectionString"  yaml:"redisConnectionString,omitempty"`
 }
 
 //Init : initialize data

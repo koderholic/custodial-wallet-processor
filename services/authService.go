@@ -10,7 +10,7 @@ import (
 )
 
 // UpdateAuthToken ...
-func UpdateAuthToken(logger *utility.Logger, config Config.Data, client *redis.Client) (model.UpdateAuthTokenResponse, error) {
+func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
 
 	requestData := model.UpdateAuthTokenRequest{Body: model.AuthTokenRequestBody{
 		ServiceID: config.ServiceID,
@@ -23,7 +23,9 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data, client *redis.C
 	if err := ExternalAPICall(marshaledRequest, "generateToken", authToken, config, logger); err != nil {
 		return err
 	}
-	if err := client.Set("serviceAuth", authToken.Token, 0).Err(); err != nil {
+
+	memorycache := utility.InitializeCache()
+	if err := memorycache.Set("serviceAuth", &authToken, 0).Err(); err != nil {
 		return err
 	}
 
@@ -31,7 +33,7 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data, client *redis.C
 }
 
 // GetAuthToken ...
-func GetAuthToken(logger *utility.Logger, config Config.Data, client *redis.Client) (model.UpdateAuthTokenResponse, error) {
+func GetAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
 
 	authToken, err := client.Get("serviceAuth").Result()
 	if err != nil {

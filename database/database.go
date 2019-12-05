@@ -55,22 +55,3 @@ func (database *Database) LoadDBInstance() {
 func (database *Database) CloseDBInstance() {
 	database.DB.Close()
 }
-
-// InitializeCache ...
-func (database *Database) InitializeCache() {
-
-	client := redis.NewClient(&redis.Options{
-		Addr:     database.Config.RedisConnectionString,
-		Password: "",
-		DB:       0,
-	})
-	_, err := client.Ping().Result()
-	if err != nil {
-		database.Logger.Error("Redis connection unsuccessful : ", err)
-		return
-	}
-	database.Logger.Info("Redis connection successful!")
-
-	database.RedisClient = client
-	return
-}
