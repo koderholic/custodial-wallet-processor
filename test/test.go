@@ -4,14 +4,12 @@ import (
 	"net/http"
 	"sync"
 	Config "wallet-adapter/config"
-	"wallet-adapter/database"
 	"wallet-adapter/middlewares"
 	"wallet-adapter/utility"
 
 	"wallet-adapter/controllers"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	httpSwagger "github.com/swaggo/http-swagger"
 	validation "gopkg.in/go-playground/validator.v9"
 )
@@ -22,22 +20,19 @@ var (
 
 func startUp() (Config.Data, *utility.Logger, http.Handler) {
 
-	config := Config.Data{}
-	config.Init("")
+	config := Config.Data{
+		AppPort:            "9000",
+		ServiceName:        "wallet-adapter",
+		BasePath:           "/api/v1",
+		AuthenticatorKey:   "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUE0ZjV3ZzVsMmhLc1RlTmVtL1Y0MQpmR25KbTZnT2Ryajh5bTNyRmtFVS93VDhSRHRuU2dGRVpPUXBIRWdRN0pMMzh4VWZVMFkzZzZhWXc5UVQwaEo3Cm1DcHo5RXI1cUxhTVhKd1p4ekh6QWFobGZBMGljcWFidkpPTXZRdHpENnVRdjZ3UEV5WnREVFdpUWk5QVh3QnAKSHNzUG5wWUdJbjIwWlp1TmxYMkJyQ2xjaUhoQ1BVSUlaT1FuL01tcVREMzFqU3lqb1FvVjdNaGhNVEFUS0p4MgpYckhoUisxRGNLSnpRQlNUQUducFlWYXFwc0FSYXArbndSaXByM25VVHV4eUdvaEJUU21qSjJ1c1NlUVhISTNiCk9ESVJlMUF1VHlIY2VBYmV3bjhiNDYyeUVXS0FSZHBkOUFqUVc1U0lWUGZkc3o1QjZHbFlRNUxkWUt0em5UdXkKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
+		PurgeCacheInterval: 5,
+	}
 
 	logger := utility.NewLogger()
 	router := mux.NewRouter()
 	validator := validation.New()
 
-	Database := &database.Database{
-		Logger: logger,
-		Config: config,
-	}
-	Database.LoadDBInstance()
-	defer Database.CloseDBInstance()
-	Database.RunDbMigrations()
-
-	RegisterRoutes(router, validator, config, logger, Database.DB)
+	RegisterRoutes(router, validator, config, logger)
 
 	middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
 
@@ -46,10 +41,10 @@ func startUp() (Config.Data, *utility.Logger, http.Handler) {
 
 var config, logger, router = startUp()
 
-func RegisterRoutes(router *mux.Router, validator *validation.Validate, config Config.Data, logger *utility.Logger, db *gorm.DB) {
+func RegisterRoutes(router *mux.Router, validator *validation.Validate, config Config.Data, logger *utility.Logger) {
 
 	once.Do(func() {
-		baseRepository := BaseRepository{Logger: logger, Config: config, DB: db}
+		baseRepository := BaseRepository{Logger: logger, Config: config}
 		userAssetRepository := UserAssetRepository{BaseRepository: baseRepository}
 
 		controller := controllers.NewController(logger, config, validator, &baseRepository)
