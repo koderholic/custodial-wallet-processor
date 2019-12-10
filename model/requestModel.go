@@ -18,7 +18,6 @@ type CreateUserAssetRequest struct {
 // CreateUserAssetResponse ... Model definition for create asset response
 type CreateUserAssetResponse struct {
 	Assets []dto.UserBalance `json:"assets"`
-	Errors []string          `json:"errors"`
 }
 
 // AuthTokenRequestBody ...

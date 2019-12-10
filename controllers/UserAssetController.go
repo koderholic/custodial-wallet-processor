@@ -18,7 +18,6 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	apiResponse := utility.NewResponse()
 	requestData := model.CreateUserAssetRequest{}
 	responseData := model.CreateUserAssetResponse{}
-	errorResponse := []string{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreateUserAssets : %+v", requestData)
@@ -37,8 +36,10 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		asset := dto.Asset{}
 
 		if err := controller.Repository.GetByFieldName(&dto.Asset{Symbol: assetSymbol, IsEnabled: true}, &asset); err != nil {
-			errorResponse = append(errorResponse, fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol))
-			continue
+			controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)))
+			return
 		}
 
 		userAsset := dto.UserBalance{AssetID: asset.ID, UserID: requestData.UserID}
@@ -46,7 +47,6 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		userAsset.Symbol = asset.Symbol
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
-	responseData.Errors = errorResponse
 
 	controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", responseData)
 	responseWriter.WriteHeader(http.StatusOK)

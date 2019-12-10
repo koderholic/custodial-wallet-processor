@@ -1,14 +1,15 @@
-package utility
+package test
 
 import (
 	"testing"
 	"time"
+	"wallet-adapter/utility"
 )
 
 func TestCachePurgesAfterSetTime(t *testing.T) {
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := InitializeCache(expiry, purgeInterval)
+	newCache := utility.InitializeCache(expiry, purgeInterval)
 
 	testKey, testValue := "test", "boy"
 
@@ -29,7 +30,7 @@ func TestCachePurgesAfterSetTime(t *testing.T) {
 func TestCacheExpiresAfterSetTime(t *testing.T) {
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := InitializeCache(expiry, purgeInterval)
+	newCache := utility.InitializeCache(expiry, purgeInterval)
 
 	testKey, testValue := "test", "boy"
 
@@ -51,7 +52,7 @@ func TestCacheExpiresAfterSetTime(t *testing.T) {
 func TestCacheNeverExpires(t *testing.T) {
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := InitializeCache(expiry, purgeInterval)
+	newCache := utility.InitializeCache(expiry, purgeInterval)
 
 	testKey, testValue := "test", "boy"
 
@@ -77,7 +78,7 @@ func TestCacheSetAndGetsProperly(t *testing.T) {
 	}
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := InitializeCache(expiry, purgeInterval)
+	newCache := utility.InitializeCache(expiry, purgeInterval)
 
 	testKey1, testValue1 := "test", "boy"
 

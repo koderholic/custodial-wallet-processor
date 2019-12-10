@@ -8,6 +8,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
+	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/go-redis/redis/v7 v7.0.0-beta.4
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/gorilla/handlers v1.4.2

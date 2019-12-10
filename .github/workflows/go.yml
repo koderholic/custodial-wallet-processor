@@ -16,5 +16,9 @@ jobs:
     - name: Check out source code
       uses: actions/checkout@v1
 
+    - name: Run test
+      run: go test -v -cover ./test/
+
     - name: Build app image
       run: docker build -t walletadapter .
+    
