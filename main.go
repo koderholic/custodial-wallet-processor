@@ -34,9 +34,7 @@ func main() {
 
 	serviceAddress := ":" + config.AppPort
 
-	middleware := middlewares.NewMiddleware(logger, router).
-		LogAPIRequests().
-		Build()
+	middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
 
 	logger.Info("Server started and listening on port %s", config.AppPort)
 	log.Fatal(http.ListenAndServe(serviceAddress, middleware))

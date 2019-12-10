@@ -1,4 +1,4 @@
-package model
+package dto
 
 import (
 	"time"
@@ -6,9 +6,9 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// UserAddress ... Model definitions for all user crypto addresses for fund deposit
+// UserAddress ... DTO definitions for all user crypto addresses for fund deposit
 type UserAddress struct {
-	BaseModel
+	BaseDTO
 	UserID   uuid.UUID `gorm:"type:VARCHAR(36);not null;index:user_id" json:"initiatorId"`
 	AssetID  uuid.UUID `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
 	Address  string    `gorm:"not null" json:"address"`

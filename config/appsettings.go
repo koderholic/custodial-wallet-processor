@@ -11,10 +11,16 @@ import (
 
 //Data : config data
 type Data struct {
-	AppPort            string `mapstructure:"appPort"  yaml:"appPort,omitempty"`
-	AppName            string `mapstructure:"appName"  yaml:"appName,omitempty"`
-	DBConnectionString string `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
-	BasePath           string `mapstructure:"basePath"  yaml:"basePath,omitempty"`
+	AppPort               string `mapstructure:"appPort"  yaml:"appPort,omitempty"`
+	ServiceName           string `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
+	DBConnectionString    string `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
+	BasePath              string `mapstructure:"basePath"  yaml:"basePath,omitempty"`
+	ServiceID             string `mapstructure:"serviceId"  yaml:"serviceId,omitempty"`
+	ServiceKey            string `mapstructure:"serviceKey"  yaml:"serviceKey,omitempty"`
+	AuthenticatorKey      string `mapstructure:"authenticatorKey"  yaml:"authenticatorKey,omitempty"`
+	AuthenticationService string `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
+	KeyManagementService  string `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
+	PurgeCacheInterval    int    `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
 }
 
 //Init : initialize data
@@ -28,6 +34,9 @@ func (c *Data) Init(configDir string) {
 	viper.SetEnvPrefix("was") // wPrefix all env variable with WAS(Wallet adapter Service)
 	viper.AutomaticEnv()
 	viper.BindEnv("appPort")
+	viper.BindEnv("serviceId")
+	viper.BindEnv("serviceKey")
+	viper.BindEnv("authenticatorKey")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")

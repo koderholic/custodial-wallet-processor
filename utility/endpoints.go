@@ -1,15 +1,29 @@
 package utility
 
 import (
-	"wallet-adapter/config"
+	"net/http"
+	Config "wallet-adapter/config"
 )
 
 type MetaData struct {
 	Type, Endpoint, Action string
 }
 
-func GetRequestMetaData(request string, Config config.Data) MetaData {
+// GetRequestMetaData ...
+func GetRequestMetaData(request string, config Config.Data) MetaData {
 	switch request {
+	case "generateToken":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.AuthenticationService,
+			Action:   "/services/token",
+		}
+	case "generateAddress":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.KeyManagementService,
+			Action:   "/address/create",
+		}
 	default:
 		return MetaData{}
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
@@ -33,14 +34,14 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	// Create user asset record for each given asset
 	for i := 0; i < len(requestData.Assets); i++ {
 		assetSymbol := requestData.Assets[i]
-		asset := model.Asset{}
+		asset := dto.Asset{}
 
-		if err := controller.Repository.GetByFieldName(&model.Asset{Symbol: assetSymbol, IsEnabled: true}, &asset); err != nil {
+		if err := controller.Repository.GetByFieldName(&dto.Asset{Symbol: assetSymbol, IsEnabled: true}, &asset); err != nil {
 			errorResponse = append(errorResponse, fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol))
 			continue
 		}
 
-		userAsset := model.UserBalance{AssetID: asset.ID, UserID: requestData.UserID}
+		userAsset := dto.UserBalance{AssetID: asset.ID, UserID: requestData.UserID}
 		_ = controller.Repository.FindOrCreateUserAsset(userAsset, &userAsset)
 		userAsset.Symbol = asset.Symbol
 		responseData.Assets = append(responseData.Assets, userAsset)
@@ -56,7 +57,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 // GetUserAssets ... Get all user asset balance
 func (controller UserAssetController) GetUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var responseData []model.UserAssetBalance
+	var responseData []dto.UserAssetBalance
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -67,7 +68,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 		return
 	}
 
-	if err := controller.Repository.GetAssetsByUserID(&model.UserAssetBalance{UserID: userID}, &responseData); err != nil {
+	if err := controller.Repository.GetAssetsByUserID(&dto.UserAssetBalance{UserID: userID}, &responseData); err != nil {
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))

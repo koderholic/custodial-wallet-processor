@@ -51,6 +51,17 @@ func NewUserAssetController(logger *utility.Logger, configData config.Data, vali
 	return controller
 }
 
+//Ping : Ping function
+func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	apiResponse := utility.NewResponse()
+
+	controller.Logger.Info("Ping request successful! Server is up and listening")
+
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
+}
+
 // ValidateRequest ... Validates request models
 func ValidateRequest(validator *validation.Validate, requestData interface{}, logger *utility.Logger) []map[string]string {
 	validationErr := []map[string]string{}
@@ -67,15 +78,4 @@ func ValidateRequest(validator *validation.Validate, requestData interface{}, lo
 		}
 	}
 	return validationErr
-}
-
-//Ping : Ping function
-func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestReader *http.Request) {
-
-	apiResponse := utility.NewResponse()
-
-	controller.Logger.Info("Ping request successful! Server is up and listening")
-
-	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
 }

@@ -1,10 +1,10 @@
-package model
+package dto
 
 import uuid "github.com/satori/go.uuid"
 
-// ChainTransaction ... Model definition
+// ChainTransaction ... DTO definition for on-chain transactions
 type ChainTransaction struct {
-	BaseModel
+	BaseDTO
 	Status          bool      `gorm:"index;not null;default:false" json:"status"`
 	BatchID         uuid.UUID `gorm:"type:VARCHAR(36);index:batch_id" json:"batchId"`
 	TransactionHash string    `json:"hash"`
