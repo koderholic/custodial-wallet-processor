@@ -29,6 +29,7 @@ func main() {
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
 	Database.RunDbMigrations()
+	Database.DBSeeder()
 
 	app.RegisterRoutes(router, validator, config, logger, Database.DB)
 

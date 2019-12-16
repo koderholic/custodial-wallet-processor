@@ -16,6 +16,7 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	Delete(model interface{}) error
+	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -113,6 +114,18 @@ func (repo *BaseRepository) Update(id, model interface{}) error {
 func (repo *BaseRepository) Delete(model interface{}) error {
 	if err := repo.DB.Delete(model).Error; err != nil {
 		repo.Logger.Error("Error (with repository Delete %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// FindOrCreate ...
+func (repo *BaseRepository) FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error {
+	if err := repo.DB.FirstOrCreate(model, checkExistOrUpdate).Error; err != nil {
+		repo.Logger.Error("Error with repository FindOrCreateUserAsset %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,

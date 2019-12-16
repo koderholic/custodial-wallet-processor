@@ -29,7 +29,6 @@ func (m *Middleware) Build() http.Handler {
 	return m.next
 }
 
-
 // LogAPIRequests ... Logs every incoming request
 func (m *Middleware) LogAPIRequests() *Middleware {
 	nextHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, requestReader *http.Request) {

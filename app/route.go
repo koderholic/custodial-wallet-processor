@@ -38,11 +38,6 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		// General Routes
 		apiRouter.HandleFunc("/crypto/ping", controller.Ping).Methods(http.MethodGet)
 
-		// Asset Routes
-		apiRouter.HandleFunc("/crypto/assets", controller.FetchAllAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/supported", controller.FetchSupportedAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/{assetId}", controller.GetAsset).Methods(http.MethodGet)
-
 		// User Asset Routes
 		apiRouter.HandleFunc("/crypto/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/crypto/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)

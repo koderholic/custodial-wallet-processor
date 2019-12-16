@@ -6,8 +6,8 @@ import uuid "github.com/satori/go.uuid"
 type ChainTransaction struct {
 	BaseDTO
 	Status          bool      `gorm:"index;not null;default:false" json:"status"`
-	BatchID         uuid.UUID `gorm:"type:VARCHAR(36);index:batch_id" json:"batchId"`
+	BatchID         uuid.UUID `gorm:"type:VARCHAR(36);index:batch_id" json:"batch_id"`
 	TransactionHash string    `json:"hash"`
-	BlockHeight     int64     `gorm:"type:BIGINT" json:"blockHeight"`
+	BlockHeight     int64     `gorm:"type:BIGINT" json:"block_height"`
 	BatchRequest    `sql:"-"`
 }
