@@ -26,7 +26,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
 		controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", validationErr)
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.ValidateError("INPUT_ERR", utility.INPUT_ERR, validationErr))
+		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
 	}
 
