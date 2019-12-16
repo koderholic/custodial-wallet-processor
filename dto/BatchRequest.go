@@ -25,10 +25,10 @@ var (
 // BatchRequest ... Batch request DTO for batch created for both user and system transactions
 type BatchRequest struct {
 	BaseDTO
-	AssetID          uuid.UUID     `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"assetId"`
+	AssetID          uuid.UUID     `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"asset_id"`
 	Status           string        `gorm:"index:status;not null;default:'Pending'" json:"status"`
-	DateOfprocessing time.Time     `json:"dateOfprocessing"`
-	DateCompleted    time.Time     `json:"dateCompleted"`
-	Records          int           `json:"noOfRecords"`
-	Transactions     []Transaction `json:"transactionRequests,omitempty"`
+	DateOfprocessing time.Time     `json:"date_of_processing"`
+	DateCompleted    time.Time     `json:"date_completed"`
+	Records          int           `json:"no_of_records"`
+	Transactions     []Transaction `json:"transaction_requests,omitempty"`
 }

@@ -43,14 +43,15 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		}
 
 		userAsset := dto.UserBalance{AssetID: asset.ID, UserID: requestData.UserID}
-		_ = controller.Repository.FindOrCreateUserAsset(userAsset, &userAsset)
+		_ = controller.Repository.FindOrCreate(userAsset, &userAsset)
 		userAsset.Symbol = asset.Symbol
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
 
 	controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", responseData)
-	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(http.StatusCreated)
+	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
 
 }
 
@@ -81,7 +82,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", responseData)
 
-	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	responseWriter.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
 
 }

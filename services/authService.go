@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
@@ -16,11 +15,16 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 		Payload:   "",
 	}}
 	authToken := model.UpdateAuthTokenResponse{}
+	metaData := utility.GetRequestMetaData("generateToken", config)
 
-	marshaledRequest, _ := json.Marshal(requestData)
-
-	if err := ExternalAPICall(marshaledRequest, "generateToken", &authToken, config, logger, ""); err != nil {
-		return authToken, err
+	APIClient := NewClient(nil, logger, config, metaData.Endpoint)
+	APIRequest, err := APIClient.NewRequest(metaData.Type, metaData.Action, requestData)
+	if err != nil {
+		return model.UpdateAuthTokenResponse{}, err
+	}
+	_, err = APIClient.Do(APIRequest, &authToken)
+	if err != nil {
+		return model.UpdateAuthTokenResponse{}, err
 	}
 
 	purgeInterval := config.PurgeCacheInterval * time.Second

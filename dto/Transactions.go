@@ -47,18 +47,18 @@ var (
 //Transaction ... This is the transaction DTO for all user request
 type Transaction struct {
 	BaseDTO
-	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"assetId"`
-	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiatorId"`
+	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"asset_id"`
+	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id"`
 	Recipient            string       `json:"recipient"`
-	TransactionReference string       `gorm:"not null;" json:"transactionReference"`
-	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transactionType"`
-	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transactionStatus"`
-	TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transactionTag"`
+	TransactionReference string       `gorm:"not null;" json:"transaction_reference"`
+	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transaction_type"`
+	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transaction_status"`
+	TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transaction_tag"`
 	Volume               string       `gorm:"not null;default:'Sell'" json:"volume"`
-	ReversedBalance      int64        `gorm:"type:BIGINT;not null" json:"reversedBalance"`
-	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processingType"`
-	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batchId"`
-	TransactionStartDate time.Time    `json:"transactionStartDate"`
-	TransactionEndDate   time.Time    `json:"transactionEndDate"`
+	ReversedBalance      int64        `gorm:"type:BIGINT;not null" json:"reversed_balance"`
+	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processing_type"`
+	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id"`
+	TransactionStartDate time.Time    `json:"transaction_start_date"`
+	TransactionEndDate   time.Time    `json:"transaction_end_date"`
 	Batch                BatchRequest `sql:"-"`
 }

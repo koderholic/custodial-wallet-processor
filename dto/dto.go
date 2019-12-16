@@ -10,8 +10,8 @@ import (
 // BaseDTO ... Shared DTO definition
 type BaseDTO struct {
 	ID        uuid.UUID `gorm:"type:VARCHAR(36);primary_key;" json:"id,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // BeforeCreate will set ID field with a UUID value rather than numeric value.

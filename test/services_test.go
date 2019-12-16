@@ -1,20 +1,20 @@
 package test
 
 import (
-	"testing"
+	// "testing"
 	"wallet-adapter/services"
 )
 
-func TestGetTokenReturnsEmptyAtInitialization(t *testing.T) {
+func (s *Suite) Test_GetTokenReturnsEmptyAtInitialization() {
 
-	authToken, _ := services.GetAuthToken(logger, config)
+	authToken, _ := services.GetAuthToken(s.Logger, s.Config)
 
 	if authToken != "" {
-		t.Errorf("Expected item fetched to not be empty, got %s\n", authToken)
+		s.T().Errorf("Expected item fetched to not be empty, got %s\n", authToken)
 	}
 
 	if authToken != "" {
-		t.Errorf("Expected item fetched to not be empty, got %s\n", authToken)
+		s.T().Errorf("Expected item fetched to not be empty, got %s\n", authToken)
 	}
 
 }

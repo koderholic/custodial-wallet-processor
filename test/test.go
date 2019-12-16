@@ -1,15 +1,23 @@
 package test
 
 import (
+	"database/sql"
+	"fmt"
 	"net/http"
 	"sync"
-	Config "wallet-adapter/config"
+	config "wallet-adapter/config"
 	"wallet-adapter/middlewares"
 	"wallet-adapter/utility"
 
-	"wallet-adapter/controllers"
+	"github.com/stretchr/testify/require"
 
+	"wallet-adapter/controllers"
+	"wallet-adapter/database"
+
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/suite"
 	httpSwagger "github.com/swaggo/http-swagger"
 	validation "gopkg.in/go-playground/validator.v9"
 )
@@ -18,9 +26,33 @@ var (
 	once sync.Once
 )
 
-func startUp() (Config.Data, *utility.Logger, http.Handler) {
+type Suite struct {
+	suite.Suite
+	DB         *gorm.DB
+	Mock       sqlmock.Sqlmock
+	Database   database.Database
+	Logger     *utility.Logger
+	Config     config.Data
+	Middleware http.Handler
+}
 
-	config := Config.Data{
+func (s *Suite) SetupSuite() {
+
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	db, s.Mock, err = sqlmock.New()
+	require.NoError(s.T(), err)
+	s.DB, err = gorm.Open("mysql", db)
+	require.NoError(s.T(), err)
+	s.DB.LogMode(true)
+
+	logger := utility.NewLogger()
+	router := mux.NewRouter()
+	validator := validation.New()
+	Config := config.Data{
 		AppPort:            "9000",
 		ServiceName:        "wallet-adapter",
 		BasePath:           "/api/v1",
@@ -28,46 +60,39 @@ func startUp() (Config.Data, *utility.Logger, http.Handler) {
 		PurgeCacheInterval: 5,
 	}
 
-	logger := utility.NewLogger()
-	router := mux.NewRouter()
-	validator := validation.New()
+	Database := database.Database{
+		Logger: logger,
+		Config: Config,
+		DB:     s.DB,
+	}
+	middleware := middlewares.NewMiddleware(logger, Config, router).ValidateAuthToken().LogAPIRequests().Build()
 
-	RegisterRoutes(router, validator, config, logger)
+	s.Database = Database
+	s.Logger = logger
+	s.Config = Config
+	s.Middleware = middleware
 
-	middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
-
-	return config, logger, middleware
+	s.RegisterRoutes(router, validator)
 }
 
-var config, logger, router = startUp()
-
-func RegisterRoutes(router *mux.Router, validator *validation.Validate, config Config.Data, logger *utility.Logger) {
+// RegisterRoutes ...
+func (s *Suite) RegisterRoutes(router *mux.Router, validator *validation.Validate) {
 
 	once.Do(func() {
-		baseRepository := BaseRepository{Logger: logger, Config: config}
-		userAssetRepository := UserAssetRepository{BaseRepository: baseRepository}
+		fmt.Printf("s.Config.BasePath >> %+v", s)
+		baseRepository := database.BaseRepository{Database: s.Database}
+		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-		controller := controllers.NewController(logger, config, validator, &baseRepository)
-		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
-
-		basePath := config.BasePath
+		// controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
+		userAssetController := controllers.NewUserAssetController(s.Logger, s.Config, validator, &userAssetRepository)
+		basePath := s.Config.BasePath
 
 		apiRouter := router.PathPrefix(basePath).Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
-
-		// General Routes
-		apiRouter.HandleFunc("/crypto/ping", controller.Ping).Methods(http.MethodGet)
-
-		// Asset Routes
-		apiRouter.HandleFunc("/crypto/assets", controller.FetchAllAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/supported", controller.FetchSupportedAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/{assetId}", controller.GetAsset).Methods(http.MethodGet)
 
 		// User Asset Routes
 		apiRouter.HandleFunc("/crypto/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/crypto/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
 
 	})
-
-	logger.Info("App routes registered successfully!")
 }

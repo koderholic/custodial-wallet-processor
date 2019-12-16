@@ -36,7 +36,7 @@ func (controller BaseController) GetAsset(responseWriter http.ResponseWriter, re
 	controller.Logger.Info("Outgoing response to GetAsset request %+v", responseData)
 
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
 
 }
 
@@ -62,7 +62,7 @@ func (controller BaseController) FetchSupportedAssets(responseWriter http.Respon
 	controller.Logger.Info("Outgoing response to FetchSupportedAssets request %+v", responseData)
 
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
 
 }
 
@@ -88,6 +88,6 @@ func (controller BaseController) FetchAllAssets(responseWriter http.ResponseWrit
 	controller.Logger.Info("Outgoing response to FetchAllAssets request %+v", responseData)
 
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Success("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
 
 }
