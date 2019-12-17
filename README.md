@@ -16,3 +16,14 @@ Run "go build" to compile into executable. You can also run any of the bash scri
 Double-click on executable, the golang web server will start and listen for connections on the configured PORT
 
 API Specifications can be viewed on swagger here => localhost:{PORT}/swagger/
+
+## Dependency
+
+It needs a mysql db. Db name and db server location can be configured in the config.yml file, see sample in config-default.yaml
+
+## Running Tests
+
+The quickest way to run test is by using go run:
+`bash
+    $ go test -v ./tests
+`

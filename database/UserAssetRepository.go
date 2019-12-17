@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"wallet-adapter/utility"
 )
 
@@ -24,5 +25,6 @@ func (repo *UserAssetRepository) GetAssetsByUserID(id, model interface{}) error 
 			Err:     err,
 		}
 	}
+	fmt.Printf("model > %+v > %s", model, repo.DB.Select("assets.symbol,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error)
 	return nil
 }

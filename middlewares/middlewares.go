@@ -56,6 +56,7 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 
 		if authToken == "" {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error %s", utility.EMPTY_AUTH_KEY))
+			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(responseWriter).Encode(response.PlainError("EMPTY_AUTH_KEY", utility.EMPTY_AUTH_KEY))
 			return
@@ -63,6 +64,7 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 
 		if err := utility.VerifyJWT(authToken, m.config, &tokenClaims); err != nil {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", err))
+			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
 			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.INVALID_AUTH_TOKEN))
 			return
@@ -70,6 +72,7 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 
 		if tokenClaims.TokenType != model.JWT_TOKEN_TYPE.SERVICE {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Resource not accessible by non-service token type"))
+			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
 			json.NewEncoder(responseWriter).Encode(response.PlainError("FORBIDDEN_ERR", utility.INVALID_TOKENTYPE))
 			return
@@ -85,6 +88,7 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 			}
 		}
 		m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Service does not have the required permission"))
+		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(responseWriter).Encode(response.Error("FORBIDDEN_ERR", utility.INVALID_PERMISSIONS, map[string]string{"permission": requiredPermission}))
 		return

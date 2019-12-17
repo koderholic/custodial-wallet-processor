@@ -58,6 +58,7 @@ func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestRe
 
 	controller.Logger.Info("Ping request successful! Server is up and listening")
 
+	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
 }
