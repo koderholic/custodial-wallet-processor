@@ -24,7 +24,8 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", validationErr)
+		controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", validationErr)
+		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
@@ -36,12 +37,19 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		asset := dto.Asset{}
 
 		if err := controller.Repository.GetByFieldName(&dto.Asset{Symbol: assetSymbol, IsEnabled: true}, &asset); err != nil {
-			controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", err)
+			controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
+			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
+				responseWriter.Header().Set("Content-Type", "application/json")
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset record (%s) could not be created for user. %s", assetSymbol, err)))
+				return
+			}
+
+			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)))
 			return
 		}
-
 		userAsset := dto.UserBalance{AssetID: asset.ID, UserID: requestData.UserID}
 		_ = controller.Repository.FindOrCreate(userAsset, &userAsset)
 		userAsset.Symbol = asset.Symbol
@@ -64,18 +72,23 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	routeParams := mux.Vars(requestReader)
 	userID, err := uuid.FromString(routeParams["userId"])
 	if err != nil {
+		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
 		return
 	}
 
 	if err := controller.Repository.GetAssetsByUserID(&dto.UserAssetBalance{UserID: userID}, &responseData); err != nil {
+		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
+			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 			return
 		}
 
+		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", err.(utility.AppError).Error()))
 		return
