@@ -19,7 +19,7 @@ API Specifications can be viewed on swagger here => localhost:{PORT}/swagger/
 
 ## Dependency
 
-It needs a mysql db. Db name and db server location can be configured in the config.yml file
+It needs a mysql db. Db name and db server location can be configured in the config.yml file, see sample in config-default.yaml
 
 ## Running Tests
 
