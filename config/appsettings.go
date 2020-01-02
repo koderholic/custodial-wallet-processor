@@ -32,12 +32,13 @@ func (c *Data) Init(configDir string) {
 		log.Printf("Cannot set default input/output directory to the current working directory >> %s", dirErr)
 	}
 
-	viper.SetEnvPrefix("was") // wPrefix all env variable with WAS(Wallet adapter Service)
+	viper.SetEnvPrefix("") // wPrefix all env variable with WAS(Wallet adapter Service) i.e WAS-APPPORT
 	viper.AutomaticEnv()
 	viper.BindEnv("appPort")
 	viper.BindEnv("serviceId")
 	viper.BindEnv("serviceKey")
 	viper.BindEnv("authenticatorKey")
+	viper.BindEnv("dbConnectionString")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")
