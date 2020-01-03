@@ -6,13 +6,27 @@ serviceConfig:
   targetPort: 8200
   group: crypto-gateway
   containers:
-    - name: walletAdapter
-      image: walletAdapter
+    - name: wallet-adapter-service
+      image: bundle/wallet-adapter-service
       fromDockerFile: ./Dockerfile
       containerPorts:
         - 8200
       env:
-        appPort: ''
-        serviceId: ''
-        serviceKey: ''
-        dbConnectionString: ''
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKeyPem'
+resources:
+  databases:
+    - type: MYSQL
+      name: walletAdapter
+      environmentMap:
+        uri: DB_CONNECTION_URI
+
+  authentication:
+    description: Wallet-adapter-service
+    permissions:
+      - svcs.key-management.post-sign-transaction
+      - svcs.authentication.token.update
+      - svcs.authentication.token.generate
+
+    environmentMap:
+      serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
+      token: AUTHENTICATION_SERVICE_TOKEN

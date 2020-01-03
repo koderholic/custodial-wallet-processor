@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -18,6 +19,7 @@ func main() {
 	config := Config.Data{}
 	config.Init("")
 
+	fmt.Printf("Config >> %+v", config)
 	logger := utility.NewLogger()
 	router := mux.NewRouter()
 	validator := validation.New()

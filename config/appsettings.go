@@ -14,11 +14,11 @@ import (
 type Data struct {
 	AppPort               string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
 	ServiceName           string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
-	DBConnectionString    string        `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
+	DBConnectionString    string        `mapstructure:"DB_CONNECTION_URI"  yaml:"DB_CONNECTION_URI,omitempty"`
 	BasePath              string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
-	ServiceID             string        `mapstructure:"serviceId"  yaml:"serviceId,omitempty"`
-	ServiceKey            string        `mapstructure:"serviceKey"  yaml:"serviceKey,omitempty"`
-	AuthenticatorKey      string        `mapstructure:"authenticatorKey"  yaml:"authenticatorKey,omitempty"`
+	ServiceID             string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"serviceId,omitempty"`
+	ServiceKey            string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"serviceKey,omitempty"`
+	AuthenticatorKey      string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"authenticatorKey,omitempty"`
 	AuthenticationService string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
@@ -32,13 +32,12 @@ func (c *Data) Init(configDir string) {
 		log.Printf("Cannot set default input/output directory to the current working directory >> %s", dirErr)
 	}
 
-	viper.SetEnvPrefix("") // wPrefix all env variable with WAS(Wallet adapter Service) i.e WAS-APPPORT
+	// viper.SetEnvPrefix("") // wPrefix all env variable with WAS(Wallet adapter Service) i.e WAS-APPPORT
 	viper.AutomaticEnv()
-	viper.BindEnv("appPort")
-	viper.BindEnv("serviceId")
-	viper.BindEnv("serviceKey")
-	viper.BindEnv("authenticatorKey")
-	viper.BindEnv("dbConnectionString")
+	viper.BindEnv("AUTHENTICATION_SERVICE_SERVICE_ID")
+	viper.BindEnv("AUTHENTICATION_SERVICE_TOKEN")
+	viper.BindEnv("SECURITY_BUNDLE_PUBLICKEY")
+	viper.BindEnv("DB_CONNECTION_URI")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")
