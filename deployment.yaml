@@ -12,7 +12,7 @@ serviceConfig:
       containerPorts:
         - 8200
       env:
-        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKeyPem'
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
 resources:
   databases:
     - type: MYSQL
