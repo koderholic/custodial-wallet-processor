@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -31,7 +32,8 @@ var (
 func (database *Database) LoadDBInstance() {
 
 	once.Do(func() {
-		db, err := gorm.Open("mysql", database.Config.DBConnectionString)
+		DBConnectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true", database.Config.DBUser, database.Config.DBPassword, database.Config.DBHost, database.Config.DBName)
+		db, err := gorm.Open("mysql", DBConnectionString)
 		if err != nil {
 			log.Fatal("Error creating database connection: %s", err.Error())
 		}

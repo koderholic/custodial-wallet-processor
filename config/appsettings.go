@@ -14,7 +14,10 @@ import (
 type Data struct {
 	AppPort               string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
 	ServiceName           string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
-	DBConnectionString    string        `mapstructure:"DB_CONNECTION_URI"  yaml:"DB_CONNECTION_URI,omitempty"`
+	DBHost                string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
+	DBUser                string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
+	DBPassword            string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
+	DBName                string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
 	BasePath              string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
 	ServiceID             string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"serviceId,omitempty"`
 	ServiceKey            string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"serviceKey,omitempty"`
@@ -37,7 +40,10 @@ func (c *Data) Init(configDir string) {
 	viper.BindEnv("AUTHENTICATION_SERVICE_SERVICE_ID")
 	viper.BindEnv("AUTHENTICATION_SERVICE_TOKEN")
 	viper.BindEnv("SECURITY_BUNDLE_PUBLICKEY")
-	viper.BindEnv("DB_CONNECTION_URI")
+	viper.BindEnv("DB_HOST")
+	viper.BindEnv("DB_USER")
+	viper.BindEnv("DB_PASSWORD")
+	viper.BindEnv("DB_NAME")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")

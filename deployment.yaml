@@ -18,7 +18,10 @@ resources:
     - type: MYSQL
       name: walletAdapter
       environmentMap:
-        uri: DB_CONNECTION_URI
+        host: DB_HOST
+        user: DB_USER
+        password: DB_PASSWORD
+        name: DB_NAME
 
   authentication:
     description: Wallet-adapter-service
