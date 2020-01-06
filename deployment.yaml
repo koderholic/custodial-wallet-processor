@@ -1,7 +1,7 @@
 deploymentType: kubernetes
 template: k8s-service
 serviceConfig:
-  id: wallet-adapter
+  id: crypto-wallet-adapter
   port: 80
   targetPort: 8200
   group: crypto-gateway

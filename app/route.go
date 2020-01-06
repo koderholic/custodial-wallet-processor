@@ -30,7 +30,7 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		controller := controllers.NewController(logger, config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
 
-		basePath := config.BasePath
+		basePath := ""
 
 		apiRouter := router.PathPrefix(basePath).Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
