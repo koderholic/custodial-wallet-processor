@@ -14,11 +14,14 @@ import (
 type Data struct {
 	AppPort               string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
 	ServiceName           string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
-	DBConnectionString    string        `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
+	DBHost                string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
+	DBUser                string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
+	DBPassword            string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
+	DBName                string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
 	BasePath              string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
-	ServiceID             string        `mapstructure:"serviceId"  yaml:"serviceId,omitempty"`
-	ServiceKey            string        `mapstructure:"serviceKey"  yaml:"serviceKey,omitempty"`
-	AuthenticatorKey      string        `mapstructure:"authenticatorKey"  yaml:"authenticatorKey,omitempty"`
+	ServiceID             string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"serviceId,omitempty"`
+	ServiceKey            string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"serviceKey,omitempty"`
+	AuthenticatorKey      string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"authenticatorKey,omitempty"`
 	AuthenticationService string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
@@ -32,12 +35,15 @@ func (c *Data) Init(configDir string) {
 		log.Printf("Cannot set default input/output directory to the current working directory >> %s", dirErr)
 	}
 
-	viper.SetEnvPrefix("was") // wPrefix all env variable with WAS(Wallet adapter Service)
+	// viper.SetEnvPrefix("") // wPrefix all env variable with WAS(Wallet adapter Service) i.e WAS-APPPORT
 	viper.AutomaticEnv()
-	viper.BindEnv("appPort")
-	viper.BindEnv("serviceId")
-	viper.BindEnv("serviceKey")
-	viper.BindEnv("authenticatorKey")
+	viper.BindEnv("AUTHENTICATION_SERVICE_SERVICE_ID")
+	viper.BindEnv("AUTHENTICATION_SERVICE_TOKEN")
+	viper.BindEnv("SECURITY_BUNDLE_PUBLICKEY")
+	viper.BindEnv("DB_HOST")
+	viper.BindEnv("DB_USER")
+	viper.BindEnv("DB_PASSWORD")
+	viper.BindEnv("DB_NAME")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")
