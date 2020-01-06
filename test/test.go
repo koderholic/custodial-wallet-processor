@@ -2,7 +2,6 @@ package test
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"sync"
 	config "wallet-adapter/config"
@@ -79,7 +78,6 @@ func (s *Suite) SetupSuite() {
 func (s *Suite) RegisterRoutes(router *mux.Router, validator *validation.Validate) {
 
 	once.Do(func() {
-		fmt.Printf("s.Config.BasePath >> %+v", s)
 		baseRepository := database.BaseRepository{Database: s.Database}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
