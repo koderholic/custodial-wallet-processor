@@ -16,3 +16,19 @@ type CreateUserAssetRequest struct {
 type CreateUserAssetResponse struct {
 	Assets []dto.UserBalance `json:"assets"`
 }
+
+type Asset struct {
+	AssetSymbol string  `json:"assetSymbol" validate:"required"`
+	Volume      float64 `json:"volume" validate:"required"`
+}
+
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type CreditUserAssetRequest struct {
+	Asset  Asset     `json:"asset" validate:"required"`
+	UserID uuid.UUID `json:"userId" validate:"required"`
+}
+
+// CreditUserAssetResponse ... Model definition for credit user asset request
+type CreditUserAssetResponse struct {
+	dto.Transaction
+}

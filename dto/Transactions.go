@@ -47,18 +47,19 @@ var (
 //Transaction ... This is the transaction DTO for all user request
 type Transaction struct {
 	BaseDTO
-	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"asset_id"`
-	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id"`
-	Recipient            string       `json:"recipient"`
-	TransactionReference string       `gorm:"not null;" json:"transaction_reference"`
-	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transaction_type"`
-	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transaction_status"`
-	TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transaction_tag"`
-	Volume               string       `gorm:"not null;default:'Sell'" json:"volume"`
-	ReversedBalance      int64        `gorm:"type:BIGINT;not null" json:"reversed_balance"`
-	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processing_type"`
-	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id"`
-	TransactionStartDate time.Time    `json:"transaction_start_date"`
-	TransactionEndDate   time.Time    `json:"transaction_end_date"`
-	Batch                BatchRequest `sql:"-"`
+	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"asset_id,omitempty"`
+	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id,omitempty"`
+	Recipient            string       `json:"recipient,omitempty"`
+	TransactionReference string       `gorm:"not null;" json:"transaction_reference,omitempty"`
+	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transaction_type,omitempty"`
+	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transaction_status,omitempty"`
+	TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transaction_tag,omitempty"`
+	Volume               string       `gorm:"not null;default:'Sell'" json:"volume,omitempty"`
+	AvailableBalance     float64      `gorm:"type:BIGINT;not null" json:"available_balance,omitempty"`
+	ReservedBalance      float64      `gorm:"type:BIGINT;not null" json:"reserved_balance,omitempty"`
+	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processing_type,omitempty"`
+	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id,omitempty"`
+	TransactionStartDate time.Time    `json:"transaction_start_date,omitempty"`
+	TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`
+	Batch                BatchRequest `sql:"-" json:"omitempty"`
 }
