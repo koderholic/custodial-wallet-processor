@@ -12,8 +12,8 @@ type UserBalance struct {
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"user_id"`
 	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
 	Symbol           string     `sql:"-" json:"symbol"`
-	AvailableBalance int64      `gorm:"type:BIGINT" json:"available_balance"`
-	ReservedBalance  int64      `gorm:"type:BIGINT" json:"reserved_balance"`
+	AvailableBalance float64    `gorm:"type:BIGINT;not null" json:"available_balance"`
+	ReservedBalance  float64    `gorm:"type:BIGINT;not null" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
 }
 
@@ -22,8 +22,8 @@ type UserAssetBalance struct {
 	BaseDTO
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"user_id"`
 	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
-	AvailableBalance int64      `gorm:"type:BIGINT" json:"available_balance"`
-	ReservedBalance  int64      `gorm:"type:BIGINT" json:"reserved_balance"`
+	AvailableBalance float64    `gorm:"type:BIGINT;not null" json:"available_balance"`
+	ReservedBalance  float64    `gorm:"type:BIGINT;not null" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
 	Asset
 }

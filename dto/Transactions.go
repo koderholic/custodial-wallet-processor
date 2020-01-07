@@ -13,7 +13,7 @@ type TxnType struct{ OFFCHAIN, ONCHAIN string }
 type ProcessType struct{ SINGLE, BATCH string }
 
 // TxnTag ...
-type TxnTag struct{ BUY, SELL, TRANSFER, DEPOSIT, WITHDRAW string }
+type TxnTag struct{ CREDIT, DEBIT, TRANSFER, DEPOSIT, WITHDRAW string }
 
 // TxnStatus ...
 type TxnStatus struct{ PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string }
@@ -31,8 +31,8 @@ var (
 		REVERSED:   "Reversed",
 	}
 	TransactionTag = TxnTag{
-		BUY:      "Buy",
-		SELL:     "Sell",
+		CREDIT:   "Credit",
+		DEBIT:    "Debit",
 		TRANSFER: "Transfer",
 		DEPOSIT:  "Deposit",
 		WITHDRAW: "Withdraw",
@@ -47,14 +47,15 @@ var (
 //Transaction ... This is the transaction DTO for all user request
 type Transaction struct {
 	BaseDTO
-	AssetID              uuid.UUID    `gorm:"type:VARCHAR(36);not null" json:"asset_id,omitempty"`
+	Asset                string       `gorm:"type:VARCHAR(36);not null" json:"asset,omitempty"`
 	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id,omitempty"`
-	Recipient            string       `json:"recipient,omitempty"`
+	RecipientID          uuid.UUID    `json:"recipient,omitempty"`
 	TransactionReference string       `gorm:"not null;" json:"transaction_reference,omitempty"`
 	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transaction_type,omitempty"`
 	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transaction_status,omitempty"`
-	TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transaction_tag,omitempty"`
-	Volume               string       `gorm:"not null;default:'Sell'" json:"volume,omitempty"`
+	TransactionTag       string       `gorm:"not null;default:'Credit'" json:"transaction_tag,omitempty"`
+	Value                float64      `gorm:"not null" json:"value,omitempty"`
+	PreviousBalance      float64      `gorm:"type:BIGINT;not null" json:"previous_balance,omitempty"`
 	AvailableBalance     float64      `gorm:"type:BIGINT;not null" json:"available_balance,omitempty"`
 	ReservedBalance      float64      `gorm:"type:BIGINT;not null" json:"reserved_balance,omitempty"`
 	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processing_type,omitempty"`

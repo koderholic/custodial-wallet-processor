@@ -2,23 +2,17 @@ package utility
 
 import (
 	"math/rand"
-	"strconv"
 	"time"
 )
 
 //GenerateReferenceID ....
-func GenerateReferenceID() string {
-	currentTime := time.Now()
 
-	return currentTime.Format("060102150405") + GenerateRandomString(12)
-}
-
-//GenerateRandomString ....
-func GenerateRandomString(length int) string {
-	var randomstring = "100"
-
-	for len(randomstring) < length {
-		randomstring = randomstring + strconv.Itoa(rand.Intn(9))
+func RandomString(strlen int) string {
+	rand.Seed(time.Now().UTC().UnixNano())
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	result := make([]byte, strlen)
+	for i := 0; i < strlen; i++ {
+		result[i] = chars[rand.Intn(len(chars))]
 	}
-	return randomstring
+	return string(result)
 }

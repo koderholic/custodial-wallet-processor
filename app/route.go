@@ -30,18 +30,16 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		controller := controllers.NewController(logger, config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
 
-		basePath := config.BasePath
-
-		apiRouter := router.PathPrefix(basePath).Subrouter()
+		apiRouter := router.PathPrefix("/crypto").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// General Routes
-		apiRouter.HandleFunc("/crypto/ping", controller.Ping).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/ping", controller.Ping).Methods(http.MethodGet)
 
 		// User Asset Routes
-		apiRouter.HandleFunc("/crypto/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/crypto/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
 
 	})
 

@@ -63,22 +63,6 @@ func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestRe
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
 }
 
-// ValidateRequest ... Validates request models
-// func ValidateRequest(validator *validation.Validate, requestData interface{}, logger *utility.Logger) string {
-// 	var validationErr string
-// 	translation, err := utility.CustomizeValidationMessages(validator)
-// 	if err != nil {
-// 		logger.Error("Failed to set custom validation error messages : %s", err)
-// 	}
-// 	if err := validator.Struct(requestData); err != nil {
-// 		for _, err := range err.(validation.ValidationErrors) {
-
-// 			validationErr = fmt.Sprintf("%S;%s", validationErr, err.Translate(translation))
-// 		}
-// 	}
-// 	return validationErr
-// }
-
 func ValidateRequest(validator *validation.Validate, requestData interface{}, logger *utility.Logger) []map[string]string {
 	validationErr := []map[string]string{}
 	translation, err := utility.CustomizeValidationMessages(validator)

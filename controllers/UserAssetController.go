@@ -3,7 +3,10 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strings"
+	"time"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -100,13 +103,26 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 }
 
-// GetUserAssets ... Get all user asset balance
+// CreditUserAssets ... Credit a user asset abalance with the specified value
 func (controller UserAssetController) CreditUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
 	requestData := model.CreditUserAssetRequest{}
 	responseData := model.CreditUserAssetResponse{}
-	transactionRef := utility.
+	transactionRef := utility.RandomString(16)
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("User asset account (%s) could not be credited. %s", requestData.Asset.AssetSymbol, err)))
+		return
+	}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreditUserAssets : %+v", requestData)
@@ -124,7 +140,7 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	asset := dto.Asset{}
 	assetDetails := dto.UserBalance{}
 	if err := controller.Repository.GetByFieldName(&dto.Asset{Symbol: requestData.Asset.AssetSymbol, IsEnabled: true}, &asset); err != nil {
-		controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
+		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -139,40 +155,7 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	}
 	// Get user asset account and ensure user has asset created for account
 	if err := controller.Repository.GetByFieldName(&dto.UserBalance{UserID: requestData.UserID, Symbol: requestData.Asset.AssetSymbol}, &assetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
-		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
-			return
-		}
-
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", err.(utility.AppError).Error()))
-		return
-	}
-
-	// Create transaction record
-	transaction := dto.Transaction{
-		AssetID   : asset.ID
-		InitiatorID   : "Bundle"
-		Recipient   : assetDetails.UserID
-		TransactionReference string       `gorm:"not null;" json:"transaction_reference,omitempty"`
-		TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transaction_type,omitempty"`
-		TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transaction_status,omitempty"`
-		TransactionTag       string       `gorm:"not null;default:'Sell'" json:"transaction_tag,omitempty"`
-		Volume               string       `gorm:"not null;default:'Sell'" json:"volume,omitempty"`
-		AvailableBalance     float64      `gorm:"type:BIGINT;not null" json:"available_balance,omitempty"`
-		ReservedBalance      float64      `gorm:"type:BIGINT;not null" json:"reserved_balance,omitempty"`
-		ProcessingType       string       `gorm:"not null;default:'Single'" json:"processing_type,omitempty"`
-		BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id,omitempty"`
-		TransactionStartDate time.Time    `json:"transaction_start_date,omitempty"`
-		TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`
-		Batch                BatchRequest `sql:"-" json:"omitempty"`
-	}
-	if err := controller.Repository.Create(&assetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
+		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -187,22 +170,70 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	}
 
 	// increment user account by volume
-	assetDetails.AvailableBalance = assetDetails.AvailableBalance + requestData.Asset.Volume
-	assetDetails.ReservedBalance = assetDetails.ReservedBalance + requestData.Asset.Volume
-	if err := controller.Repository.Update(assetDetails.ID, &assetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
-		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
-			return
-		}
-
+	previousBalance := assetDetails.AvailableBalance
+	currentAvailableBalance := assetDetails.AvailableBalance + requestData.Asset.Value*math.Pow10(asset.Decimal)
+	currentReservedBalance := assetDetails.ReservedBalance + requestData.Asset.Value*math.Pow10(asset.Decimal)
+	if err := controller.Repository.Db().Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance, ReservedBalance: currentReservedBalance}).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", err.(utility.AppError).Error()))
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", strings.Join(strings.Split(err.Error(), " ")[2:], " ")))
 		return
 	}
+
+	// Create transaction record
+	transaction := dto.Transaction{
+		Asset:                asset.Symbol,
+		InitiatorID:          assetDetails.UserID,
+		RecipientID:          assetDetails.UserID,
+		TransactionReference: transactionRef,
+		TransactionType:      dto.TransactionType.OFFCHAIN,
+		TransactionStatus:    dto.TransactionStatus.COMPLETED,
+		TransactionTag:       dto.TransactionTag.CREDIT,
+		Value:                requestData.Asset.Value,
+		PreviousBalance:      previousBalance,
+		AvailableBalance:     currentAvailableBalance,
+		ReservedBalance:      currentReservedBalance,
+		ProcessingType:       dto.ProcessingType.SINGLE,
+		TransactionStartDate: time.Now(),
+		TransactionEndDate:   time.Now(),
+	}
+
+	if err := tx.Create(&transaction).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		return
+	}
+
+	responseData.ID = transaction.ID
+	responseData.Asset = transaction.Asset
+	responseData.InitiatorID = transaction.InitiatorID
+	responseData.RecipientID = transaction.RecipientID
+	responseData.TransactionReference = transaction.TransactionReference
+	responseData.TransactionType = transaction.TransactionType
+	responseData.TransactionStatus = transaction.TransactionStatus
+	responseData.TransactionTag = transaction.TransactionTag
+	responseData.Value = transaction.Value
+	responseData.PreviousBalance = previousBalance / math.Pow10(asset.Decimal)
+	responseData.AvailableBalance = currentAvailableBalance / math.Pow10(asset.Decimal)
+	responseData.ReservedBalance = currentReservedBalance / math.Pow10(asset.Decimal)
+	responseData.ProcessingType = transaction.ProcessingType
+	responseData.TransactionStartDate = transaction.TransactionStartDate
+	responseData.TransactionEndDate = time.Now()
+	responseData.CreatedAt = transaction.CreatedAt
+	responseData.UpdatedAt = transaction.UpdatedAt
 
 	controller.Logger.Info("Outgoing response to CreditUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")

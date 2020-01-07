@@ -1,7 +1,7 @@
 deploymentType: kubernetes
 template: k8s-service
 serviceConfig:
-  id: wallet-adapter
+  id: crypto-wallet-adapter
   port: 80
   targetPort: 8200
   group: crypto-gateway
@@ -12,20 +12,21 @@ serviceConfig:
       containerPorts:
         - 8200
       env:
-        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKeyPem'
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
 resources:
   databases:
     - type: MYSQL
       name: walletAdapter
       environmentMap:
-        uri: DB_CONNECTION_URI
+        host: DB_HOST
+        user: DB_USER
+        password: DB_PASSWORD
+        name: DB_NAME
 
   authentication:
     description: Wallet-adapter-service
     permissions:
       - svcs.key-management.post-sign-transaction
-      - svcs.authentication.token.update
-      - svcs.authentication.token.generate
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
