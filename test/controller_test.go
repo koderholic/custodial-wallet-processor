@@ -86,3 +86,29 @@ func (s *Suite) Test_CreateUserAsset() {
 		s.T().Errorf("Expected response code to not be %d. Got %d\n", http.StatusCreated, createAssetResponse.Code)
 	}
 }
+
+func (s *Suite) Test_CreditUserAsset() {
+
+	s.Mock.ExpectQuery(regexp.QuoteMeta(
+		fmt.Sprintf("SELECT assets.symbol,user_balances.* FROM `user_balances`"))).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
+		)
+	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
+		)
+
+	creditAssetInputData := []byte(`{"asset" : {"assetSymbol" : "BTC","value" : 0.1},"userId" : "75622fab-a8ef-42ca-b0fe-2dd51bec8079"}`)
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5wb3N0LWNyZWRpdCJdLCJ0b2tlblR5cGUiOiJTRVJWSUNFIn0.a-Hh5C9yb4BN6qfLQJyar5GnG3qmCn2z2t2VwAovEFx3atelrjVZv70hR-sgicjWrQ4YJgr5GCIglWpsh3dlISljoB2OAwKqicTo5HPD_97Z3EmD0jGyCoWbr0kgc22llrg9ihGI9F3wLnhf9LRLDLeuVRQNj3FQQM1uVhtECbzchVaJLWb-AUtDJQMYT1C1nTZfFv5-0Uq0yyAK9fAPJaPjV2eTagWlkbEyXVVbdxcGSHqcuvQTKJs3NrxS60k6glWhw5S9HMX2HgZPMhcLDCziElrFt3Xqx3y0jGeEY0ldxCMRP4aH0Kp6krso6Jt6vYx3Ky-RXKGJniPp_6fXiw")
+
+	createAssetResponse := httptest.NewRecorder()
+	s.Middleware.ServeHTTP(createAssetResponse, creditAssetRequest)
+
+	if createAssetResponse.Code != http.StatusCreated {
+		s.T().Errorf("Expected response code to not be %d. Got %d\n", http.StatusCreated, createAssetResponse.Code)
+	}
+}

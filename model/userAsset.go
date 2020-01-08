@@ -19,8 +19,8 @@ type CreateUserAssetResponse struct {
 }
 
 type Asset struct {
-	AssetSymbol string  `json:"assetSymbol" validate:"required"`
-	Value       float64 `json:"value" validate:"required"`
+	AssetSymbol string `json:"assetSymbol" validate:"required"`
+	Value       string `json:"value" validate:"required"`
 }
 
 // CreditUserAssetRequest ... Model definition for credit user asset request
@@ -39,10 +39,10 @@ type CreditUserAssetResponse struct {
 	TransactionType      string    `json:"transactionType,omitempty"`
 	TransactionStatus    string    `json:"transactionStatus,omitempty"`
 	TransactionTag       string    `json:"transactionTag,omitempty"`
-	Value                float64   `json:"value,omitempty"`
-	PreviousBalance      float64   `json:"previousBalance,omitempty"`
-	AvailableBalance     float64   `json:"availableBalance,omitempty"`
-	ReservedBalance      float64   `json:"reservedBalance,omitempty"`
+	Value                string    `json:"value,omitempty"`
+	PreviousBalance      string    `json:"previousBalance,omitempty"`
+	AvailableBalance     string    `json:"availableBalance,omitempty"`
+	ReservedBalance      string    `json:"reservedBalance,omitempty"`
 	ProcessingType       string    `json:"processingType,omitempty"`
 	TransactionStartDate time.Time `json:"transactionStart_date,omitempty"`
 	TransactionEndDate   time.Time `json:"transactionEndDate,omitempty"`

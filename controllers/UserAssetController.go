@@ -3,8 +3,9 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"wallet-adapter/dto"
@@ -170,10 +171,31 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	}
 
 	// increment user account by volume
+	var currentAvailableBalance, currentReservedBalance big.Float
+	value, err := strconv.ParseFloat(requestData.Asset.Value, 32)
+	creditValue := big.NewFloat(value)
+
+	prevBal, err := strconv.ParseFloat(assetDetails.AvailableBalance, 32)
+	curAvailableBalance := big.NewFloat(prevBal)
+
+	cuBal, err := strconv.ParseFloat(assetDetails.ReservedBalance, 32)
+	curreReservedBalance := big.NewFloat(cuBal)
+
+	currentAvailableBalance.SetPrec(32)
+	currentReservedBalance.SetPrec(32)
+	currentAvailableBalance.Add(curAvailableBalance, creditValue)
+	currentReservedBalance.Add(curreReservedBalance, creditValue)
+	fmt.Printf("requestData > %+v > %+v > %+v", creditValue, curAvailableBalance, currentAvailableBalance.String())
+
 	previousBalance := assetDetails.AvailableBalance
-	currentAvailableBalance := assetDetails.AvailableBalance + requestData.Asset.Value*math.Pow10(asset.Decimal)
-	currentReservedBalance := assetDetails.ReservedBalance + requestData.Asset.Value*math.Pow10(asset.Decimal)
-	if err := controller.Repository.Db().Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance, ReservedBalance: currentReservedBalance}).Error; err != nil {
+
+	if err != nil {
+
+		fmt.Printf("responseData > %+v", err)
+	}
+	// currentAvailableBalance := assetDetails.AvailableBalance // + requestData.Asset.Value*math.Pow10(asset.Decimal)
+	// currentReservedBalance := assetDetails.ReservedBalance   // + requestData.Asset.Value*math.Pow10(asset.Decimal)
+	if err := controller.Repository.Db().Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance.String(), ReservedBalance: currentReservedBalance.String()}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -193,8 +215,8 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 		TransactionTag:       dto.TransactionTag.CREDIT,
 		Value:                requestData.Asset.Value,
 		PreviousBalance:      previousBalance,
-		AvailableBalance:     currentAvailableBalance,
-		ReservedBalance:      currentReservedBalance,
+		AvailableBalance:     currentAvailableBalance.String(),
+		ReservedBalance:      currentReservedBalance.String(),
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
@@ -226,9 +248,9 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	responseData.TransactionStatus = transaction.TransactionStatus
 	responseData.TransactionTag = transaction.TransactionTag
 	responseData.Value = transaction.Value
-	responseData.PreviousBalance = previousBalance / math.Pow10(asset.Decimal)
-	responseData.AvailableBalance = currentAvailableBalance / math.Pow10(asset.Decimal)
-	responseData.ReservedBalance = currentReservedBalance / math.Pow10(asset.Decimal)
+	responseData.PreviousBalance = previousBalance                   // / math.Pow10(asset.Decimal)
+	responseData.AvailableBalance = currentAvailableBalance.String() // / math.Pow10(asset.Decimal)
+	responseData.ReservedBalance = currentReservedBalance.String()   /// math.Pow10(asset.Decimal)
 	responseData.ProcessingType = transaction.ProcessingType
 	responseData.TransactionStartDate = transaction.TransactionStartDate
 	responseData.TransactionEndDate = time.Now()
