@@ -112,19 +112,6 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	responseData := model.CreditUserAssetResponse{}
 	paymentRef := utility.RandomString(16)
 
-	tx := controller.Repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Error; err != nil {
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
-		return
-	}
-
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreditUserAssets : %+v", requestData)
 
@@ -168,6 +155,19 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", strings.Join(strings.Split(err.Error(), " ")[2:], " ")))
+		return
+	}
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
 		return
 	}
 

@@ -39,7 +39,7 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		// User Asset Routes
 		apiRouter.HandleFunc("/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
 
 	})
 
