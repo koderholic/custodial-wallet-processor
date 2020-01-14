@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -139,9 +138,7 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	}
 
 	// ensure asset exists and fetc asset
-	assetDetails := dto.UserBalance{}
-	// if err := controller.Repository.Get(requestData.AssetID, &assetDetails); err != nil {
-	// }
+	assetDetails := dto.UserAssetBalance{}
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
@@ -158,37 +155,23 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 	}
 
 	// increment user account by volume
-	var currentAvailableBalance, currentReservedBalance big.Float
 	value, err := strconv.ParseFloat(requestData.Value, 64)
-	creditValue := big.NewFloat(value)
-
 	availBal, err := strconv.ParseFloat(assetDetails.AvailableBalance, 64)
-	curAvailableBalance := big.NewFloat(prevBal)
-	// fmt.Printf("requestData > %+v > %+v", prevBal, curAvailableBalance)
-
 	reserveBal, err := strconv.ParseFloat(assetDetails.ReservedBalance, 64)
-	curreReservedBalance := big.NewFloat(cuBal)
-
-	// currentAvailableBalance.SetPrec(64)
-	// currentReservedBalance.SetPrec(64)
-	// currentAvailableBalance.Add(curAvailableBalance, creditValue)
-	// currentReservedBalance.Add(curreReservedBalance, creditValue)
-	currentAvailableBalanceInFloat := availBal + value*math.Pow10(asset.Decimal)
-	currentReservedBalanceInFloat := reserveBal + value*math.Pow10(asset.Decimal)
-
+	currentAvailableBalanceInFloat := availBal + value*math.Pow10(assetDetails.Decimal)
+	currentReservedBalanceInFloat := reserveBal + value*math.Pow10(assetDetails.Decimal)
 	previousBalance := strconv.FormatFloat(availBal, 'g', 1, 64)
-	currentAvailableBalance := strconv.FormatFloat(currentAvailableBalanceInFloat, 'g', asset.Decimal, 64)
-	currentReservedBalance := strconv.FormatFloat(currentReservedBalanceInFloat, 'g', asset.Decimal, 64)
-
-	fmt.Printf("kkkk >>> %+v >>> %+v >>> %+v >>> %+v >>> %+v", availBal, value, value*math.Pow10(asset.Decimal), currentAvailableBalanceInFloat, currentAvailableBalance)
-
+	currentAvailableBalance := strconv.FormatFloat(currentAvailableBalanceInFloat, 'g', assetDetails.Decimal, 64)
+	currentReservedBalance := strconv.FormatFloat(currentReservedBalanceInFloat, 'g', assetDetails.Decimal, 64)
 	if err != nil {
-
-		fmt.Printf("responseData > %+v", err)
+		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", strings.Join(strings.Split(err.Error(), " ")[2:], " ")))
+		return
 	}
-	// currentAvailableBalance := assetDetails.AvailableBalance // + requestData.Asset.Value*math.Pow10(asset.Decimal)
-	// currentReservedBalance := assetDetails.ReservedBalance   // + requestData.Asset.Value*math.Pow10(asset.Decimal)
-	if err := controller.Repository.Db().Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance, ReservedBalance: currentReservedBalance}).Error; err != nil {
+
+	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance, ReservedBalance: currentReservedBalance}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -199,16 +182,16 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 
 	// Create transaction record
 	transaction := dto.Transaction{
-		Asset:                asset.Symbol,
-		InitiatorID:          assetDetails.UserID, // serviceId
-		RecipientID:          assetDetails.UserID,
+		Denomination:         assetDetails.Symbol,
+		InitiatorID:          assetDetails.ID, // serviceId
+		RecipientID:          assetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
 		Memo:                 requestData.Memo,
 		TransactionType:      dto.TransactionType.OFFCHAIN,
 		TransactionStatus:    dto.TransactionStatus.COMPLETED,
 		TransactionTag:       dto.TransactionTag.CREDIT,
-		Value:                requestData.Asset.Value,
+		Value:                requestData.Value,
 		PreviousBalance:      previousBalance,
 		AvailableBalance:     currentAvailableBalance,
 		ReservedBalance:      currentReservedBalance,
@@ -234,7 +217,8 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 		return
 	}
 
-	responseData.AssetID = transaction.AssetID
+	responseData.AssetID = requestData.AssetID
+	responseData.Value = transaction.Value
 	responseData.TransactionReference = transaction.TransactionReference
 	responseData.PaymentReference = transaction.PaymentReference
 	responseData.TransactionStatus = transaction.TransactionStatus

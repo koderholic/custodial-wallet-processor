@@ -20,8 +20,8 @@ type UserAssetRepository struct {
 
 // GetAssetsByID ...
 func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
-	if err := repo.DB.Select("assets.symbol, assets.decimal,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error; err != nil {
-		repo.Logger.Error("Error with repository GetAssetsByUserID %s", err)
+	if err := repo.DB.Select("denominations.symbol, denominations.decimal,user_balances.*").Joins("left join denominations ON denominations.id = user_balances.denomination_id").Where(id).Find(model).Error; err != nil {
+		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
