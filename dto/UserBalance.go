@@ -10,7 +10,7 @@ import (
 type UserBalance struct {
 	BaseDTO
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"user_id"`
-	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
+	DenominationID   uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"-"`
 	Symbol           string     `sql:"-" json:"symbol"`
 	AvailableBalance string     `gorm:"type:VARCHAR(255);not null" json:"available_balance"`
 	ReservedBalance  string     `gorm:"type:VARCHAR(255);not null" json:"reserved_balance"`
@@ -21,11 +21,11 @@ type UserBalance struct {
 type UserAssetBalance struct {
 	BaseDTO
 	UserID           uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:user_id" json:"user_id"`
-	AssetID          uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:asset_id" json:"-"`
+	DenominationID   uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"-"`
 	AvailableBalance string     `gorm:"type:VARCHAR(255);not null" json:"available_balance"`
 	ReservedBalance  string     `gorm:"type:VARCHAR(255);not null" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
-	Asset
+	Denomination
 }
 
 // TableName ... Change table name from default generated from UserAssetBalance

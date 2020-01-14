@@ -1,15 +1,15 @@
 package database
 
 import (
-	"fmt"
-	"github.com/jinzhu/gorm"
 	"wallet-adapter/utility"
+
+	"github.com/jinzhu/gorm"
 )
 
 // IUserAssetRepository ...
 type IUserAssetRepository interface {
 	IRepository
-	GetAssetsByUserID(id, model interface{}) error
+	GetAssetsByID(id, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -18,16 +18,15 @@ type UserAssetRepository struct {
 	BaseRepository
 }
 
-// GetAssetsByUserID ...
-func (repo *UserAssetRepository) GetAssetsByUserID(id, model interface{}) error {
-	if err := repo.DB.Select("assets.symbol,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error; err != nil {
+// GetAssetsByID ...
+func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
+	if err := repo.DB.Select("assets.symbol, assets.decimal,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository GetAssetsByUserID %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}
-	fmt.Printf("model > %+v > %s", model, repo.DB.Select("assets.symbol,user_balances.*").Joins("left join assets ON assets.id = user_balances.asset_id").Where(id).Find(model).Error)
 	return nil
 }
 
