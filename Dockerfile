@@ -5,7 +5,7 @@ WORKDIR /go/src/wallet-adapter
 
 COPY go.mod go.sum ./
 RUN echo "appPort: 8200" >> config.yaml && \
-    echo "serviceName : wallet-adapter" >> config.yaml && \
+    echo "serviceName : crypto-wallet-adapter" >> config.yaml && \
     echo "purgeCacheInterval: 5" >> config.yaml 
 
 
