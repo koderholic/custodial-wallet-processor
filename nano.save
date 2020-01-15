@@ -1,6 +1,0 @@
-Host github.com
-        HostName github.com
-        PreferredAuthentications publickey
-        IdentityFile /Users/taiwo/.ssh/logbon72-GitHub
-        UseKeychain yes
-        AddKeysToAgent yes

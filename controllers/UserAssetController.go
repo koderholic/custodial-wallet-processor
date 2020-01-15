@@ -3,9 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"wallet-adapter/dto"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
+	"github.com/shopspring/decimal"
 )
 
 // CreateUserAssets ... Creates all supported crypto asset record on the given user account
@@ -136,26 +135,20 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 		}
 
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		responseWriter.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) does not exist", requestData.AssetID)))
 		return
 	}
 
-	// increment user account by volume
-	value, err := strconv.ParseFloat(requestData.Value, 64)
-	availBal, err := strconv.ParseFloat(assetDetails.AvailableBalance, 64)
-	reserveBal, err := strconv.ParseFloat(assetDetails.ReservedBalance, 64)
-	currentAvailableBalanceInFloat := availBal + value*math.Pow10(assetDetails.Decimal)
-	currentReservedBalanceInFloat := reserveBal + value*math.Pow10(assetDetails.Decimal)
-	previousBalance := strconv.FormatFloat(availBal, 'g', 1, 64)
-	currentAvailableBalance := strconv.FormatFloat(currentAvailableBalanceInFloat, 'g', assetDetails.Decimal, 64)
-	currentReservedBalance := strconv.FormatFloat(currentReservedBalanceInFloat, 'g', assetDetails.Decimal, 64)
+	// // increment user account by volume
+	value, err := decimal.NewFromString(requestData.Value)
+	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
+	reserveBal, err := decimal.NewFromString(assetDetails.AvailableBalance)
+	previousBalance := assetDetails.AvailableBalance
+	currentAvailableBalance := (availbal.Add(value)).String()
+	currentReservedBalance := (reserveBal.Add(value)).String()
 	if err != nil {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", strings.Join(strings.Split(err.Error(), " ")[2:], " ")))
-		return
+		panic(err)
 	}
 
 	tx := controller.Repository.Db().Begin()
@@ -191,7 +184,7 @@ func (controller UserAssetController) CreditUserAssets(responseWriter http.Respo
 		TransactionType:      dto.TransactionType.OFFCHAIN,
 		TransactionStatus:    dto.TransactionStatus.COMPLETED,
 		TransactionTag:       dto.TransactionTag.CREDIT,
-		Value:                requestData.Value,
+		Value:                value.String(),
 		PreviousBalance:      previousBalance,
 		AvailableBalance:     currentAvailableBalance,
 		ReservedBalance:      currentReservedBalance,

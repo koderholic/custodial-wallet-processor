@@ -69,7 +69,6 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.INVALID_AUTH_TOKEN))
 			return
 		}
-		// fmt.Printf("tokenClaims >> %+v", tokenClaims)
 
 		if tokenClaims.TokenType != model.JWT_TOKEN_TYPE.SERVICE {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Resource not accessible by non-service token type"))

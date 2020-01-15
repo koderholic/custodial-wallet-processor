@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"math/big"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -11,8 +10,8 @@ import (
 type FloatBalance struct {
 	BaseDTO
 	DenominationID   uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"asset_id"`
-	AvailableBalance *big.Int   `gorm:"type:BIGINT" json:"available_balance"`
-	ReservedBalance  *big.Int   `gorm:"type:BIGINT" json:"reserved_balance"`
+	AvailableBalance string     `gorm:"type:VARCHAR(255)" json:"available_balance"`
+	ReservedBalance  string     `gorm:"type:VARCHAR(255)" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
 }
 
@@ -20,8 +19,8 @@ type FloatBalance struct {
 type FloatAssetBalance struct {
 	BaseDTO
 	DenominationID   uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"asset_id"`
-	AvailableBalance *big.Int   `gorm:"type:BIGINT" json:"available_balance"`
-	ReservedBalance  *big.Int   `gorm:"type:BIGINT" json:"reserved_balance"`
+	AvailableBalance string     `gorm:"type:VARCHAR(255)" json:"available_balance"`
+	ReservedBalance  string     `gorm:"type:VARCHAR(255)" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
 	Denomination
 }
