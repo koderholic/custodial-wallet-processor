@@ -130,30 +130,6 @@ func (s *Suite) RegisterRoutes(router *mux.Router, validator *validation.Validat
 	})
 }
 
-func (s *Suite) Test_CreditUserAsset() {
-
-	s.Mock.ExpectQuery(regexp.QuoteMeta(
-		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
-		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol", "decimal"}).
-			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC", 8),
-		)
-	s.Mock.ExpectBegin()
-	// s.Mock.ExpectExec(regexp.QuoteMeta("UPDATE `user_balances` SET `available_balance` = '7.2e+08', `reserved_balance` = '7.2e+08', `updated_at` = '2020-01-14 22:06:05'  WHERE `user_balances`.`deleted_at` IS NULL AND `user_balances`.`id` = '1f6c2d1e-31ec-4b68-93c5-626ef9bee3d0'"))
-	s.Mock.ExpectExec("UPDATE user_balances").WillReturnResult(sqlmock.NewResult(1, 1))
-	s.Mock.ExpectCommit()
-
-	creditAssetInputData := []byte(`{"assetId" : "1f6c2d1e-31ec-4b68-93c5-626ef9bee3d0","value" : "0.9","transactionReference" : "75622fab2dd51bec0779","memo" : "Test credit transaction"}`)
-	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
-	creditAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5wb3N0LWNyZWRpdCJdLCJ0b2tlblR5cGUiOiJTRVJWSUNFIn0.a-Hh5C9yb4BN6qfLQJyar5GnG3qmCn2z2t2VwAovEFx3atelrjVZv70hR-sgicjWrQ4YJgr5GCIglWpsh3dlISljoB2OAwKqicTo5HPD_97Z3EmD0jGyCoWbr0kgc22llrg9ihGI9F3wLnhf9LRLDLeuVRQNj3FQQM1uVhtECbzchVaJLWb-AUtDJQMYT1C1nTZfFv5-0Uq0yyAK9fAPJaPjV2eTagWlkbEyXVVbdxcGSHqcuvQTKJs3NrxS60k6glWhw5S9HMX2HgZPMhcLDCziElrFt3Xqx3y0jGeEY0ldxCMRP4aH0Kp6krso6Jt6vYx3Ky-RXKGJniPp_6fXiw")
-
-	creditAssetResponse := httptest.NewRecorder()
-	s.Middleware.ServeHTTP(creditAssetResponse, creditAssetRequest)
-
-	if creditAssetResponse.Code != http.StatusCreated {
-		s.T().Errorf("Expected response code to not be %d. Got %d\n", http.StatusCreated, creditAssetResponse.Code)
-	}
-}
 func (s *Suite) Test_GetUserAsset() {
 	// s.Mock.ExpectQuery(regexp.QuoteMeta(
 	// 	fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
