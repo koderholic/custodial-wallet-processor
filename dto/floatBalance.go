@@ -10,8 +10,8 @@ import (
 type FloatBalance struct {
 	BaseDTO
 	DenominationID   uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"asset_id"`
-	AvailableBalance string     `gorm:"type:VARCHAR(255)" json:"available_balance"`
-	ReservedBalance  string     `gorm:"type:VARCHAR(255)" json:"reserved_balance"`
+	AvailableBalance string     `gorm:"type:decimal(64,18);" json:"available_balance"`
+	ReservedBalance  string     `gorm:"type:decimal(64,18);" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
 }
 
@@ -19,8 +19,8 @@ type FloatBalance struct {
 type FloatAssetBalance struct {
 	BaseDTO
 	DenominationID   uuid.UUID  `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"asset_id"`
-	AvailableBalance string     `gorm:"type:VARCHAR(255)" json:"available_balance"`
-	ReservedBalance  string     `gorm:"type:VARCHAR(255)" json:"reserved_balance"`
+	AvailableBalance string     `gorm:"type:decimal(64,18);" json:"available_balance"`
+	ReservedBalance  string     `gorm:"type:decimal(64,18);" json:"reserved_balance"`
 	DeletedAt        *time.Time `gorm:"index" json:"deleted_at,omitempty"`
 	Denomination
 }
