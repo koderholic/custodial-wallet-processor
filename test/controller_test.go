@@ -2,20 +2,29 @@ package test
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"sync"
 	"testing"
 	"time"
 	Config "wallet-adapter/config"
+	config "wallet-adapter/config"
+	"wallet-adapter/controllers"
 	"wallet-adapter/database"
+	"wallet-adapter/middlewares"
 	"wallet-adapter/utility"
 
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/DATA-DOG/go-sqlmock"
 
+	httpSwagger "github.com/swaggo/http-swagger"
 	validation "gopkg.in/go-playground/validator.v9"
 )
 
@@ -23,12 +32,14 @@ type Test struct {
 	pingEndpoint        string
 	CreateAssetEndpoint string
 	GetAssetEndpoint    string
+	CreditAssetEndpoint string
 }
 
 var test = Test{
-	pingEndpoint:        "/api/v1ping",
-	CreateAssetEndpoint: "/api/v1/crypto/users/assets",
-	GetAssetEndpoint:    "/api/v1/crypto/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
+	pingEndpoint:        "/ping",
+	CreateAssetEndpoint: "/crypto/users/assets",
+	GetAssetEndpoint:    "/crypto/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
+	CreditAssetEndpoint: "/crypto/assets/credit",
 }
 
 //BaseController : Base controller struct
@@ -39,19 +50,100 @@ type Controller struct {
 	Repository database.IRepository
 }
 
+//Suite ...
+type Suite struct {
+	suite.Suite
+	DB         *gorm.DB
+	Mock       sqlmock.Sqlmock
+	Database   database.Database
+	Logger     *utility.Logger
+	Config     config.Data
+	Middleware http.Handler
+}
+
+var (
+	once sync.Once
+)
+
 func TestInit(t *testing.T) {
 	suite.Run(t, new(Suite))
 }
 
+// SetupSuite ...
+func (s *Suite) SetupSuite() {
+
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	db, s.Mock, err = sqlmock.New()
+	require.NoError(s.T(), err)
+	s.DB, err = gorm.Open("mysql", db)
+	require.NoError(s.T(), err)
+	s.DB.LogMode(true)
+
+	logger := utility.NewLogger()
+	router := mux.NewRouter()
+	validator := validation.New()
+	Config := config.Data{
+		AppPort:            "9000",
+		ServiceName:        "crypto-wallet-adapter",
+		AuthenticatorKey:   "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUE0ZjV3ZzVsMmhLc1RlTmVtL1Y0MQpmR25KbTZnT2Ryajh5bTNyRmtFVS93VDhSRHRuU2dGRVpPUXBIRWdRN0pMMzh4VWZVMFkzZzZhWXc5UVQwaEo3Cm1DcHo5RXI1cUxhTVhKd1p4ekh6QWFobGZBMGljcWFidkpPTXZRdHpENnVRdjZ3UEV5WnREVFdpUWk5QVh3QnAKSHNzUG5wWUdJbjIwWlp1TmxYMkJyQ2xjaUhoQ1BVSUlaT1FuL01tcVREMzFqU3lqb1FvVjdNaGhNVEFUS0p4MgpYckhoUisxRGNLSnpRQlNUQUducFlWYXFwc0FSYXArbndSaXByM25VVHV4eUdvaEJUU21qSjJ1c1NlUVhISTNiCk9ESVJlMUF1VHlIY2VBYmV3bjhiNDYyeUVXS0FSZHBkOUFqUVc1U0lWUGZkc3o1QjZHbFlRNUxkWUt0em5UdXkKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
+		PurgeCacheInterval: 5,
+	}
+
+	Database := database.Database{
+		Logger: logger,
+		Config: Config,
+		DB:     s.DB,
+	}
+	middleware := middlewares.NewMiddleware(logger, Config, router).ValidateAuthToken().LogAPIRequests().Build()
+
+	s.Database = Database
+	s.Logger = logger
+	s.Config = Config
+	s.Middleware = middleware
+
+	s.RegisterRoutes(router, validator)
+}
+
+// RegisterRoutes ...
+func (s *Suite) RegisterRoutes(router *mux.Router, validator *validation.Validate) {
+
+	once.Do(func() {
+
+		baseRepository := database.BaseRepository{Database: s.Database}
+		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+
+		// controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
+		userAssetController := controllers.NewUserAssetController(s.Logger, s.Config, validator, &userAssetRepository)
+
+		apiRouter := router.PathPrefix("").Subrouter()
+		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
+
+		// User Asset Routes
+		apiRouter.HandleFunc("/crypto/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/crypto/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/crypto/assets/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
+
+	})
+}
+
 func (s *Suite) Test_GetUserAsset() {
-	s.Mock.ExpectQuery(regexp.QuoteMeta(
-		fmt.Sprintf("SELECT assets.symbol,user_balances.* FROM `user_balances`"))).
+	// s.Mock.ExpectQuery(regexp.QuoteMeta(
+	// 	fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
+	// 	WithArgs(sqlmock.AnyArg()).
+	// 	WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol", "decimal"}).
+	// 		AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC", 8),
+	// 	)
+	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "reserved_balance", "symbol"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
 		)
 	getAssetRequest, _ := http.NewRequest("GET", test.GetAssetEndpoint, bytes.NewBuffer([]byte("")))
-	getAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzcnZjLndhbGxldC1hZGFwdGVyLmdldC1hc3NldHMiXSwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.Dk0_p1YmYkxXunVD4AZIeTyozzxwcVJ9eUvp7tsVh3kZGCMNMtTrgNA28zSL1cPQ_e5B7J_VcgS47twS-A0Gl5vJmlsebtMbea5CO3RzukEU99vMZnL5aGXNivsh1OHfnBFi3ZNDxIu0tLIcjlVQEGrWMZoBxvUBfSr_ffi59XclkyyoIbUyqsISZaYMJE1XDDgYQ33hg4y-jFBvau5R2KnKwXho7yFt7RvLaKhW1cGEuJYDZj1_grDNp8hR1Sb0xOjDHAlppO8T0p2bcYNf1W9K0W09zFoudInpqpJTmoPjjjZCQ7miPp6NPA342bqlMuR3pZndQhxL0ZGcNL8Sgg")
+	getAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5nZXQtYXNzZXRzIl0sInRva2VuVHlwZSI6IlNFUlZJQ0UifQ.vMOgtyLiKeYN7oLSi8FVOi87ydHMwqVhUtPGxV16HIbdUnRd1fUS0KlEjHvfGZ6EVMXqGJsgOLv_05fVtrtBAR54QgXKejItR_zNhSah3lxhN4S4ZCAjlmw_J6trByBY5H1dSSLvZHNjSJD2NXx5_8SDXWoBZBauIq0_jAuVF171PEDJVdoYB7ZFkeiQfF4WguwOcGPPRnW0qtpHBS7apx9jXF9eFzm8kpDe-h4hjd-BcMX0FCdaR00K1YZ-fSLtyOdj55JKEUoop4xevJnWEZE-3sMWi2GzAl1advFha84hbE0eHEKkky9Dal_H5Awpwpv7kqHqj0Melf-zvW1HEg")
 
 	getAssetResponse := httptest.NewRecorder()
 	s.Middleware.ServeHTTP(getAssetResponse, getAssetRequest)
@@ -64,20 +156,20 @@ func (s *Suite) Test_GetUserAsset() {
 func (s *Suite) Test_CreateUserAsset() {
 
 	s.Mock.ExpectQuery(regexp.QuoteMeta(
-		fmt.Sprintf("SELECT assets.symbol,user_balances.* FROM `user_balances`"))).
+		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol"}).
-			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol", "decimal"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC", 8),
 		)
 	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "reserved_balance", "symbol"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
 		)
 
 	createAssetInputData := []byte(`{"assets" : ["BTC"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzcnZjLndhbGxldC1hZGFwdGVyLnBvc3QtYXNzZXRzIl0sInRva2VuVHlwZSI6IlNFUlZJQ0UifQ.yIx-wr2HNzn8z9mxuiXJ3oZpVyLRRzZWm7IlcmKEVoic9p7qsoy9kvNUnmZqfz1gNLRJYUEd5FkypLEUMzaF3rURG2OBjKx1T341DnsnBWwf89qX8ENKam3WXqZVGpXRqcpgJLfCKnmyQJm-cRTJaiI-MCFkvojqzT0njumfhgHSpdA2ZeGOFu6djeOpFUqi1KzGkwWS2cnU07zRnfSU0CWXokDVabOZ-xlhzhdqZVlUOC-YnFXfGURQ0fTGz4YwHmWcQTJ1f770zVKOb-LyVzx_rg3akkhn6150bbLr17_JaG2F6aXyr12P70TGy1Xw-dzO5Rl-IfQs0BBvecwKXg")
+	createAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5wb3N0LWFzc2V0cyJdLCJ0b2tlblR5cGUiOiJTRVJWSUNFIn0.F4ONI4_z5YMihzXRxq2apTt242JyaAIx98XugeQsGYJ9QQ1aqf65Nv0186b76fPDHI4bF_WoC3tj9khWFcuhH8zwMFC4ohVQ1NLSMrCUBk19pCamhV-lr5znLbcNuWJ9Nhf9Z9R-S4_HOOizKJu1ydAwYdMI5Z_MPwaHooGqH5FAkwH9DTB_k08MzlMcnKWkzVC7kOKS5fnbqPCIrYYLhygTQxRcmeXFhgScsh54TzNfI5334WCCWoKBppCrvl_vyPsWciEt1wQUu_29hDrNJFf_3sqf9ooROkyQhf6G0p7Sh3nHZhKBATN7g3X-xD1KTJ99aZ0khZMPEyOHbJb3Zg")
 
 	createAssetResponse := httptest.NewRecorder()
 	s.Middleware.ServeHTTP(createAssetResponse, createAssetRequest)

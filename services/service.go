@@ -57,8 +57,8 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 }
 
 func (c *Client) AddHeader(req *http.Request, headers map[string]string) {
-	for header := range headers {
-		req.Header.Set(header, headers[header])
+	for header, value := range headers {
+		req.Header.Set(header, value)
 	}
 }
 

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
@@ -10,10 +11,10 @@ import (
 // UpdateAuthToken ...
 func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
 
-	requestData := model.UpdateAuthTokenRequest{Body: model.AuthTokenRequestBody{
-		ServiceID: config.ServiceID,
-		Payload:   "",
-	}}
+	requestData := map[string]string{
+		"username": config.ServiceID,
+		"password": config.ServiceKey,
+	}
 	authToken := model.UpdateAuthTokenResponse{}
 	metaData := utility.GetRequestMetaData("generateToken", config)
 
@@ -22,11 +23,12 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 	if err != nil {
 		return model.UpdateAuthTokenResponse{}, err
 	}
+	APIClient.AddHeader(APIRequest, requestData)
 	_, err = APIClient.Do(APIRequest, &authToken)
 	if err != nil {
 		return model.UpdateAuthTokenResponse{}, err
 	}
-
+	fmt.Printf("authToken >> %+v", authToken)
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	memorycache := utility.InitializeCache(authToken.ExpiresAt, purgeInterval)
 	memorycache.Set("serviceAuth", &authToken, true)

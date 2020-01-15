@@ -2,7 +2,7 @@ package utility
 
 var (
 	SUCCESS             = "Request Proccessed Successfully"
-	INPUT_ERR           = "Invalid Input Supplied"
+	INPUT_ERR           = "Invalid Input Supplied. See documentation"
 	SYSTEM_ERR          = "Request Could Not Be Proccessed. Server encountered an error"
 	VALIDATION_ERR      = "Validation Failed For Some Fields"
 	UUID_CAST_ERR       = "Cannot cast Id, ensure to be passing a valid id"

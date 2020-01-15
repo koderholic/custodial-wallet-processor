@@ -1,7 +1,7 @@
 package dto
 
-// Asset ... DTO definition for supported crypto assets on the system
-type Asset struct {
+// Denomination ... DTO definition for supported crypto assets on the system
+type Denomination struct {
 	BaseDTO
 	Name          string         `json:"name,omitempty"`
 	Symbol        string         `gorm:"unique_index;not null" json:"symbol,omitempty"`
