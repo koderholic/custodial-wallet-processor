@@ -74,7 +74,15 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Resource not accessible by non-service token type"))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(responseWriter).Encode(response.PlainError("FORBIDDEN_ERR", utility.INVALID_TOKENTYPE))
+			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.INVALID_TOKENTYPE))
+			return
+		}
+
+		if tokenClaims.ISS != model.JWT_ISSUER {
+			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Unknown Token Issuer"))
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.UNKNOWN_ISSUER))
 			return
 		}
 

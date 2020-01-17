@@ -56,10 +56,16 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	return req, nil
 }
 
-func (c *Client) AddHeader(req *http.Request, headers map[string]string) {
+func (c *Client) AddHeader(req *http.Request, headers map[string]string) *http.Request {
 	for header, value := range headers {
 		req.Header.Set(header, value)
 	}
+	return req
+}
+
+func (c *Client) AddBasicAuth(req *http.Request, username, password string) *http.Request {
+	req.SetBasicAuth(username, password)
+	return req
 }
 
 func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
@@ -68,8 +74,18 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(v)
-	return resp, err
+
+	resBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return resp, err
+	}
+
+	if resp.StatusCode == 200 || resp.StatusCode == 201 {
+		err = json.Unmarshal(resBody, v)
+		return resp, err
+	}
+
+	return resp, errors.New(fmt.Sprintf("An error occured : %s", string(resBody)))
 }
 
 //ExternalAPICall ... Makes call to an external API

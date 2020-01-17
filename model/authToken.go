@@ -1,9 +1,5 @@
 package model
 
-import (
-	"time"
-)
-
 // AuthTokenRequestBody ...
 type AuthTokenRequestBody struct {
 	ServiceID string `json:"serviceId,omitempty`
@@ -17,9 +13,9 @@ type UpdateAuthTokenRequest struct {
 
 // UpdateAuthTokenResponse ...
 type UpdateAuthTokenResponse struct {
-	ServiceID   string        `json:"serviceId`
-	Token       string        `json:"token`
-	Permissions []string      `json:"permissions`
-	CreatedAt   time.Time     `json:"createdAt`
-	ExpiresAt   time.Duration `json:"expiresAt`
+	ServiceID   string   `json:"serviceId`
+	Token       string   `json:"token`
+	Permissions []string `json:"permissions`
+	CreatedAt   string   `json:"createdAt`
+	ExpiresAt   string   `json:"expiresAt`
 }
