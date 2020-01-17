@@ -33,6 +33,7 @@ type Test struct {
 	CreateAssetEndpoint string
 	GetAssetEndpoint    string
 	CreditAssetEndpoint string
+	DebitAssetEndpoint string
 }
 
 var test = Test{
@@ -40,6 +41,7 @@ var test = Test{
 	CreateAssetEndpoint: "/crypto/users/assets",
 	GetAssetEndpoint:    "/crypto/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
 	CreditAssetEndpoint: "/crypto/assets/credit",
+	DebitAssetEndpoint: "/crypto/assets/debit",
 }
 
 //BaseController : Base controller struct
@@ -58,7 +60,7 @@ type Suite struct {
 	Database   database.Database
 	Logger     *utility.Logger
 	Config     config.Data
-	Middleware http.Handler
+	Router *mux.Router
 }
 
 var (
@@ -98,18 +100,18 @@ func (s *Suite) SetupSuite() {
 		Config: Config,
 		DB:     s.DB,
 	}
-	middleware := middlewares.NewMiddleware(logger, Config, router).ValidateAuthToken().LogAPIRequests().Build()
+	// middleware := middlewares.NewMiddleware(logger, Config, router).ValidateAuthToken().LogAPIRequests().Build()
 
 	s.Database = Database
 	s.Logger = logger
 	s.Config = Config
-	s.Middleware = middleware
+	s.Router = router
 
-	s.RegisterRoutes(router, validator)
+	s.RegisterRoutes(logger, Config, router, validator)
 }
 
 // RegisterRoutes ...
-func (s *Suite) RegisterRoutes(router *mux.Router, validator *validation.Validate) {
+func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, router *mux.Router, validator *validation.Validate) {
 
 	once.Do(func() {
 
@@ -119,13 +121,14 @@ func (s *Suite) RegisterRoutes(router *mux.Router, validator *validation.Validat
 		// controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(s.Logger, s.Config, validator, &userAssetRepository)
 
-		apiRouter := router.PathPrefix("").Subrouter()
+		apiRouter := router.PathPrefix("/crypto").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// User Asset Routes
-		apiRouter.HandleFunc("/crypto/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/crypto/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/crypto/assets/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/assets", middlewares.NewMiddleware(logger, Config, userAssetController.CreateUserAssets).ValidateAuthToken(utility.Permissions["CreateUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/{userId}/assets", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssets).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, Config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, Config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 
 	})
 }
@@ -143,10 +146,10 @@ func (s *Suite) Test_GetUserAsset() {
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
 		)
 	getAssetRequest, _ := http.NewRequest("GET", test.GetAssetEndpoint, bytes.NewBuffer([]byte("")))
-	getAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5nZXQtYXNzZXRzIl0sInRva2VuVHlwZSI6IlNFUlZJQ0UifQ.vMOgtyLiKeYN7oLSi8FVOi87ydHMwqVhUtPGxV16HIbdUnRd1fUS0KlEjHvfGZ6EVMXqGJsgOLv_05fVtrtBAR54QgXKejItR_zNhSah3lxhN4S4ZCAjlmw_J6trByBY5H1dSSLvZHNjSJD2NXx5_8SDXWoBZBauIq0_jAuVF171PEDJVdoYB7ZFkeiQfF4WguwOcGPPRnW0qtpHBS7apx9jXF9eFzm8kpDe-h4hjd-BcMX0FCdaR00K1YZ-fSLtyOdj55JKEUoop4xevJnWEZE-3sMWi2GzAl1advFha84hbE0eHEKkky9Dal_H5Awpwpv7kqHqj0Melf-zvW1HEg")
+	getAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNTc5MTI0NzA2IiwiaWF0IjoiMTU3OTEyMTEwNiIsImlzcyI6IlNWQ1MvQVVUSCIsInBlcm1pc3Npb25zIjpbInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmdldC1hc3NldHMiXSwic2VydmljZUlkIjoiNzZhYTcyZjctYjAwZS00OWRhLTgwN2ItNzVjZGUyZjEwZTI3IiwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.jxs7G6kVWkCJineS8snanbYJtJXnlcMGU84AsZWAjLTBP_zlpNQSbxyVCmwGHBHdR0Yd0_URuyiJMSaLGNoMNDniHnxTisNVjj_BV7RgWAFKgO8_dnZEkScirZLCE-l8LwBfdQa4vja4_2yzt9gcIVrK5kQGNPvWLpDX2F0KAMYYD8GNeSBe2AtWXnaOY-OFAnJO8qfio3qrNP5EmpXyJ7hCIHXcSXzyTW6kp7D1T81AcRAF9269_ZUQGbbfVvXKzoixnrHZa7pOKjOeTqCYBwrwptKba0ExfP7GA3qP3PYgH4CwRphcluk6gGDz0otuBo3rA_bK8XdipknbmW3MOg")
 
 	getAssetResponse := httptest.NewRecorder()
-	s.Middleware.ServeHTTP(getAssetResponse, getAssetRequest)
+	s.Router.ServeHTTP(getAssetResponse, getAssetRequest)
 
 	if getAssetResponse.Code != http.StatusOK {
 		s.T().Errorf("Expected response code to not be %d. Got %d\n", http.StatusOK, getAssetResponse.Code)
@@ -169,10 +172,10 @@ func (s *Suite) Test_CreateUserAsset() {
 
 	createAssetInputData := []byte(`{"assets" : ["BTC"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5wb3N0LWFzc2V0cyJdLCJ0b2tlblR5cGUiOiJTRVJWSUNFIn0.F4ONI4_z5YMihzXRxq2apTt242JyaAIx98XugeQsGYJ9QQ1aqf65Nv0186b76fPDHI4bF_WoC3tj9khWFcuhH8zwMFC4ohVQ1NLSMrCUBk19pCamhV-lr5znLbcNuWJ9Nhf9Z9R-S4_HOOizKJu1ydAwYdMI5Z_MPwaHooGqH5FAkwH9DTB_k08MzlMcnKWkzVC7kOKS5fnbqPCIrYYLhygTQxRcmeXFhgScsh54TzNfI5334WCCWoKBppCrvl_vyPsWciEt1wQUu_29hDrNJFf_3sqf9ooROkyQhf6G0p7Sh3nHZhKBATN7g3X-xD1KTJ99aZ0khZMPEyOHbJb3Zg")
+	createAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNTc5MTI0NzA2IiwiaWF0IjoiMTU3OTEyMTEwNiIsImlzcyI6IlNWQ1MvQVVUSCIsInBlcm1pc3Npb25zIjpbInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLnBvc3QtYXNzZXRzIl0sInNlcnZpY2VJZCI6Ijc2YWE3MmY3LWIwMGUtNDlkYS04MDdiLTc1Y2RlMmYxMGUyNyIsInRva2VuVHlwZSI6IlNFUlZJQ0UifQ.pyHUNKTWp1OnkYSWRxvAwbpHXuWJuFwBlxFKPO7yCa5ylBX2L7k7I8v-wQIYuOkWFqXWIiJYwdvkHDAQ1eiVxog7tGBzx0ZA3e0Mk3mhK2klTtMZpcszt0GA92u-F3LsDiBbcWXX0C_qPrdpsdLmnJi1qrccpGAxEsPZ_EtobmWPvZ_yLtMrXcYv32OK1D1fkc5svL_iJ2ns9MxNRsvD5n0UkgqqvEIhZNaH8r4_vlrqu1Z3RO9zFmxJ-KbaogEASee_PwBWWrLb8wGOLkG_XbFhhG8BCG7tFFd6mAJMmUfgnedU5neqvbhzq8gfFQx_JNTHcUKapp2B-8RyThvLzQ")
 
 	createAssetResponse := httptest.NewRecorder()
-	s.Middleware.ServeHTTP(createAssetResponse, createAssetRequest)
+	s.Router.ServeHTTP(createAssetResponse, createAssetRequest)
 
 	if createAssetResponse.Code != http.StatusCreated {
 		s.T().Errorf("Expected response code to not be %d. Got %d\n", http.StatusCreated, createAssetResponse.Code)
