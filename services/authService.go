@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
@@ -35,18 +34,15 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 	cacheDuration := expiresAt.Sub(createdAt)
 	memorycache := utility.InitializeCache(cacheDuration, purgeInterval)
 	memorycache.Set("serviceAuth", &authToken, true)
-	test := memorycache.Get("serviceAuth")
-	fmt.Printf("test !!!!!!!!!!!>> %+v", test)
+
 	return authToken, nil
 }
 
 // GetAuthToken ...
 func GetAuthToken(logger *utility.Logger, config Config.Data) (string, error) {
 
-	memorycache := &utility.MemoryCache{}
+	memorycache := utility.InitializeCache(0, 0)
 	cachedResult := memorycache.Get("serviceAuth")
-
-	fmt.Printf("cachedResult >> %+v", cachedResult)
 
 	if cachedResult == nil {
 		authTokenResponse, err := UpdateAuthToken(logger, config)

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"wallet-adapter/controllers"
 	"wallet-adapter/database"
+	"wallet-adapter/middlewares"
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
@@ -36,10 +37,13 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		// General Routes
 		apiRouter.HandleFunc("/ping", controller.Ping).Methods(http.MethodGet)
 
+		// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
+
 		// User Asset Routes
-		apiRouter.HandleFunc("/users/assets", userAssetController.CreateUserAssets).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/users/{userId}/assets", userAssetController.GetUserAssets).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/credit", userAssetController.CreditUserAssets).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/assets", middlewares.NewMiddleware(logger, config, userAssetController.CreateUserAssets).ValidateAuthToken(utility.Permissions["CreateUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/{userId}/assets", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssets).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 
 	})
 

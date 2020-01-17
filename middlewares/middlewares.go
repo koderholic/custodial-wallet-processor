@@ -16,16 +16,16 @@ var response = utility.NewResponse()
 type Middleware struct {
 	logger *utility.Logger
 	config Config.Data
-	next   http.Handler
+	next   http.HandlerFunc
 }
 
 // NewMiddleware ... Creates a middleware instance
-func NewMiddleware(logger *utility.Logger, config Config.Data, handler http.Handler) *Middleware {
+func NewMiddleware(logger *utility.Logger, config Config.Data, handler http.HandlerFunc) *Middleware {
 	return &Middleware{logger: logger, config: config, next: handler}
 }
 
 // Build ... Build midlleware functions
-func (m *Middleware) Build() http.Handler {
+func (m *Middleware) Build() http.HandlerFunc {
 	return m.next
 }
 
@@ -39,8 +39,8 @@ func (m *Middleware) LogAPIRequests() *Middleware {
 	return &Middleware{logger: m.logger, config: m.config, next: nextHandler}
 }
 
-// ValidateAuthToken ... retrieves auth toke from header and Verifies token permissions
-func (m *Middleware) ValidateAuthToken() *Middleware {
+// ValidateAuthToken ... retrieves auth toke from header                                                                                                                 and Verifies token permissions
+func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 
 	nextHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, requestReader *http.Request) {
 		if strings.Contains(requestReader.URL.Path, "swagger") {
@@ -50,9 +50,6 @@ func (m *Middleware) ValidateAuthToken() *Middleware {
 
 		authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
 		tokenClaims := model.TokenClaims{}
-		urlPathSlice := strings.Split(requestReader.URL.Path, "/")
-		requiredPermisionFromPathSlice := urlPathSlice[len(urlPathSlice)-1]
-		requiredPermission := fmt.Sprintf("%s-%s", strings.ToLower(requestReader.Method), requiredPermisionFromPathSlice)
 
 		if authToken == "" {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error %s", utility.EMPTY_AUTH_KEY))
