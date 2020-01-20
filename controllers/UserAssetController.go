@@ -111,7 +111,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
-q
+
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", validationErr)
