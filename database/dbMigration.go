@@ -7,7 +7,7 @@ import (
 // RunDbMigrations ... This creates corresponding tables for dtos on the db and watches the dto for field additions
 func (database *Database) RunDbMigrations() {
 	database.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserBalance{})
-	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "assets(id)", "CASCADE", "CASCADE")
+	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
 }
 
 // DBSeeder .. This seeds supported assets into the database

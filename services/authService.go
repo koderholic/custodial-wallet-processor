@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
@@ -17,8 +18,8 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 	authToken := model.UpdateAuthTokenResponse{}
 	metaData := utility.GetRequestMetaData("generateToken", config)
 
-	APIClient := NewClient(nil, logger, config, metaData.Endpoint)
-	APIRequest, err := APIClient.NewRequest(metaData.Type, metaData.Action, nil)
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return model.UpdateAuthTokenResponse{}, err
 	}

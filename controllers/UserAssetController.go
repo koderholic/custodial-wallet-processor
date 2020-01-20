@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"github.com/jinzhu/gorm"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -52,7 +53,8 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)))
 			return
 		}
-		userAsset := dto.UserBalance{DenominationID: asset.ID, UserID: requestData.UserID}
+		balance, _ := decimal.NewFromString("0.00")
+		userAsset := dto.UserBalance{DenominationID: asset.ID, UserID: requestData.UserID, AvailableBalance:balance.String(), ReservedBalance: balance.String()}
 		_ = controller.Repository.FindOrCreate(userAsset, &userAsset)
 		userAsset.Symbol = asset.Symbol
 		responseData.Assets = append(responseData.Assets, userAsset)
@@ -132,7 +134,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	// // increment user account by volume
 	value, err := decimal.NewFromString(requestData.Value)
 	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
-	reserveBal, err := decimal.NewFromString(assetDetails.AvailableBalance)
+	reserveBal, err := decimal.NewFromString(assetDetails.ReservedBalance)
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Sub(value)).String()
 	currentReservedBalance := (reserveBal.Sub(value)).String()
@@ -141,6 +143,14 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)))
+		return
+	}
+
+	if availbal.Sub(value).IsNegative() {
+		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s", "User asset do not have sufficient balance for this operation")))
 		return
 	}
 
@@ -158,7 +168,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		return
 	}
 
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance, ReservedBalance: currentReservedBalance}).Error; err != nil {
+	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -217,7 +227,6 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 }
 
-
 // CreditUserAssets ... Credit a user asset abalance with the specified value
 func (controller UserAssetController) CreditUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
@@ -255,7 +264,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	// // increment user account by volume
 	value, err := decimal.NewFromString(requestData.Value)
 	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
-	reserveBal, err := decimal.NewFromString(assetDetails.AvailableBalance)
+	reserveBal, err := decimal.NewFromString(assetDetails.ReservedBalance)
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Add(value)).String()
 	currentReservedBalance := (reserveBal.Add(value)).String()
