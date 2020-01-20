@@ -4,7 +4,6 @@ import (
 	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
-	"wallet-adapter/middlewares"
 	"wallet-adapter/utility"
 
 	"log"
@@ -35,8 +34,8 @@ func main() {
 
 	serviceAddress := ":" + config.AppPort
 
-	middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
+	// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
 
 	logger.Info("Server started and listening on port %s", config.AppPort)
-	log.Fatal(http.ListenAndServe(serviceAddress, middleware))
+	log.Fatal(http.ListenAndServe(serviceAddress, router))
 }

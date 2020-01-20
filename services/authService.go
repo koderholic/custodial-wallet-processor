@@ -11,27 +11,31 @@ import (
 // UpdateAuthToken ...
 func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
 
-	requestData := map[string]string{
+	authorization := map[string]string{
 		"username": config.ServiceID,
 		"password": config.ServiceKey,
 	}
 	authToken := model.UpdateAuthTokenResponse{}
 	metaData := utility.GetRequestMetaData("generateToken", config)
 
-	APIClient := NewClient(nil, logger, config, metaData.Endpoint)
-	APIRequest, err := APIClient.NewRequest(metaData.Type, metaData.Action, requestData)
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return model.UpdateAuthTokenResponse{}, err
 	}
-	APIClient.AddHeader(APIRequest, requestData)
+	APIClient.AddBasicAuth(APIRequest, authorization["username"], authorization["password"])
 	_, err = APIClient.Do(APIRequest, &authToken)
 	if err != nil {
 		return model.UpdateAuthTokenResponse{}, err
 	}
-	fmt.Printf("authToken >> %+v", authToken)
+
 	purgeInterval := config.PurgeCacheInterval * time.Second
-	memorycache := utility.InitializeCache(authToken.ExpiresAt, purgeInterval)
+	createdAt, _ := time.Parse(time.RFC3339, authToken.CreatedAt)
+	expiresAt, _ := time.Parse(time.RFC3339, authToken.ExpiresAt)
+	cacheDuration := expiresAt.Sub(createdAt)
+	memorycache := utility.InitializeCache(cacheDuration, purgeInterval)
 	memorycache.Set("serviceAuth", &authToken, true)
+
 	return authToken, nil
 }
 

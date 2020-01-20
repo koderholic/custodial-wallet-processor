@@ -10,6 +10,7 @@ import (
 type IUserAssetRepository interface {
 	IRepository
 	GetAssetsByID(id, model interface{}) error
+	UpdateAssetBalByID(amount, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -27,6 +28,19 @@ func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
 			Err:     err,
 		}
 	}
+	return nil
+}
+
+// UpdateAssetByID ...
+func (repo *UserAssetRepository) UpdateAssetBalByID(amount, model interface{}) error {
+	if err := repo.DB.Model(&model).Update("available_balance", gorm.Expr("available_balance - ?", amount)).Error; err != nil {
+		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
 	return nil
 }
 
