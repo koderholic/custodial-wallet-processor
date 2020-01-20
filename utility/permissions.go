@@ -6,5 +6,6 @@ var (
 		"CreateUserAssets": "create-assets",
 		"CreditUserAsset":  "credit-asset",
 		"DebitUserAsset":   "debit-asset",
+		"InternalTransfer": "do-internal-transfer",
 	}
 )

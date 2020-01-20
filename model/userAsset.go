@@ -25,8 +25,17 @@ type CreditUserAssetRequest struct {
 	Memo                 string    `json:"memo" validate:"required"`
 }
 
-// CreditUserAssetResponse ... Model definition for credit user asset request
-type CreditUserAssetResponse struct {
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type InternalTransferRequest struct {
+	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`
+	RecipientAssetId     uuid.UUID `json:"recipientAssetId" validate:"required"`
+	Value                string    `json:"value" validate:"required"`
+	TransactionReference string    `json:"transactionReference" validate:"required"`
+	Memo                 string    `json:"memo" validate:"required"`
+}
+
+// TransactionReceipt ... Model definition for credit user asset request
+type TransactionReceipt struct {
 	AssetID              uuid.UUID `json:"assetId,omitempty"`
 	Value                string    `json:"value,omitempty"`
 	TransactionReference string    `json:"transactionReference,omitempty"`

@@ -10,6 +10,6 @@ var (
 	INVALID_AUTH_TOKEN  = "Authentication token is not valid"
 	AUTH_VALIDATE_ERR   = "Failed to validate authentication token"
 	INVALID_TOKENTYPE   = "Access forbidden for non-service token type"
-	INVALID_PERMISSIONS = "Access forbidden, appropriate permission not gramted"
+	INVALID_PERMISSIONS = "Access forbidden, appropriate permission not granted"
 	UNKNOWN_ISSUER      = "Access forbidden for unknown token issuer"
 )
