@@ -47,7 +47,6 @@ var (
 //Transaction ... This is the transaction DTO for all user request
 type Transaction struct {
 	BaseDTO
-	Denomination         string       `gorm:"type:VARCHAR(36);not null" json:"denomination,omitempty"`
 	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id,omitempty"`
 	RecipientID          uuid.UUID    `json:"recipient,omitempty"`
 	TransactionReference string       `gorm:"not null;unique_index" json:"transaction_reference,omitempty"`

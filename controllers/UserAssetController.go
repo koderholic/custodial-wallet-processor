@@ -3,9 +3,9 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"net/http"
 	"time"
-	"github.com/jinzhu/gorm"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -54,7 +54,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 			return
 		}
 		balance, _ := decimal.NewFromString("0.00")
-		userAsset := dto.UserBalance{DenominationID: asset.ID, UserID: requestData.UserID, AvailableBalance:balance.String()}
+		userAsset := dto.UserBalance{DenominationID: asset.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
 		_ = controller.Repository.FindOrCreate(userAsset, &userAsset)
 		userAsset.Symbol = asset.Symbol
 		responseData.Assets = append(responseData.Assets, userAsset)
@@ -177,7 +177,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 	// Create transaction record
 	transaction := dto.Transaction{
-		Denomination:         assetDetails.Symbol,
+
 		InitiatorID:          decodedToken.ServiceID, // serviceId
 		RecipientID:          assetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
@@ -285,7 +285,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance, }).Error; err != nil {
+	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -296,7 +296,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 	// Create transaction record
 	transaction := dto.Transaction{
-		Denomination:         assetDetails.Symbol,
+
 		InitiatorID:          decodedToken.ServiceID, // serviceId
 		RecipientID:          assetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
@@ -386,7 +386,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	// Ensure transfer cannot be done to self
-	if requestData.InitiatorAssetId ==  requestData.RecipientAssetId {
+	if requestData.InitiatorAssetId == requestData.RecipientAssetId {
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", utility.NON_MATCHING_DENOMINATION)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -394,8 +394,8 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Check if the denomnatio in transction is same for initiator and recipient
-	if initiatorAssetDetails.DenominationID !=  recipientAssetDetails.DenominationID {
+	// Check if the denomination in the transction request is same for initiator and recipient
+	if initiatorAssetDetails.DenominationID != recipientAssetDetails.DenominationID {
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", utility.NON_MATCHING_DENOMINATION)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -403,7 +403,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// // increment user account by volume
+	// Increment user account by volume
 	value, err := decimal.NewFromString(requestData.Value)
 	availbal, err := decimal.NewFromString(initiatorAssetDetails.AvailableBalance)
 	previousBalance := initiatorAssetDetails.AvailableBalance
@@ -459,7 +459,6 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 
 	// Create transaction record
 	transaction := dto.Transaction{
-		Denomination:         initiatorAssetDetails.Symbol,
 		InitiatorID:          initiatorAssetDetails.ID,
 		RecipientID:          recipientAssetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
