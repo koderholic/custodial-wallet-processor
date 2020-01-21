@@ -8,7 +8,7 @@ import (
 func (database *Database) RunDbMigrations() {
 	database.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserBalance{})
 	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
-
+	database.DB.Model(&dto.UserBalance{}).RemoveForeignKey("asset_id", "denominations(id)")
 	database.DB.DropTableIfExists("assets")
 }
 
