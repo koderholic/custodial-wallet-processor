@@ -8,6 +8,13 @@ import (
 func (database *Database) RunDbMigrations() {
 	database.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserBalance{})
 	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
+
+	database.DB.Model(&dto.UserBalance{}).ModifyColumn("description", "text")
+	database.DB.Model(&dto.UserBalance{}).ModifyColumn("denomination_id", "text")
+	database.DB.Model(&dto.UserBalance{}).DropColumn("reserved_balance")
+	database.DB.Model(&dto.Transaction{}).DropColumn("reserved_balance")
+	database.DB.DropTableIfExists("float_balances")
+
 }
 
 // DBSeeder .. This seeds supported assets into the database
