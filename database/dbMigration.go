@@ -9,21 +9,7 @@ func (database *Database) RunDbMigrations() {
 	database.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserBalance{})
 	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
 
-	database.DB.DropTableIfExists("float_balances")
 	database.DB.DropTableIfExists("assets")
-	database.DB.Model(&dto.Transaction{}).DropColumn("reserved_balance")
-	database.DB.Model(&dto.Transaction{}).DropColumn("volume")
-	database.DB.Model(&dto.Transaction{}).DropColumn("reversed_balance")
-	database.DB.Model(&dto.Transaction{}).DropColumn("denomination")
-	database.DB.Model(&dto.Transaction{}).DropColumn("recipient")
-	database.DB.Model(&dto.Transaction{}).DropColumn("asset_id")
-	database.DB.Model(&dto.UserBalance{}).DropColumn("asset_id")
-	database.DB.Model(&dto.UserBalance{}).DropColumn("reversed_balance")
-	database.DB.Model(&dto.UserBalance{}).DropColumn("reserved_balance")
-	database.DB.Model(&dto.UserAddress{}).DropColumn("denomination_id")
-	database.DB.Model(&dto.UserAddress{}).DropColumn("key_id")
-	database.DB.Model(&dto.UserAddress{}).DropColumn("user_id")
-	database.DB.Model(&dto.BatchRequest{}).DropColumn("asset_id")
 }
 
 // DBSeeder .. This seeds supported assets into the database
