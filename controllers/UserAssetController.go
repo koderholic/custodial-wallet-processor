@@ -148,7 +148,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s", "User asset do not have sufficient balance for this operation")))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS))
 		return
 	}
 
