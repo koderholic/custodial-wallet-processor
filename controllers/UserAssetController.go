@@ -82,6 +82,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
 		return
 	}
+	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
 
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{UserID: userID}, &responseData); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)

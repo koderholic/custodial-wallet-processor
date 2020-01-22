@@ -28,6 +28,7 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 	if err != nil {
 		return model.UpdateAuthTokenResponse{}, err
 	}
+	logger.Info("Response from authentication service to UpdateAuthToken : %+v", authToken)
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	createdAt, _ := time.Parse(time.RFC3339, authToken.CreatedAt)

@@ -95,7 +95,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 		m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Service does not have the required permission"))
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(responseWriter).Encode(response.Error("FORBIDDEN_ERR", utility.INVALID_PERMISSIONS, map[string]string{"permission": requiredPermission}))
+		json.NewEncoder(responseWriter).Encode(response.Error("FORBIDDEN_ERR", utility.INVALID_PERMISSIONS, map[string]string{"permission": fmt.Sprintf("svcs.%s.%s", m.config.ServiceName, requiredPermission)}))
 		return
 
 	})

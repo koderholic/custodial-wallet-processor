@@ -18,7 +18,7 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.AuthenticationService,
 			Action:   "/services/token",
 		}
-	case "generateAddress":
+	case "createAddress":
 		return MetaData{
 			Type:     http.MethodPost,
 			Endpoint: config.KeyManagementService,
