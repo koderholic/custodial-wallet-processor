@@ -157,6 +157,12 @@ func (s *Suite) Test_GetUserAsset() {
 }
 
 func (s *Suite) Test_CreateUserAsset() {
+	s.Mock.ExpectQuery(regexp.QuoteMeta(
+		fmt.Sprintf("SELECT * FROM `denominations` WHERE (`denominations`.`symbol` = ?) AND (`denominations`.`is_enabled` = ?) ORDER BY `denominations`.`id` ASC LIMIT 1"))).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "symbol", "tokenType", "decimal", "isEnabled"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "BTC", "BTC", 8, true),
+		)
 
 	s.Mock.ExpectQuery(regexp.QuoteMeta(
 		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
@@ -176,7 +182,6 @@ func (s *Suite) Test_CreateUserAsset() {
 
 	createAssetResponse := httptest.NewRecorder()
 	s.Router.ServeHTTP(createAssetResponse, createAssetRequest)
-
 	if createAssetResponse.Code != http.StatusCreated {
 		s.T().Errorf("Expected response code to not be %d. Got %d\n", http.StatusCreated, createAssetResponse.Code)
 	}

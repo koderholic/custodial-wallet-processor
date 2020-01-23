@@ -12,7 +12,8 @@ type GenerateAddressRequest struct {
 
 // GenerateAddressResponse ... Model definition for key management external services request made with successful response
 type GenerateAddressResponse struct {
-	Address string `json:"address"`
+	Address string    `json:"address"`
+	UserID  uuid.UUID `json:"userId"`
 }
 
 // ServicesRequestErr ... Model definition for external services request made with error response
