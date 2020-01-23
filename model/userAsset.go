@@ -1,8 +1,6 @@
 package model
 
 import (
-	"wallet-adapter/dto"
-
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -12,15 +10,23 @@ type CreateUserAssetRequest struct {
 	UserID uuid.UUID `json:"userId" validate:"required"`
 }
 
+type Asset struct {
+	ID               uuid.UUID `json:"id"`
+	UserID           uuid.UUID `json:"userId"`
+	Symbol           string    `json:"symbol"`
+	AvailableBalance string    `json:"availableBalance"`
+	Decimal          int       `json:"decimal"`
+}
+
 // CreateUserAssetResponse ... Model definition for create asset response
-type CreateUserAssetResponse struct {
-	Assets []dto.UserBalance `json:"assets"`
+type UserAssetResponse struct {
+	Assets []Asset `json:"assets"`
 }
 
 // CreditUserAssetRequest ... Model definition for credit user asset request
 type CreditUserAssetRequest struct {
 	AssetID              uuid.UUID `json:"assetId" validate:"required"`
-	Value                string    `json:"value" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
 	TransactionReference string    `json:"transactionReference" validate:"required"`
 	Memo                 string    `json:"memo" validate:"required"`
 }
@@ -29,7 +35,7 @@ type CreditUserAssetRequest struct {
 type InternalTransferRequest struct {
 	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`
 	RecipientAssetId     uuid.UUID `json:"recipientAssetId" validate:"required"`
-	Value                string    `json:"value" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
 	TransactionReference string    `json:"transactionReference" validate:"required"`
 	Memo                 string    `json:"memo" validate:"required"`
 }

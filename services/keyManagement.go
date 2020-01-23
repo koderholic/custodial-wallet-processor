@@ -1,8 +1,10 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -11,7 +13,7 @@ import (
 )
 
 // GenerateAddress ...
-func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUID, symbol string) (string, error) {
+func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUID, symbol string, serviceErr interface{}) (string, error) {
 
 	authToken, err := GetAuthToken(logger, config)
 	requestData := model.GenerateAddressRequest{}
@@ -29,16 +31,18 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, &responseData)
+	APIRequestRes, err := APIClient.Do(APIRequest, &responseData)
 	if err != nil {
-		fmt.Printf("Error response from GenerateAddress : %+v", err)
+		resBody, readErr := ioutil.ReadAll(APIRequestRes.Body)
+		if readErr != nil {
+			return "", err
+		}
+		if err := json.Unmarshal(resBody, serviceErr); err != nil {
+			return "", err
+		}
 		return "", errors.New("An error occured while calling create address endpoint of key-management service")
 	}
 
 	logger.Info("Response from GenerateAddress : %+v", responseData)
-	if !responseData.Success {
-		return "", errors.New(responseData.Message)
-	}
-
-	return responseData.Data["address"], nil
+	return responseData.Address, nil
 }

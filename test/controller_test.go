@@ -33,7 +33,7 @@ type Test struct {
 	CreateAssetEndpoint string
 	GetAssetEndpoint    string
 	CreditAssetEndpoint string
-	DebitAssetEndpoint string
+	DebitAssetEndpoint  string
 }
 
 var test = Test{
@@ -41,7 +41,7 @@ var test = Test{
 	CreateAssetEndpoint: "/crypto/users/assets",
 	GetAssetEndpoint:    "/crypto/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
 	CreditAssetEndpoint: "/crypto/assets/credit",
-	DebitAssetEndpoint: "/crypto/assets/debit",
+	DebitAssetEndpoint:  "/crypto/assets/debit",
 }
 
 //BaseController : Base controller struct
@@ -55,12 +55,12 @@ type Controller struct {
 //Suite ...
 type Suite struct {
 	suite.Suite
-	DB         *gorm.DB
-	Mock       sqlmock.Sqlmock
-	Database   database.Database
-	Logger     *utility.Logger
-	Config     config.Data
-	Router *mux.Router
+	DB       *gorm.DB
+	Mock     sqlmock.Sqlmock
+	Database database.Database
+	Logger   *utility.Logger
+	Config   config.Data
+	Router   *mux.Router
 }
 
 var (
@@ -142,8 +142,8 @@ func (s *Suite) Test_GetUserAsset() {
 	// 	)
 	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "reserved_balance", "symbol"}).
-			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "symbol"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC"),
 		)
 	getAssetRequest, _ := http.NewRequest("GET", test.GetAssetEndpoint, bytes.NewBuffer([]byte("")))
 	getAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNTc5MTI0NzA2IiwiaWF0IjoiMTU3OTEyMTEwNiIsImlzcyI6IlNWQ1MvQVVUSCIsInBlcm1pc3Npb25zIjpbInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmdldC1hc3NldHMiXSwic2VydmljZUlkIjoiNzZhYTcyZjctYjAwZS00OWRhLTgwN2ItNzVjZGUyZjEwZTI3IiwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.jxs7G6kVWkCJineS8snanbYJtJXnlcMGU84AsZWAjLTBP_zlpNQSbxyVCmwGHBHdR0Yd0_URuyiJMSaLGNoMNDniHnxTisNVjj_BV7RgWAFKgO8_dnZEkScirZLCE-l8LwBfdQa4vja4_2yzt9gcIVrK5kQGNPvWLpDX2F0KAMYYD8GNeSBe2AtWXnaOY-OFAnJO8qfio3qrNP5EmpXyJ7hCIHXcSXzyTW6kp7D1T81AcRAF9269_ZUQGbbfVvXKzoixnrHZa7pOKjOeTqCYBwrwptKba0ExfP7GA3qP3PYgH4CwRphcluk6gGDz0otuBo3rA_bK8XdipknbmW3MOg")
@@ -161,18 +161,18 @@ func (s *Suite) Test_CreateUserAsset() {
 	s.Mock.ExpectQuery(regexp.QuoteMeta(
 		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol", "decimal"}).
-			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC", 8),
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "symbol", "decimal"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC", 8),
 		)
 	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "reserved_balance", "symbol"}).
-			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC"),
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "symbol"}).
+			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC"),
 		)
 
 	createAssetInputData := []byte(`{"assets" : ["BTC"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token","eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNTc5MTI0NzA2IiwiaWF0IjoiMTU3OTEyMTEwNiIsImlzcyI6IlNWQ1MvQVVUSCIsInBlcm1pc3Npb25zIjpbInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmNyZWF0ZS1hc3NldHMiXSwic2VydmljZUlkIjoiNzZhYTcyZjctYjAwZS00OWRhLTgwN2ItNzVjZGUyZjEwZTI3IiwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.NZUQEBgvHrOKpg-f5zgGuqD-EAdPMCNKDQre53fg5ew04tZhbe3dDrneMsBEK2GxXz3M8-0XS6KIUqUhkn1RwvZO9cSmQpJ7DsTNNW07QGilqZw5d7ZFdJGilVA7mRwrDJ-xqyO2T7D-Gp6kWwOl9E1l3X3CSbpx2H9aSPK3Pbbffu_FAZKxitl6ao1b9DRbEEmPQ4-_mCXbGPeLp_2t2noW3zdW433eYaZV3_n6Y-MeZknmHOfp8h0MOo0u8pFf2jB4exU0L8Z_Vb3bNQz-jakhRsfYzgRR5SzcQ45_7EaZYXGSq0T415kGyAnNaugl7vte85YZmlbKbQpddMY6_A")
+	createAssetRequest.Header.Set("x-auth-token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNTc5MTI0NzA2IiwiaWF0IjoiMTU3OTEyMTEwNiIsImlzcyI6IlNWQ1MvQVVUSCIsInBlcm1pc3Npb25zIjpbInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmNyZWF0ZS1hc3NldHMiXSwic2VydmljZUlkIjoiNzZhYTcyZjctYjAwZS00OWRhLTgwN2ItNzVjZGUyZjEwZTI3IiwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.NZUQEBgvHrOKpg-f5zgGuqD-EAdPMCNKDQre53fg5ew04tZhbe3dDrneMsBEK2GxXz3M8-0XS6KIUqUhkn1RwvZO9cSmQpJ7DsTNNW07QGilqZw5d7ZFdJGilVA7mRwrDJ-xqyO2T7D-Gp6kWwOl9E1l3X3CSbpx2H9aSPK3Pbbffu_FAZKxitl6ao1b9DRbEEmPQ4-_mCXbGPeLp_2t2noW3zdW433eYaZV3_n6Y-MeZknmHOfp8h0MOo0u8pFf2jB4exU0L8Z_Vb3bNQz-jakhRsfYzgRR5SzcQ45_7EaZYXGSq0T415kGyAnNaugl7vte85YZmlbKbQpddMY6_A")
 
 	createAssetResponse := httptest.NewRecorder()
 	s.Router.ServeHTTP(createAssetResponse, createAssetRequest)

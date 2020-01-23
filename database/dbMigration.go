@@ -10,6 +10,7 @@ func (database *Database) RunDbMigrations() {
 	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
 
 	database.DB.Model(&dto.UserBalance{}).ModifyColumn("available_balance", "decimal(64,18)")
+	database.DB.Model(&dto.UserAddress{}).DropColumn("validity")
 	database.DB.Model(&dto.Transaction{}).ModifyColumn("recipient_id", "VARCHAR(36)")
 }
 

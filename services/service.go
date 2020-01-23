@@ -79,7 +79,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	if err != nil {
 		return resp, err
 	}
-	fmt.Printf("resp >>>>>>!!!!!!!!>>>>> %+v", resp)
+
 	if resp.StatusCode == 200 || resp.StatusCode == 201 {
 		err = json.Unmarshal(resBody, v)
 		return resp, err

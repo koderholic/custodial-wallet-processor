@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"wallet-adapter/dto"
+	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
@@ -15,6 +16,7 @@ import (
 // GetAssetAddress ... Retrieves the blockchain address of an address, if non exist, it calls key-management to generate one
 func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
+	var externalServiceErr model.ServicesRequestErr
 	var responseData map[string]string
 	var userAddress dto.UserAddress
 	var userAsset dto.UserAssetBalance
@@ -31,7 +33,7 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
 
-	if err := controller.Repository.Get(assetID, &userAsset); err != nil {
+	if err := controller.Repository.GetByFieldName(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
 		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -40,39 +42,44 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 	}
 
 	if err := controller.Repository.GetByFieldName(&dto.UserAddress{AssetID: assetID}, &userAddress); err != nil {
-		if err.Error() == "record not found" {
-			// Calls key-management service to create an address for the user asset
-			address, errGenerateAddress := services.GenerateAddress(controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol)
-			if errGenerateAddress != nil {
-				controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", errGenerateAddress)
-				responseWriter.Header().Set("Content-Type", "application/json")
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
-				return
-			}
-			userAddress.AssetID = userAsset.ID
-			userAddress.Address = address
-			if createErr := controller.Repository.Create(&userAddress); createErr != nil {
-				controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
-				responseWriter.Header().Set("Content-Type", "application/json")
-				responseWriter.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(createErr)))
-				return
-			}
+		if err.Error() != utility.SQL_404 {
+			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			return
 		}
-		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-		return
-	}
-	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", responseData)
 
+		// Calls key-management service to create an address for the user asset
+		address, errGenerateAddress := services.GenerateAddress(controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol, externalServiceErr)
+		if errGenerateAddress != nil {
+			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", errGenerateAddress)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			if externalServiceErr.Code != "" {
+				controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", externalServiceErr)
+				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError(externalServiceErr.Code, externalServiceErr.Message))
+				return
+			}
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
+			return
+		}
+		userAddress.AssetID = userAsset.ID
+		userAddress.Address = address
+		if createErr := controller.Repository.Create(&userAddress); createErr != nil {
+			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(createErr)))
+			return
+		}
+	}
 	responseData = map[string]string{
 		"address": userAddress.Address,
 	}
 
+	controller.Logger.Info("Outgoing response to GetAssetAddress request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(responseData)
 
 }

@@ -38,11 +38,11 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 
 // Get ... Retrieves a specified record from the database for a given id
 func (repo *BaseRepository) Get(id interface{}, model interface{}) error {
-	if repo.DB.First(model, id).RecordNotFound() {
-		repo.Logger.Error("Error with repository Get %s", "Record not found")
+	if err := repo.DB.First(model, id).Error; err != nil {
+		repo.Logger.Error("Error with repository GetByFieldName : %+v", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
-			Err:     errors.New("No record found for provided Id"),
+			Err:     err,
 		}
 	}
 	return nil

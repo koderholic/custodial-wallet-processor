@@ -15,4 +15,5 @@ var (
 	NON_MATCHING_DENOMINATION = "Non matching asset denomination, ensure initiator and recipient has same denomination"
 	TRANSFER_TO_SELF          = "Transfer to self not allowed"
 	INSUFFICIENT_FUNDS        = "User asset do not have sufficient balance for this transaction"
+	SQL_404                   = "record not found"
 )
