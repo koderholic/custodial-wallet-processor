@@ -34,6 +34,7 @@ type Test struct {
 	GetAssetEndpoint    string
 	CreditAssetEndpoint string
 	DebitAssetEndpoint  string
+	GetAddressEndpoint  string
 }
 
 var test = Test{
@@ -42,6 +43,7 @@ var test = Test{
 	GetAssetEndpoint:    "/crypto/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
 	CreditAssetEndpoint: "/crypto/assets/credit",
 	DebitAssetEndpoint:  "/crypto/assets/debit",
+	GetAddressEndpoint:  "/crypto/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/address",
 }
 
 //BaseController : Base controller struct
@@ -118,7 +120,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		baseRepository := database.BaseRepository{Database: s.Database}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-		// controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
+		controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(s.Logger, s.Config, validator, &userAssetRepository)
 
 		apiRouter := router.PathPrefix("/crypto").Subrouter()
@@ -129,6 +131,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		apiRouter.HandleFunc("/users/{userId}/assets", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssets).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, Config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, Config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, Config, controller.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 
 	})
 }
