@@ -26,9 +26,8 @@ resources:
   authentication:
     description: Wallet-adapter-service
     permissions:
-      - svcs.key-management.post-sign-transaction
+      - svcs.key-management.sign-transaction
       - svcs.key-management.create-address
-      - svcs.key-management-service.create-address
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
