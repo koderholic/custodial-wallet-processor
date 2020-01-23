@@ -20,7 +20,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 
 	apiResponse := utility.NewResponse()
 	requestData := model.CreateUserAssetRequest{}
-	responseData := model.CreateUserAssetResponse{}
+	responseData := model.UserAssetResponse{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreateUserAssets : %+v", requestData)
@@ -34,43 +34,52 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		return
 	}
 
-	// Create user asset record for each given asset
+	// Create user asset record for each given denomination
 	for i := 0; i < len(requestData.Assets); i++ {
-		assetSymbol := requestData.Assets[i]
-		asset := dto.Denomination{}
+		denominationSymbol := requestData.Assets[i]
+		denomination := dto.Denomination{}
 
-		if err := controller.Repository.GetByFieldName(&dto.Denomination{Symbol: assetSymbol, IsEnabled: true}, &asset); err != nil {
+		if err := controller.Repository.GetByFieldName(&dto.Denomination{Symbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
 			controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
 			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 				responseWriter.Header().Set("Content-Type", "application/json")
 				responseWriter.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset record (%s) could not be created for user. %s", assetSymbol, utility.GetSQLErr(err.(utility.AppError)))))
+				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset record (%s) could not be created for user. %s", denominationSymbol, utility.GetSQLErr(err.(utility.AppError)))))
 				return
 			}
 
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)))
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)))
 			return
 		}
 		balance, _ := decimal.NewFromString("0.00")
-		userAsset := dto.UserBalance{DenominationID: asset.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreate(userAsset, &userAsset)
-		userAsset.Symbol = asset.Symbol
+		userAssetDTO := dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
+		_ = controller.Repository.FindOrCreate(userAssetDTO, &userAssetDTO)
+		userAssetDTO.Symbol = denomination.Symbol
+
+		userAsset := model.Asset{}
+		userAsset.ID = userAssetDTO.ID
+		userAsset.UserID = userAssetDTO.UserID
+		userAsset.Symbol = userAssetDTO.Symbol
+		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
+		userAsset.Decimal = denomination.Decimal
+
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
 
 	controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(responseData)
 
 }
 
 // GetUserAssets ... Get all user asset balance
 func (controller UserAssetController) GetUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var responseData []dto.UserAssetBalance
+	var userAssets []dto.UserAssetBalance
+	responseData := model.UserAssetResponse{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -82,18 +91,32 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
 		return
 	}
+	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{UserID: userID}, &responseData); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{UserID: userID}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
 	}
-	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", responseData)
+	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", userAssets)
+
+	for i := 0; i < len(userAssets); i++ {
+		userAsset := model.Asset{}
+		userAssetDTO := userAssets[i]
+
+		userAsset.ID = userAssetDTO.ID
+		userAsset.UserID = userAssetDTO.UserID
+		userAsset.Symbol = userAssetDTO.Symbol
+		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
+		userAsset.Decimal = userAssetDTO.Decimal
+
+		responseData.Assets = append(responseData.Assets, userAsset)
+	}
 
 	responseWriter.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(responseData)
 
 }
 
@@ -132,7 +155,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	}
 
 	// // increment user account by volume
-	value, err := decimal.NewFromString(requestData.Value)
+	value := decimal.NewFromFloat(requestData.Value)
 	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Sub(value)).String()
@@ -148,7 +171,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s", "User asset do not have sufficient balance for this operation")))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS))
 		return
 	}
 
@@ -220,7 +243,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	controller.Logger.Info("Outgoing response to DebitUserAsset request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(responseData)
 
 }
 
@@ -259,7 +282,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	}
 
 	// // increment user account by volume
-	value, err := decimal.NewFromString(requestData.Value)
+	value := decimal.NewFromFloat(requestData.Value)
 	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Add(value)).String()
@@ -339,7 +362,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	controller.Logger.Info("Outgoing response to CreditUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(responseData)
 
 }
 
@@ -404,7 +427,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	// Increment user account by volume
-	value, err := decimal.NewFromString(requestData.Value)
+	value := decimal.NewFromFloat(requestData.Value)
 	availbal, err := decimal.NewFromString(initiatorAssetDetails.AvailableBalance)
 	previousBalance := initiatorAssetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Sub(value)).String()
@@ -501,6 +524,6 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	controller.Logger.Info("Outgoing response to InternalTransfer request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
-	json.NewEncoder(responseWriter).Encode(apiResponse.Successful("SUCCESS", utility.SUCCESS, responseData))
+	json.NewEncoder(responseWriter).Encode(responseData)
 
 }

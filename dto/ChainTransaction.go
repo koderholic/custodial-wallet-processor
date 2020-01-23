@@ -8,6 +8,7 @@ type ChainTransaction struct {
 	Status          bool      `gorm:"index;not null;default:false" json:"status"`
 	BatchID         uuid.UUID `gorm:"type:VARCHAR(36);index:batch_id" json:"batch_id"`
 	TransactionHash string    `json:"hash"`
+	TransactionFee  string    `json:"TransactionFee"`
 	BlockHeight     int64     `gorm:"type:BIGINT" json:"block_height"`
 	BatchRequest    `sql:"-"`
 }

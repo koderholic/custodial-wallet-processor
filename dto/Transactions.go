@@ -48,7 +48,7 @@ var (
 type Transaction struct {
 	BaseDTO
 	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id,omitempty"`
-	RecipientID          uuid.UUID    `json:"recipient,omitempty"`
+	RecipientID          uuid.UUID    `json:"type:VARCHAR(36);not null" json:"recipient_id,omitempty"`
 	TransactionReference string       `gorm:"not null;unique_index" json:"transaction_reference,omitempty"`
 	PaymentReference     string       `gorm:"not null;unique_index" json:"payment_reference,omitempty"`
 	Memo                 string       `gorm:"not null;" json:"memo,omitempty"`
