@@ -31,7 +31,7 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		controller := controllers.NewController(logger, config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
 
-		apiRouter := router.PathPrefix("/crypto").Subrouter()
+		apiRouter := router.PathPrefix("").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// General Routes
