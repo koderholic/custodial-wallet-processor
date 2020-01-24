@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ericlagergren/decimal v0.0.0-20191206042408-88212e6cfca9
+	github.com/ethereum/go-ethereum v1.9.10 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-chi/chi v4.0.3+incompatible // indirect
 	github.com/go-playground/locales v0.13.0
