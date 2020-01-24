@@ -120,7 +120,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 }
 
-// CreditUserAssets ... Credit a user asset abalance with the specified value
+// DebitUserAsset ... debit a user asset abalance with the specified value
 func (controller UserAssetController) DebitUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
@@ -366,7 +366,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 }
 
-// CreditUserAssets ... Credit a user asset abalance with the specified value
+// InternalTransfer ... transfer between two users
 func (controller UserAssetController) InternalTransfer(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
