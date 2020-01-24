@@ -51,14 +51,13 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 		}
 
 		// Calls key-management service to create an address for the user asset
-		address, errGenerateAddress := services.GenerateAddress(controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol, externalServiceErr)
+		address, errGenerateAddress := services.GenerateAddress(controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol, &externalServiceErr)
 		if errGenerateAddress != nil {
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", errGenerateAddress)
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			if externalServiceErr.Code != "" {
-				controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", externalServiceErr)
-				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError(externalServiceErr.Code, externalServiceErr.Message))
+				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", externalServiceErr.Message))
 				return
 			}
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))

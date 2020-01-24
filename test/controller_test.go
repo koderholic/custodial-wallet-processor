@@ -39,11 +39,11 @@ type Test struct {
 
 var test = Test{
 	pingEndpoint:        "/ping",
-	CreateAssetEndpoint: "/crypto/users/assets",
-	GetAssetEndpoint:    "/crypto/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
-	CreditAssetEndpoint: "/crypto/assets/credit",
-	DebitAssetEndpoint:  "/crypto/assets/debit",
-	GetAddressEndpoint:  "/crypto/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/address",
+	CreateAssetEndpoint: "/users/assets",
+	GetAssetEndpoint:    "/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
+	CreditAssetEndpoint: "/assets/credit",
+	DebitAssetEndpoint:  "/assets/debit",
+	GetAddressEndpoint:  "/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/address",
 }
 
 //BaseController : Base controller struct
@@ -123,7 +123,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(s.Logger, s.Config, validator, &userAssetRepository)
 
-		apiRouter := router.PathPrefix("/crypto").Subrouter()
+		apiRouter := router.PathPrefix("").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// User Asset Routes

@@ -80,12 +80,13 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		return resp, err
 	}
 
-	if resp.StatusCode == 200 || resp.StatusCode == 201 {
-		err = json.Unmarshal(resBody, v)
-		return resp, err
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
 	}
 
-	return resp, errors.New(fmt.Sprintf("An error occured : %s", string(resBody)))
+	err = json.Unmarshal(resBody, v)
+	return resp, err
+
 }
 
 //ExternalAPICall ... Makes call to an external API
