@@ -16,7 +16,7 @@ type ProcessType struct{ SINGLE, BATCH string }
 type TxnTag struct{ CREDIT, DEBIT, TRANSFER, DEPOSIT, WITHDRAW string }
 
 // TxnStatus ...
-type TxnStatus struct{ PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string }
+type TxnStatus struct{ PENDING, PROCESSING, COMPLETED, TERMINATED, REJECTED string }
 
 var (
 	TransactionType = TxnType{
@@ -24,12 +24,13 @@ var (
 		ONCHAIN:  "Onchain",
 	}
 	TransactionStatus = TxnStatus{
-		PENDING:    "Pending",
-		PROCESSING: "Processing",
-		COMPLETED:  "Completed",
-		TERMINATED: "Terminated",
-		REVERSED:   "Reversed",
+		PENDING:    "PENDING",
+		PROCESSING: "ONGOING",
+		COMPLETED:  "COMPLETED",
+		TERMINATED: "TERMINATED",
+		REJECTED:   "REJECTED",
 	}
+
 	TransactionTag = TxnTag{
 		CREDIT:   "Credit",
 		DEBIT:    "Debit",
