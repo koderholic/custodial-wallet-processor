@@ -103,7 +103,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
@@ -152,7 +152,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
@@ -189,7 +189,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
@@ -201,7 +201,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
@@ -251,7 +251,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
@@ -382,7 +382,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
@@ -505,7 +505,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
@@ -517,7 +517,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		if err.Error() == utility.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
