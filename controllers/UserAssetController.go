@@ -43,7 +43,11 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 			controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
 			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 				responseWriter.Header().Set("Content-Type", "application/json")
-				responseWriter.WriteHeader(http.StatusInternalServerError)
+				if err.Error() == utility.SQL_404 {
+					responseWriter.WriteHeader(http.StatusNotFound)
+				} else {
+					responseWriter.WriteHeader(http.StatusBadRequest)
+				}
 				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset record (%s) could not be created for user. %s", denominationSymbol, utility.GetSQLErr(err.(utility.AppError)))))
 				return
 			}
@@ -96,7 +100,11 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{UserID: userID}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
 	}
@@ -141,7 +149,11 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssetById request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
 	}
@@ -174,7 +186,11 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	if err := controller.Repository.GetByFieldName(&dto.UserAddress{Address: address}, &userAddress); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
@@ -182,7 +198,11 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
 		return
 	}
@@ -228,7 +248,11 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusNotFound)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
@@ -355,7 +379,11 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusNotFound)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
@@ -474,7 +502,11 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusNotFound)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
@@ -482,7 +514,11 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusNotFound)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
