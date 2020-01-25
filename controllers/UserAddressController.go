@@ -36,7 +36,11 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 	if err := controller.Repository.GetByFieldName(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
 		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
@@ -45,7 +49,11 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 		if err.Error() != utility.SQL_404 {
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
+			if err.Error() == utility.SQL_404 {
+				responseWriter.WriteHeader(http.StatusNotFound)
+			} else {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+			}
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 			return
 		}
