@@ -120,6 +120,85 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 }
 
+// GetUserAssetById ... Get user asset balance by id
+func (controller UserAssetController) GetUserAssetById(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	var userAssets dto.UserAssetBalance
+	responseData := model.Asset{}
+	apiResponse := utility.NewResponse()
+
+	routeParams := mux.Vars(requestReader)
+	assetID, err := uuid.FromString(routeParams["assetId"])
+	if err != nil {
+		controller.Logger.Error("Outgoing response to GetUserAssetById request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
+		return
+	}
+	controller.Logger.Info("Incoming request details for GetUserAssetById : assetID : %+v", assetID)
+
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAssets); err != nil {
+		controller.Logger.Error("Outgoing response to GetUserAssetById request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
+		return
+	}
+	controller.Logger.Info("Outgoing response to GetUserAssetById request %+v", userAssets)
+
+	responseData.ID = userAssets.ID
+	responseData.UserID = userAssets.UserID
+	responseData.Symbol = userAssets.Symbol
+	responseData.AvailableBalance = userAssets.AvailableBalance
+	responseData.Decimal = userAssets.Decimal
+
+	responseWriter.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
+// GetUserAssetByAddress ... Get user asset balance by address
+func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	var userAssets dto.UserAssetBalance
+	var userAddress dto.UserAddress
+	responseData := model.Asset{}
+	apiResponse := utility.NewResponse()
+
+	routeParams := mux.Vars(requestReader)
+	address := routeParams["address"]
+
+	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
+
+	if err := controller.Repository.GetByFieldName(&dto.UserAddress{Address: address}, &userAddress); err != nil {
+		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAssets); err != nil {
+		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
+		return
+	}
+	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAssets)
+
+	responseData.ID = userAssets.ID
+	responseData.UserID = userAssets.UserID
+	responseData.Symbol = userAssets.Symbol
+	responseData.AvailableBalance = userAssets.AvailableBalance
+	responseData.Decimal = userAssets.Decimal
+
+	responseWriter.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
 // DebitUserAsset ... debit a user asset abalance with the specified value
 func (controller UserAssetController) DebitUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
