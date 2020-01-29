@@ -4,6 +4,7 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
+	"wallet-adapter/model"
 )
 
 // TxnType ...
@@ -64,4 +65,22 @@ type Transaction struct {
 	TransactionStartDate time.Time    `json:"transaction_start_date,omitempty"`
 	TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`
 	Batch                BatchRequest `sql:"-" json:"omitempty"`
+}
+
+func (transaction Transaction) Map(tx *model.TransactionResponse) {
+	tx.ID = transaction.ID
+	tx.InitiatorID = transaction.InitiatorID
+	tx.RecipientID = transaction.RecipientID
+	tx.Value = transaction.Value
+	tx.TransactionStatus = transaction.TransactionStatus
+	tx.TransactionReference = transaction.TransactionReference
+	tx.PaymentReference = transaction.PaymentReference
+	tx.PreviousBalance = transaction.PreviousBalance
+	tx.AvailableBalance = transaction.AvailableBalance
+	tx.TransactionType = transaction.TransactionType
+	tx.TransactionEndDate = transaction.TransactionEndDate
+	tx.TransactionStartDate = transaction.TransactionStartDate
+	tx.CreatedDate = transaction.CreatedAt
+	tx.UpdatedDate = transaction.UpdatedAt
+	tx.TransactionTag = transaction.TransactionTag
 }

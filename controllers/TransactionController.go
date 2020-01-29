@@ -34,21 +34,7 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 		return
 	}
 
-	responseData.ID = transaction.ID
-	responseData.InitiatorID = transaction.InitiatorID
-	responseData.RecipientID = transaction.RecipientID
-	responseData.Value = transaction.Value
-	responseData.TransactionStatus = transaction.TransactionStatus
-	responseData.TransactionReference = transaction.TransactionReference
-	responseData.PaymentReference = transaction.PaymentReference
-	responseData.PreviousBalance = transaction.PreviousBalance
-	responseData.AvailableBalance = transaction.AvailableBalance
-	responseData.TransactionType = transaction.TransactionType
-	responseData.TransactionEndDate = transaction.TransactionEndDate
-	responseData.TransactionStartDate = transaction.TransactionStartDate
-	responseData.CreatedDate = transaction.CreatedAt
-	responseData.UpdatedDate = transaction.UpdatedAt
-	responseData.TransactionTag = transaction.TransactionTag
+	transaction.Map(&responseData)
 
 	controller.Logger.Info("Outgoing response to GetTransaction request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
@@ -93,21 +79,7 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 		transaction := transactions[i]
 		tx := model.TransactionResponse{}
 
-		tx.ID = transaction.ID
-		tx.InitiatorID = transaction.InitiatorID
-		tx.RecipientID = transaction.RecipientID
-		tx.Value = transaction.Value
-		tx.TransactionStatus = transaction.TransactionStatus
-		tx.TransactionReference = transaction.TransactionReference
-		tx.PaymentReference = transaction.PaymentReference
-		tx.PreviousBalance = transaction.PreviousBalance
-		tx.AvailableBalance = transaction.AvailableBalance
-		tx.TransactionType = transaction.TransactionType
-		tx.TransactionEndDate = transaction.TransactionEndDate
-		tx.TransactionStartDate = transaction.TransactionStartDate
-		tx.CreatedDate = transaction.CreatedAt
-		tx.UpdatedDate = transaction.UpdatedAt
-		tx.TransactionTag = transaction.TransactionTag
+		transaction.Map(&tx)
 
 		responseData.Transactions = append(responseData.Transactions, tx)
 

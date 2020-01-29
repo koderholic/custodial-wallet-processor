@@ -29,21 +29,25 @@ import (
 )
 
 type Test struct {
-	pingEndpoint        string
-	CreateAssetEndpoint string
-	GetAssetEndpoint    string
-	CreditAssetEndpoint string
-	DebitAssetEndpoint  string
-	GetAddressEndpoint  string
+	pingEndpoint           string
+	CreateAssetEndpoint    string
+	GetAssetEndpoint       string
+	CreditAssetEndpoint    string
+	DebitAssetEndpoint     string
+	GetAddressEndpoint     string
+	GetTransactionByRef    string
+	GetTransactionsByAsset string
 }
 
 var test = Test{
-	pingEndpoint:        "/ping",
-	CreateAssetEndpoint: "/users/assets",
-	GetAssetEndpoint:    "/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
-	CreditAssetEndpoint: "/assets/credit",
-	DebitAssetEndpoint:  "/assets/debit",
-	GetAddressEndpoint:  "/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/address",
+	pingEndpoint:           "/ping",
+	CreateAssetEndpoint:    "/users/assets",
+	GetAssetEndpoint:       "/users/dbd77a9f-0dd9-4ff0-b17b-430e3895b82f/assets",
+	CreditAssetEndpoint:    "/assets/credit",
+	DebitAssetEndpoint:     "/assets/debit",
+	GetAddressEndpoint:     "/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/address",
+	GetTransactionByRef:    "/assets/transactions/9b7227pba3d915ef756a",
+	GetTransactionsByAsset: "/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/transactions",
 }
 
 //BaseController : Base controller struct
@@ -131,7 +135,12 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		apiRouter.HandleFunc("/users/{userId}/assets", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssets).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, Config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, Config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(logger, Config, userAssetController.InternalTransfer).ValidateAuthToken(utility.Permissions["InternalTransfer"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, Config, controller.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, Config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, Config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 
 	})
 }
