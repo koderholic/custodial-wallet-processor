@@ -347,7 +347,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 	controller.Logger.Info("Outgoing response to DebitUserAsset request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusCreated)
+	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)
 
 }
@@ -470,7 +470,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 	controller.Logger.Info("Outgoing response to CreditUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusCreated)
+	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)
 
 }
@@ -587,6 +587,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
+
 	// Credit recipient
 	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance + ?", value)).Error; err != nil {
 		tx.Rollback()
@@ -640,7 +641,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 
 	controller.Logger.Info("Outgoing response to InternalTransfer request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusCreated)
+	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)
 
 }

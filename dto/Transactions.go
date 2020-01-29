@@ -21,8 +21,8 @@ type TxnStatus struct{ PENDING, PROCESSING, COMPLETED, TERMINATED, REJECTED stri
 
 var (
 	TransactionType = TxnType{
-		OFFCHAIN: "Offchain",
-		ONCHAIN:  "Onchain",
+		OFFCHAIN: "OFFCHAIN",
+		ONCHAIN:  "ONCHAIN",
 	}
 	TransactionStatus = TxnStatus{
 		PENDING:    "PENDING",
@@ -33,16 +33,16 @@ var (
 	}
 
 	TransactionTag = TxnTag{
-		CREDIT:   "Credit",
-		DEBIT:    "Debit",
-		TRANSFER: "Transfer",
-		DEPOSIT:  "Deposit",
-		WITHDRAW: "Withdraw",
+		CREDIT:   "CREDIT",
+		DEBIT:    "DEBIT",
+		TRANSFER: "TRANSFER",
+		DEPOSIT:  "DEPOSIT",
+		WITHDRAW: "WITHDRAW",
 	}
 
 	ProcessingType = ProcessType{
-		SINGLE: "Single",
-		BATCH:  "Batch",
+		SINGLE: "SINGLE",
+		BATCH:  "BATCH",
 	}
 )
 
