@@ -46,7 +46,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 				if err.Error() == utility.SQL_404 {
 					responseWriter.WriteHeader(http.StatusNotFound)
 				} else {
-					responseWriter.WriteHeader(http.StatusBadRequest)
+					responseWriter.WriteHeader(http.StatusInternalServerError)
 				}
 				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset record (%s) could not be created for user. %s", denominationSymbol, utility.GetSQLErr(err.(utility.AppError)))))
 				return
@@ -122,7 +122,9 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
-
+	if len(responseData.Assets) <= 0 {
+		responseData.Assets = []model.Asset{}
+	}
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
 

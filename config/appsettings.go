@@ -19,9 +19,9 @@ type Data struct {
 	DBPassword            string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
 	DBName                string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
 	BasePath              string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
-	ServiceID             string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"serviceId,omitempty"`
-	ServiceKey            string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"serviceKey,omitempty"`
-	AuthenticatorKey      string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"authenticatorKey,omitempty"`
+	ServiceID             string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"AUTHENTICATION_SERVICE_SERVICE_ID,omitempty"`
+	ServiceKey            string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"AUTHENTICATION_SERVICE_TOKEN,omitempty"`
+	AuthenticatorKey      string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
 	AuthenticationService string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
