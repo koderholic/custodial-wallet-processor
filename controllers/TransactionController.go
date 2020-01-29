@@ -46,7 +46,8 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 func (controller BaseController) GetTransactionsByAssetId(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData model.TransactionListResponse
-	var transactions []dto.Transaction
+	var initiatorTransactions []dto.Transaction
+	var recipientTransactions []dto.Transaction
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -60,29 +61,47 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 	}
 	controller.Logger.Info("Incoming request details for GetTransactionsByAssetId : assetID : %+v", assetID)
 
-	if err := controller.Repository.FetchByFieldName(&dto.Transaction{RecipientID: assetID}, &transactions); err != nil {
-
-		if err.Error() == utility.SQL_404 {
-			errController := controller.Repository.GetByFieldName(&dto.Transaction{InitiatorID: assetID}, &transactions)
-			if errController == nil {
-				return
-			}
+	if err := controller.Repository.FetchByFieldName(&dto.Transaction{RecipientID: assetID}, &initiatorTransactions); err != nil {
+		if err.Error() != utility.SQL_404 {
+			controller.Logger.Error("Outgoing response to GetTransactionsByAssetId request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			return
 		}
-		controller.Logger.Error("Outgoing response to GetTransactionsByAssetId request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-		return
 	}
 
-	for i := 0; i < len(transactions); i++ {
-		transaction := transactions[i]
+	if err := controller.Repository.GetByFieldName(&dto.Transaction{InitiatorID: assetID}, &recipientTransactions); err != nil {
+		if err.Error() != utility.SQL_404 {
+			controller.Logger.Error("Outgoing response to GetTransactionsByAssetId request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			return
+		}
+	}
+
+	for i := 0; i < len(initiatorTransactions); i++ {
+		transaction := initiatorTransactions[i]
 		tx := model.TransactionResponse{}
 
 		transaction.Map(&tx)
 
 		responseData.Transactions = append(responseData.Transactions, tx)
 
+	}
+	for i := 0; i < len(recipientTransactions); i++ {
+		transaction := recipientTransactions[i]
+		tx := model.TransactionResponse{}
+
+		transaction.Map(&tx)
+
+		responseData.Transactions = append(responseData.Transactions, tx)
+
+	}
+
+	if len(responseData.Transactions) <= 0 {
+		responseData.Transactions = []model.TransactionResponse{}
 	}
 
 	controller.Logger.Info("Outgoing response to GetTransactionsByAssetId request %+v", responseData)
