@@ -28,7 +28,7 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
+		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
@@ -41,7 +41,7 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 		} else {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
 
@@ -54,7 +54,7 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 			} else {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 			return
 		}
 
@@ -65,10 +65,10 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			if externalServiceErr.Code != "" {
-				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", externalServiceErr.Message))
+				_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", externalServiceErr.Message))
 				return
 			}
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
+			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
 			return
 		}
 		userAddress.AssetID = userAsset.ID
@@ -77,7 +77,7 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(createErr)))
+			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(createErr)))
 			return
 		}
 	}
@@ -87,6 +87,6 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 
 	controller.Logger.Info("Outgoing response to GetAssetAddress request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(responseWriter).Encode(responseData)
+	_ = json.NewEncoder(responseWriter).Encode(responseData)
 
 }

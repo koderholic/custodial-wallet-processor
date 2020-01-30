@@ -6,20 +6,17 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.3.3
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/ericlagergren/decimal v0.0.0-20191206042408-88212e6cfca9
-	github.com/ethereum/go-ethereum v1.9.10 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-chi/chi v4.0.3+incompatible // indirect
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
-	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/go-redis/redis/v7 v7.0.0-beta.4
-	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/gorilla/handlers v1.4.2
+	github.com/golang/protobuf v1.3.2-0.20190517061210-b285ee9cfc6c // indirect
+	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/jeanphorn/log4go v0.0.0-20190526082429-7dbb8deb9468
 	github.com/jinzhu/gorm v1.9.11
-	github.com/karagulamos/aescipher v0.0.0-20190728210219-868b2d3c9378
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/satori/go.uuid v1.2.0
@@ -29,5 +26,8 @@ require (
 	github.com/swaggo/http-swagger v0.0.0-20190614090009-c2865af9083e
 	github.com/swaggo/swag v1.6.3
 	github.com/toolkits/file v0.0.0-20160325033739-a5b3c5147e07 // indirect
+	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
+	golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7 // indirect
+	golang.org/x/tools v0.0.0-20190611222205-d73e1c7e250b
 	gopkg.in/go-playground/validator.v9 v9.30.2
 )
