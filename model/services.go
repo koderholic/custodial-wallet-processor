@@ -38,7 +38,7 @@ type BroadcastToChainRequest struct {
 // BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
 type BroadcastToChainResponse struct {
 	TransactionHash string `json:"transactionHash"`
-	Error           string `json:"error"`
+	Error           bool   `json:"error"`
 	Message         string `json:"message"`
 }
 
