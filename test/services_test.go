@@ -31,13 +31,13 @@ func TestSignTransactionImplementation(t *testing.T) {
 	responseData := model.SignTransactionResponse{}
 	serviceErr := model.ServicesRequestErr{}
 
-	if err := services.SignTransaction(logger, Config, requestData, &responseData, serviceErr); err != nil {
-		t.Errorf("Expected SignTransaction to run without err, got %s\n", err)
+	if err := services.SignTransaction(logger, Config, requestData, &responseData, serviceErr); err == nil {
+		t.Errorf("Expected SignTransaction to error due to validation on request data, got %s\n", err)
 	}
 
-	if responseData.SignedData == "" {
-		t.Errorf("Expected SignTransaction to return signed data, got %s\n", responseData.SignedData)
-	}
+	// if responseData.SignedData == "" {
+	// 	t.Errorf("Expected SignTransaction to return signed data, got %s\n", responseData.SignedData)
+	// }
 }
 func TestBroadcastTransactionImplementation(t *testing.T) {
 
@@ -61,11 +61,11 @@ func TestBroadcastTransactionImplementation(t *testing.T) {
 	responseData := model.BroadcastToChainResponse{}
 	serviceErr := model.ServicesRequestErr{}
 
-	if err := services.BroadcastToChain(logger, Config, requestData, &responseData, serviceErr); err != nil {
-		t.Errorf("Expected SignTransaction to run without err, got %s\n", err)
+	if err := services.BroadcastToChain(logger, Config, requestData, &responseData, serviceErr); err == nil {
+		t.Errorf("Expected SignTransaction to error due to incorrect signed data, got %s\n", err)
 	}
 
-	if responseData.TransactionHash == "" {
-		t.Errorf("Expected SignTransaction to return signed data, got %s\n", responseData.TransactionHash)
-	}
+	// if responseData.TransactionHash == "" {
+	// 	t.Errorf("Expected SignTransaction to error due to incorrect signed data, got %s\n", responseData.TransactionHash)
+	// }
 }
