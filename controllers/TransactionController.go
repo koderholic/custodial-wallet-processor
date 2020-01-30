@@ -61,7 +61,7 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 	}
 	controller.Logger.Info("Incoming request details for GetTransactionsByAssetId : assetID : %+v", assetID)
 
-	if err := controller.Repository.FetchByFieldName(&dto.Transaction{RecipientID: assetID}, &initiatorTransactions); err != nil {
+	if err := controller.Repository.FetchByFieldName(&dto.Transaction{InitiatorID: assetID}, &initiatorTransactions); err != nil {
 		if err.Error() != utility.SQL_404 {
 			controller.Logger.Error("Outgoing response to GetTransactionsByAssetId request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
@@ -71,7 +71,7 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 		}
 	}
 
-	if err := controller.Repository.GetByFieldName(&dto.Transaction{InitiatorID: assetID}, &recipientTransactions); err != nil {
+	if err := controller.Repository.FetchByFieldName(&dto.Transaction{RecipientID: assetID}, &recipientTransactions); err != nil {
 		if err.Error() != utility.SQL_404 {
 			controller.Logger.Error("Outgoing response to GetTransactionsByAssetId request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
@@ -91,12 +91,12 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 
 	}
 	for i := 0; i < len(recipientTransactions); i++ {
-		transaction := recipientTransactions[i]
-		tx := model.TransactionResponse{}
+		receipientTransaction := recipientTransactions[i]
+		txRecipient := model.TransactionResponse{}
 
-		transaction.Map(&tx)
+		receipientTransaction.Map(&txRecipient)
 
-		responseData.Transactions = append(responseData.Transactions, tx)
+		responseData.Transactions = append(responseData.Transactions, txRecipient)
 
 	}
 

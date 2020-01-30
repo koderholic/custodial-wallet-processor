@@ -24,6 +24,18 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.KeyManagementService,
 			Action:   "/address/create",
 		}
+	case "signTransaction":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.KeyManagementService,
+			Action:   "/sign-transaction",
+		}
+	case "broadcastTransaction":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.CryptoAdapterService,
+			Action:   "/broadcast-transaction",
+		}
 	default:
 		return MetaData{}
 	}

@@ -43,3 +43,31 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 	logger.Info("Response from GenerateAddress : %+v", responseData)
 	return responseData.Address, nil
 }
+
+// SignTransaction ... Calls key-management service with a transaction object to sign
+func SignTransaction(logger *utility.Logger, config Config.Data, requestData model.SignTransactionRequest, responseData *model.SignTransactionResponse, serviceErr interface{}) error {
+
+	authToken, err := GetAuthToken(logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("signTransaction", config)
+
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+}
