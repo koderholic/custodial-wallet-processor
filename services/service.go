@@ -34,6 +34,7 @@ func NewClient(httpClient *http.Client, logger *utility.Logger, config Config.Da
 }
 
 func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
+	c.Logger.Info("Outgoing request to %s : %+v", c.BaseURL, body)
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
 	var buf io.ReadWriter
@@ -85,6 +86,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 
 	err = json.Unmarshal(resBody, v)
+	c.Logger.Info("Incoming response from %s : %+v", c.BaseURL, v)
 	return resp, err
 
 }
