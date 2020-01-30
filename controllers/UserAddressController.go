@@ -14,7 +14,7 @@ import (
 )
 
 // GetAssetAddress ... Retrieves the blockchain address of an address, if non exist, it calls key-management to generate one
-func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller UserAssetController) GetAssetAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var externalServiceErr model.ServicesRequestErr
 	var responseData map[string]string
@@ -33,7 +33,7 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
 
-	if err := controller.Repository.GetByFieldName(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAsset); err != nil {
 		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -49,12 +49,8 @@ func (controller BaseController) GetAssetAddress(responseWriter http.ResponseWri
 		if err.Error() != utility.SQL_404 {
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
-			if err.Error() == utility.SQL_404 {
-				responseWriter.WriteHeader(http.StatusNotFound)
-			} else {
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-			}
-			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 			return
 		}
 

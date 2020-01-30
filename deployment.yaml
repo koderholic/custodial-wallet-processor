@@ -28,6 +28,7 @@ resources:
     permissions:
       - svcs.key-management.sign-transaction
       - svcs.key-management.create-address
+      - svcs.crypto-adapter.broadcast
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID

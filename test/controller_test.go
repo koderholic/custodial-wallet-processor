@@ -138,7 +138,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(logger, Config, userAssetController.InternalTransfer).ValidateAuthToken(utility.Permissions["InternalTransfer"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, Config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, Config, controller.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, Config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, Config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, Config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 
