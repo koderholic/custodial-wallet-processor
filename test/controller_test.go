@@ -147,12 +147,12 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 
 func (s *Suite) Test_GetUserAsset() {
 	// s.Mock.ExpectQuery(regexp.QuoteMeta(
-	// 	fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
+	// 	fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_assets.* FROM `user_assets`"))).
 	// 	WithArgs(sqlmock.AnyArg()).
 	// 	WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol", "decimal"}).
 	// 		AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC", 8),
 	// 	)
-	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
+	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_assets`")).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "symbol"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC"),
@@ -177,12 +177,12 @@ func (s *Suite) Test_CreateUserAsset() {
 		)
 
 	s.Mock.ExpectQuery(regexp.QuoteMeta(
-		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_balances.* FROM `user_balances`"))).
+		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_assets.* FROM `user_assets`"))).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "symbol", "decimal"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC", 8),
 		)
-	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_balances`")).
+	s.Mock.ExpectQuery(regexp.QuoteMeta("INSERT  INTO `user_assets`")).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "denomination_id", "available_balance", "symbol"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC"),
