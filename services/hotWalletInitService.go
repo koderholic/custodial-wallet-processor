@@ -10,30 +10,33 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// func initHotWallet(repository database.IRepository, logger *utility.Logger, configuration config.Data, userID uuid.UUID, symbol string, serviceErr interface{}) {
+func InitHotWallet(DB *gorm.DB, logger *utility.Logger, config Config.Data) error {
 
-// 	//APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	supportedAssets := []dto.Denomination{}
 
-// 	var externalServiceErr model.ServicesRequestErr
+	if err := DB.Find(&supportedAssets).Error; err != nil {
+		if err.Error() != utility.SQL_404 {
+			return err
+		}
+	}
 
-// 	// 1. First check if hot wallet addresses haven't been generated yet.
-// 	// 2. If not yet, generate a new address per each asset supported.
+	for _, asset := range supportedAssets {
+		address, err := GetHotWalletAddressFor(DB, logger, config, asset.Symbol)
+		if err != nil {
+			logger.Error("Error with getting hot wallet address for %s : %s", asset.Symbol, err)
+			return err
+		}
+		if address != "" {
+			if err := DB.Create(&dto.HotWalletAsset{Address: address, AssetSymbol: asset.Symbol}).Error; err != nil {
+				logger.Error("Error with creating hot wallet asset record %s : %s", asset.Symbol, err)
+			}
+		}
 
-// 	for _, asset := range config.SupportedAssets {
+	}
 
-// 		address, err := GenerateAddress(logger, configuration, uuid.NewV4(), asset, externalServiceErr)
+	return nil
 
-// 		if err != nil {
-
-// 		}
-
-// 		fmt.Printf("Address generated %s", address)
-
-// 		//repository.Create()
-
-// 	}
-
-// }
+}
 
 // GetHotWalletAddressFor ... Get the Bundle hot wallet address corresponding to a certain asset
 func GetHotWalletAddressFor(DB *gorm.DB, logger *utility.Logger, config Config.Data, asseSymbol string) (string, error) {
