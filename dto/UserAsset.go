@@ -29,5 +29,9 @@ type UserAssetBalance struct {
 
 // TableName ... Change table name from default generated from UserAssetBalance
 func (dto UserAssetBalance) TableName() string {
-	return "user_balances"
+	return "user_assets"
+}
+
+func (dto UserBalance) TableName() string {
+	return "user_assets"
 }

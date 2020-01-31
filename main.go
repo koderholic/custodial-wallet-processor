@@ -5,6 +5,7 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/utility"
+	"wallet-adapter/services"
 
 	"log"
 	"net/http"
@@ -29,6 +30,10 @@ func main() {
 	defer Database.CloseDBInstance()
 	Database.RunDbMigrations()
 	Database.DBSeeder()
+
+	if err := services.InitHotWallet(Database.DB, logger, config); err != nil {
+		logger.Error("Server started and listening on port %s", config.AppPort)
+	}
 
 	app.RegisterRoutes(router, validator, config, logger, Database.DB)
 

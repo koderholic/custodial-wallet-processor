@@ -75,3 +75,9 @@ func (c *Data) Init(configDir string) {
 	viper.Unmarshal(c)
 	log.Println("App configuration loaded successfully!")
 }
+
+var SupportedAssets = [...]string{
+	"BTC",
+	"BNB",
+	"ETH",
+}
