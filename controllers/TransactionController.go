@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
@@ -117,7 +118,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 
 	apiResponse := utility.NewResponse()
 	requestData := model.ExternalTransferRequest{}
-	responseData := model.TransactionReceipt{}
+	responseData := model.ExternalTransferResponse{}
 	paymentRef := utility.RandomString(16)
 
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
@@ -149,12 +150,21 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
-	// A check is done to ensure the transaction status of debitReference is completed
-	if debitReference.TransactionStatus != dto.TransactionStatus.COMPLETED {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", utility.GetSQLErr(INVALID_DEBIT))
+	//	Ensure the debit reference has not already been processed, as the debitRefence field will be populated if processed
+	if debitReference.DebitReference != "" {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", utility.DEBIT_PROCESSED_ERR)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INVALID_DEBIT", utility.GetSQLErr(INVALID_DEBIT)))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INVALID_DEBIT", utility.DEBIT_PROCESSED_ERR))
+		return
+	}
+
+	// Checks to ensure the transaction status of debitReference is completed
+	if debitReference.TransactionStatus != dto.TransactionStatus.COMPLETED {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", utility.INVALID_DEBIT)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INVALID_DEBIT", utility.INVALID_DEBIT))
 		return
 	}
 
@@ -165,10 +175,10 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", utility.SERVER_ERR))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 		return
 	}
-	if value.LessThan(availbal) {
+	if value.LessThan(debitValue) {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -176,25 +186,49 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	// Get asset associated with the debit reference
+	debitReferenceAsset := dto.UserAssetBalance{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReference.RecipientID}}, &debitReferenceAsset); err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
+	// Convert value to crypto smallest unit
+	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
+	baseExp := decimal.NewFromInt(10)
+	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+	if err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		return
+	}
+
 	// Create a transaction record for the transaction on the db for the request
 	transaction := dto.Transaction{
-
-		InitiatorID:          decodedToken.ServiceID, // serviceId
+		InitiatorID:          decodedToken.ServiceID,
 		RecipientID:          debitReference.RecipientID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
-		Memo:                 "External transfer to chain",
+		Memo:                 debitReference.Memo,
 		TransactionType:      dto.TransactionType.ONCHAIN,
-		TransactionStatus:    dto.TransactionStatus.PENDING,
 		TransactionTag:       dto.TransactionTag.DEBIT,
 		Value:                value.String(),
-		PreviousBalance:      previousBalance,
-		AvailableBalance:     currentAvailableBalance,
+		PreviousBalance:      debitReference.PreviousBalance,
+		AvailableBalance:     debitReference.AvailableBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 	}
-	if err := controller.Repository.Create(&transaction).Error; err != nil {
+	if err := controller.Repository.Create(&transaction); err != nil {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -203,11 +237,26 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Queue transaction up for processing
+	queue := dto.TransactionQueue{
+		Recipient:     requestData.RecipientAddress,
+		Value:         transactionValue,
+		Denomination:  debitReferenceAsset.Symbol,
+		TransactionId: transaction.ID,
+	}
+	if err := controller.Repository.Create(&queue); err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
+	// Acknowledge transaction to the calling service
 	responseData.TransactionReference = transaction.TransactionReference
-	responseData.PaymentReference = transaction.PaymentReference
+	responseData.DebitReference = requestData.DebitReference
 	responseData.TransactionStatus = transaction.TransactionStatus
 
-	controller.Logger.Info("Outgoing response to DebitUserAsset request %+v", responseData)
+	controller.Logger.Info("Outgoing response to ExternalTransfer request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)

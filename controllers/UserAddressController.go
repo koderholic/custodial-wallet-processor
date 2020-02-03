@@ -33,7 +33,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAsset); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
 		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -67,7 +67,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
 			return
 		}
-		userAddress.AssetID = userAsset.ID
+		userAddress.AssetID = assetID
 		userAddress.Address = address
 		if createErr := controller.Repository.Create(&userAddress); createErr != nil {
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)

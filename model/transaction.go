@@ -30,10 +30,10 @@ type TransactionListResponse struct {
 }
 
 type ExternalTransferRequest struct {
-	RecipientAddress     string  `json:"recipientAddress,omitempty"`
-	Value                float64 `json:"value,omitempty"`
-	DebitReference       string  `json:"debitReference,omitempty"`
-	TransactionReference string  `json:"transactionReference,omitempty"`
+	RecipientAddress     string  `json:"recipientAddress,omitempty" validate:"required"`
+	Value                float64 `json:"value,omitempty" validate:"required"`
+	DebitReference       string  `json:"debitReference,omitempty" validate:"required"`
+	TransactionReference string  `json:"transactionReference,omitempty" validate:"required"`
 }
 
 type ExternalTransferResponse struct {
