@@ -42,9 +42,9 @@ type InternalTransferRequest struct {
 
 // TransactionReceipt ... Model definition for credit user asset request
 type TransactionReceipt struct {
-	AssetID              uuid.UUID `json:"assetId,omitempty"`
-	Value                string    `json:"value,omitempty"`
-	TransactionReference string    `json:"transactionReference,omitempty"`
-	PaymentReference     string    `json:"paymentReference,omitempty"`
-	TransactionStatus    string    `json:"transactionStatus,omitempty"`
+	// AssetID              uuid.UUID `json:"assetId,omitempty"`
+	Value                string `json:"value,omitempty"`
+	TransactionReference string `json:"transactionReference,omitempty"`
+	PaymentReference     string `json:"paymentReference,omitempty"`
+	TransactionStatus    string `json:"transactionStatus,omitempty"`
 }

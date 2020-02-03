@@ -6,7 +6,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// transactionRequest ... Model definition for cget transaction request
+// transactionRequest ... Model definition for get transaction request
 type TransactionResponse struct {
 	ID                   uuid.UUID `json:"id,omitempty"`
 	InitiatorID          uuid.UUID `json:"initiatorId,omitempty"`
@@ -27,4 +27,17 @@ type TransactionResponse struct {
 
 type TransactionListResponse struct {
 	Transactions []TransactionResponse `json:"transactions,omitempty"`
+}
+
+type ExternalTransferRequest struct {
+	RecipientAddress     string  `json:"recipientAddress,omitempty"`
+	Value                float64 `json:"value,omitempty"`
+	DebitReference       string  `json:"debitReference,omitempty"`
+	TransactionReference string  `json:"transactionReference,omitempty"`
+}
+
+type ExternalTransferResponse struct {
+	TransactionReference string `json:"transactionReference,omitempty"`
+	DebitReference       string `json:"debitReference,omitempty"`
+	TransactionStatus    string `json:"transactionStatus,omitempty"`
 }
