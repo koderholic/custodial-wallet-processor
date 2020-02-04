@@ -492,7 +492,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", validationErr)
+		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", validationErr)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
@@ -533,7 +533,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
+		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
@@ -542,7 +542,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
+		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
@@ -594,7 +594,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	if err := tx.Create(&transaction).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
+		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
