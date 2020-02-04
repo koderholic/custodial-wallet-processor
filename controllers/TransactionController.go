@@ -139,8 +139,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// A check is done to ensure the debitReference points to an actual previous debit
-	debitReference := dto.Transaction{}
-	if err := controller.Repository.FetchByFieldName(&dto.Transaction{TransactionReference: requestData.DebitReference}, &debitReference); err != nil {
+	debitReferenceTransaction := dto.Transaction{}
+	if err := controller.Repository.FetchByFieldName(&dto.Transaction{TransactionReference: requestData.DebitReference}, &debitReferenceTransaction); err != nil {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -152,7 +152,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 	//	Ensure the debit reference has not already been processed, as the debitRefence field will be populated if processed
-	if debitReference.DebitReference != "" {
+	if debitReferenceTransaction.DebitReference != "" {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", utility.DEBIT_PROCESSED_ERR)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -161,7 +161,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Checks to ensure the transaction status of debitReference is completed
-	if debitReference.TransactionStatus != dto.TransactionStatus.COMPLETED {
+	if debitReferenceTransaction.TransactionStatus != dto.TransactionStatus.COMPLETED {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", utility.INVALID_DEBIT)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -171,7 +171,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 
 	// Checks also that the value matches the value that was initially debited
 	value := decimal.NewFromFloat(requestData.Value)
-	debitValue, err := decimal.NewFromString(debitReference.Value)
+	debitValue, err := decimal.NewFromString(debitReferenceTransaction.Value)
 	if err != nil {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -189,7 +189,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 
 	// Get asset associated with the debit reference
 	debitReferenceAsset := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReference.RecipientID}}, &debitReferenceAsset); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -229,15 +229,16 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// Create a transaction record for the transaction on the db for the request
 	transaction := dto.Transaction{
 		InitiatorID:          decodedToken.ServiceID,
-		RecipientID:          debitReference.RecipientID,
+		RecipientID:          debitReferenceTransaction.RecipientID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
-		Memo:                 debitReference.Memo,
+		DebitReference:       requestData.DebitReference,
+		Memo:                 debitReferenceTransaction.Memo,
 		TransactionType:      dto.TransactionType.ONCHAIN,
 		TransactionTag:       dto.TransactionTag.WITHDRAW,
 		Value:                value.String(),
-		PreviousBalance:      debitReference.PreviousBalance,
-		AvailableBalance:     debitReference.AvailableBalance,
+		PreviousBalance:      debitReferenceTransaction.PreviousBalance,
+		AvailableBalance:     debitReferenceTransaction.AvailableBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
