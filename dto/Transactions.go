@@ -62,6 +62,7 @@ type Transaction struct {
 	PreviousBalance      string       `gorm:"type:decimal(64,18);not null" json:"previous_balance,omitempty"`
 	AvailableBalance     string       `gorm:"type:decimal(64,18);not null" json:"available_balance,omitempty"`
 	ProcessingType       string       `gorm:"not null;default:'SINGLE'" json:"processing_type,omitempty"`
+	OnChainTxId          uuid.UUID    `gorm:"type:VARCHAR(36);" json:"on_chain_tx_id,omitempty"`
 	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id,omitempty"`
 	TransactionStartDate time.Time    `json:"transaction_start_date,omitempty"`
 	TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`

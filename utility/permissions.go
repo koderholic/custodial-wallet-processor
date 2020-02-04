@@ -9,5 +9,6 @@ var (
 		"InternalTransfer": "do-internal-transfer",
 		"GetAssetAddress":  "get-address",
 		"GetTransaction":   "get-transactions",
+		"OnChainDeposit":   "on-chain-deposit",
 	}
 )
