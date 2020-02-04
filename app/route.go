@@ -51,6 +51,7 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 
 	})
 
