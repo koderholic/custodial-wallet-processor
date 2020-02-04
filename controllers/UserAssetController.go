@@ -566,6 +566,12 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
+	transactionStatus := dto.TransactionStatus.PENDING
+	if chainTransaction.Status == true {
+		transactionStatus = dto.TransactionStatus.COMPLETED
+	} else {
+		transactionStatus = dto.TransactionStatus.REJECTED
+	}
 	// Create transaction record
 	transaction := dto.Transaction{
 
@@ -574,9 +580,9 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
 		Memo:                 requestData.Memo,
-		TransactionType:      dto.TransactionType.OFFCHAIN,
-		TransactionStatus:    dto.TransactionStatus.COMPLETED,
-		TransactionTag:       dto.TransactionTag.CREDIT,
+		TransactionType:      dto.TransactionType.ONCHAIN,
+		TransactionStatus:    transactionStatus,
+		TransactionTag:       dto.TransactionTag.DEPOSIT,
 		Value:                value.String(),
 		PreviousBalance:      previousBalance,
 		AvailableBalance:     currentAvailableBalance,
