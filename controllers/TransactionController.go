@@ -151,14 +151,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
-	//	Ensure the debit reference has not already been processed, as the debitRefence field will be populated if processed
-	if debitReferenceTransaction.DebitReference != "" {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", utility.DEBIT_PROCESSED_ERR)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INVALID_DEBIT", utility.DEBIT_PROCESSED_ERR))
-		return
-	}
 
 	// Checks to ensure the transaction status of debitReference is completed
 	if debitReferenceTransaction.TransactionStatus != dto.TransactionStatus.COMPLETED {
@@ -179,7 +171,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 		return
 	}
-	if value.LessThan(debitValue) {
+	if value.GreaterThan(debitValue) {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -223,7 +215,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Failed to complete external transafer on :  %s", requestData.DebitReference, err)))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Failed to complete external transafer on %s : %s", requestData.DebitReference, err)))
 		return
 	}
 	// Create a transaction record for the transaction on the db for the request
