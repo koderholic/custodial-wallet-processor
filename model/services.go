@@ -56,3 +56,16 @@ type ServicesRequestSuccess struct {
 	Message string            `json:"message"`
 	Data    map[string]string `json:"data"`
 }
+
+// BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
+type ConfirmTransactionRequest struct {
+	TransactionHash string `json:"transactionHash"`
+	AssetSymbol     string `json:"assetSymbol"`
+}
+
+// BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
+type ConfirmTransactionResponse struct {
+	TransactionHash string `json:"transactionHash"`
+	Status          string `json:"status"`
+	AssetSymbol     string `json:"assetSymbol"`
+}
