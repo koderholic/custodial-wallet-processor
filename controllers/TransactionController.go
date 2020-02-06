@@ -271,7 +271,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Acknowledge transaction to the calling service
+	// Send acknowledgement to the calling service
 	responseData.TransactionReference = transaction.TransactionReference
 	responseData.DebitReference = requestData.DebitReference
 	responseData.TransactionStatus = transaction.TransactionStatus
@@ -368,10 +368,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 			return
 		}
-		// TODO :
-		// fetch Bundle address for the given crypto
-		// Call crypto adapter to return balance for address (Endpoint not available yet)
-		// Updates bundle float balance
+
 		if err := tx.Commit().Error; err != nil {
 			tx.Rollback()
 			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
@@ -408,11 +405,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
-
-	// TODO :
-	// fetch Bundle address for the given crypto
-	// Call crypto adapter to return balance for address (Endpoint not available yet)
-	// Updates bundle float balance
 
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
