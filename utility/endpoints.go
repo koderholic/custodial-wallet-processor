@@ -42,6 +42,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.CryptoAdapterService,
 			Action:   "/webhook/register",
 		}
+	case "transactionStatus":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.CryptoAdapterService,
+			Action:   "/transaction-status",
+		}
 	default:
 		return MetaData{}
 	}

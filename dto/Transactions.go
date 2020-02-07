@@ -53,14 +53,16 @@ type Transaction struct {
 	RecipientID          uuid.UUID    `json:"type:VARCHAR(36);not null" json:"recipient_id,omitempty"`
 	TransactionReference string       `gorm:"not null;unique_index" json:"transaction_reference,omitempty"`
 	PaymentReference     string       `gorm:"not null;unique_index" json:"payment_reference,omitempty"`
+	DebitReference       string       `json:"debit_reference,omitempty"`
 	Memo                 string       `gorm:"not null;" json:"memo,omitempty"`
-	TransactionType      string       `gorm:"not null;default:'Offchain'" json:"transaction_type,omitempty"`
-	TransactionStatus    string       `gorm:"not null;default:'Pending';index:transaction_status" json:"transaction_status,omitempty"`
-	TransactionTag       string       `gorm:"not null;default:'Credit'" json:"transaction_tag,omitempty"`
+	TransactionType      string       `gorm:"not null;default:'OFFCHAIN'" json:"transaction_type,omitempty"`
+	TransactionStatus    string       `gorm:"not null;default:'PENDING';index:transaction_status" json:"transaction_status,omitempty"`
+	TransactionTag       string       `gorm:"not null;default:'CREDIT'" json:"transaction_tag,omitempty"`
 	Value                string       `gorm:"type:decimal(64,18);not null" json:"value,omitempty"`
 	PreviousBalance      string       `gorm:"type:decimal(64,18);not null" json:"previous_balance,omitempty"`
 	AvailableBalance     string       `gorm:"type:decimal(64,18);not null" json:"available_balance,omitempty"`
-	ProcessingType       string       `gorm:"not null;default:'Single'" json:"processing_type,omitempty"`
+	ProcessingType       string       `gorm:"not null;default:'SINGLE'" json:"processing_type,omitempty"`
+	OnChainTxId          uuid.UUID    `gorm:"type:VARCHAR(36);" json:"on_chain_tx_id,omitempty"`
 	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id,omitempty"`
 	TransactionStartDate time.Time    `json:"transaction_start_date,omitempty"`
 	TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`

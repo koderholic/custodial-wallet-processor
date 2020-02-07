@@ -60,3 +60,31 @@ func SubscribeAddress(logger *utility.Logger, config Config.Data, requestData mo
 	}
 	return nil
 }
+
+// TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
+func TransactionStatus(logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
+
+	authToken, err := GetAuthToken(logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("transactionStatus", config)
+
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+}

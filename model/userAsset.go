@@ -31,6 +31,18 @@ type CreditUserAssetRequest struct {
 	Memo                 string    `json:"memo" validate:"required"`
 }
 
+type ChainData struct {
+	Status          *bool  `json:"status" validate:"required"`
+	TransactionHash string `json:"transactionHash" validate:"required"`
+	TransactionFee  string `json:"transactionFee" validate:"required"`
+	BlockHeight     int64  `json:"blockHeight" validate:"required"`
+}
+
+type OnChainCreditUserAssetRequest struct {
+	CreditUserAssetRequest
+	ChainData ChainData `json:"chainData" validate:"required"`
+}
+
 // CreditUserAssetRequest ... Model definition for credit user asset request
 type InternalTransferRequest struct {
 	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`

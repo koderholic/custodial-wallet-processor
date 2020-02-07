@@ -16,4 +16,7 @@ var (
 	TRANSFER_TO_SELF          = "Transfer to self not allowed"
 	INSUFFICIENT_FUNDS        = "User asset do not have sufficient balance for this transaction"
 	SQL_404                   = "record not found"
+	INVALID_DEBIT             = "Debit reference provided was not successful."
+	INVALID_DEBIT_AMOUNT      = "Value in debit reference does not match value provided."
+	DEBIT_PROCESSED_ERR       = "Debit reference has already been processed for external transfer"
 )
