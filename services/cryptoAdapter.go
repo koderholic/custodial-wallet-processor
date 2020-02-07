@@ -36,6 +36,31 @@ func BroadcastToChain(logger *utility.Logger, config Config.Data, requestData mo
 	return nil
 }
 
+func SubscribeAddress(logger *utility.Logger, config Config.Data, requestData model.SubscriptionRequest, responseData *model.SubscriptionResponse, serviceErr interface{}) error {
+	metaData := utility.GetRequestMetaData("subscribeAddress", config)
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	if responseData.Status == false {
+		err := utility.AppError{
+			ErrType: "Could not subscribe address",
+			Err:     nil,
+		}
+		return err
+	}
+	return nil
+}
+
 // TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
 func TransactionStatus(logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
 
