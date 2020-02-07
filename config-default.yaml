@@ -13,3 +13,16 @@ DB_HOST: "127.0.0.1:3306"
 DB_USER: ""
 DB_PASSWORD: ""
 DB_NAME: "walletAdapter"
+supportedCoins:
+  bitcoin:
+    name: bitcoin
+    symbol: btc
+    slip: 0
+  binance:
+    name: binance
+    symbol: bnb
+    slip: 714
+  ethereum:
+    name: ethereum
+    symbol: eth
+    slip: 60

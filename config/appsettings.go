@@ -27,6 +27,14 @@ type Data struct {
 	CryptoAdapterService  string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
 	DepositWebhookURL     string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
+
+	//coin
+	SupportedCoins map[string]SupportedCoin `mapstructure:"supportedCoins"`
+}
+type SupportedCoin struct {
+	Name   string `mapstructure:"name"  yaml:"name,omitempty"`
+	Symbol string `mapstructure:"symbol"  yaml:"symbol,omitempty"`
+	Slip   string `mapstructure:"slip"  yaml:"slip,omitempty"`
 }
 
 //Init : initialize data
