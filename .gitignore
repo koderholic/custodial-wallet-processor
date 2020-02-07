@@ -21,3 +21,4 @@ config.yaml
 logs
 TODO
 .DS_Store
+__debug_bin

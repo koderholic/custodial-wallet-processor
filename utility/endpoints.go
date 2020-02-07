@@ -36,6 +36,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.CryptoAdapterService,
 			Action:   "/broadcast-transaction",
 		}
+	case "transactionStatus":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.CryptoAdapterService,
+			Action:   "/transaction-status",
+		}
 	default:
 		return MetaData{}
 	}
