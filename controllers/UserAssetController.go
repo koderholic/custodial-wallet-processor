@@ -551,7 +551,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	//save chain tx model first, get id and use that in Transaction model
 	chainTransaction := dto.ChainTransaction{
-		Status:          requestData.ChainData.Status,
+		Status:          *requestData.ChainData.Status,
 		TransactionHash: requestData.ChainData.TransactionHash,
 		TransactionFee:  requestData.ChainData.TransactionFee,
 		BlockHeight:     requestData.ChainData.BlockHeight,

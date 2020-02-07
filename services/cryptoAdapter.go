@@ -37,7 +37,7 @@ func BroadcastToChain(logger *utility.Logger, config Config.Data, requestData mo
 }
 
 // TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
-func TransactionStatus(logger *utility.Logger, config Config.Data, requestData model.ConfirmTransactionRequest, responseData *model.ConfirmTransactionResponse, serviceErr interface{}) error {
+func TransactionStatus(logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(logger, config)
 	if err != nil {

@@ -32,7 +32,7 @@ type CreditUserAssetRequest struct {
 }
 
 type ChainData struct {
-	Status          bool   `json:"status" validate:"required"`
+	Status          *bool  `json:"status" validate:"required"`
 	TransactionHash string `json:"transactionHash" validate:"required"`
 	TransactionFee  string `json:"transactionFee" validate:"required"`
 	BlockHeight     int64  `json:"blockHeight" validate:"required"`

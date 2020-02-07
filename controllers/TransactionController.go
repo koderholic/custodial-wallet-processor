@@ -290,10 +290,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	requestData := model.ChainData{}
 	serviceErr := model.ServicesRequestErr{}
 
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for ConfirmTransaction : %+v", requestData)
 
@@ -321,7 +317,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	}
 
 	// Goes to chain transaction table, update the status of the chain transaction,
-	chainTransaction := dto.ChainTransaction{Status: requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
+	chainTransaction := dto.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
 	if err := tx.Model(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}).Updates(&chainTransaction).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
@@ -331,14 +327,20 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 
+	transactionDetails := dto.Transaction{}
+	_ = controller.Repository.Get(&dto.Transaction{OnChainTxId: chainTransaction.ID}, &transactionDetails)
+	transactionQueueDetails := dto.TransactionQueue{}
+	_ = controller.Repository.GetByFieldName(&dto.TransactionQueue{TransactionId: transactionDetails.ID}, &transactionQueueDetails)
+
 	// if status is true; Calls TransactionStatus on crypto adapter to verify that the transaction was indeed successful
-	if requestData.Status {
-		transactionStatusRequest := model.ConfirmTransactionRequest{
+	if *requestData.Status {
+		transactionStatusRequest := model.TransactionStatusRequest{
 			TransactionHash: requestData.TransactionHash,
+			AssetSymbol:     transactionQueueDetails.Denomination,
 		}
-		transactionStatusResponse := model.ConfirmTransactionResponse{}
+		transactionStatusResponse := model.TransactionStatusResponse{}
 		if err := services.TransactionStatus(controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
+			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v : %+v", serviceErr, err)
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			if serviceErr.Code != "" {
