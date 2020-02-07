@@ -8,6 +8,7 @@ import (
 	"time"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
+	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
@@ -331,22 +332,22 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	}
 
 	// Calls TransactionStatus on crypto adapter to verify the transaction status
-	// transactionStatusRequest := model.TransactionStatusRequest{
-	// 	TransactionHash: requestData.TransactionHash,
-	// 	AssetSymbol:     transactionQueueDetails.Denomination,
-	// }
+	transactionStatusRequest := model.TransactionStatusRequest{
+		TransactionHash: requestData.TransactionHash,
+		AssetSymbol:     transactionQueueDetails.Denomination,
+	}
 	transactionStatusResponse := model.TransactionStatusResponse{}
-	// if err := services.TransactionStatus(controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
-	// 	controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v : %+v", serviceErr, err)
-	// 	responseWriter.Header().Set("Content-Type", "application/json")
-	// 	responseWriter.WriteHeader(http.StatusInternalServerError)
-	// 	if serviceErr.Code != "" {
-	// 		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", serviceErr.Message))
-	// 		return
-	// 	}
-	// 	_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())))
-	// 	return
-	// }
+	if err := services.TransactionStatus(controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v : %+v", serviceErr, err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		if serviceErr.Code != "" {
+			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", serviceErr.Message))
+			return
+		}
+		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())))
+		return
+	}
 
 	if transactionStatusResponse.Status == "SUCCESS" {
 
