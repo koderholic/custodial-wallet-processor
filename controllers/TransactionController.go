@@ -316,12 +316,26 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 
-	// Get the asset denoimiuntion associated with the transaction
+	// Get the asset denomination associated with the transaction
 	chainTransaction := dto.ChainTransaction{}
-	err := controller.Repository.Get(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}, &chainTransaction)
 	transactionDetails := dto.Transaction{}
-	err = controller.Repository.Get(&dto.Transaction{OnChainTxId: chainTransaction.ID}, &transactionDetails)
 	transactionQueueDetails := dto.TransactionQueue{}
+	err := controller.Repository.Get(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}, &chainTransaction)
+	if err != nil {
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)))
+		return
+	}
+	err = controller.Repository.Get(&dto.Transaction{OnChainTxId: chainTransaction.ID}, &transactionDetails)
+	if err != nil {
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)))
+		return
+	}
 	err = controller.Repository.GetByFieldName(&dto.TransactionQueue{TransactionId: transactionDetails.ID}, &transactionQueueDetails)
 	if err != nil {
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
@@ -349,79 +363,46 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 
-	if transactionStatusResponse.Status == "SUCCESS" {
+	chainTransactionUpdate := dto.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
+	var transactionUpdate dto.Transaction
+	var transactionQueueUpdate dto.TransactionQueue
+	switch transactionStatusResponse.Status {
+	case "SUCCESS":
+		transactionUpdate = dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}
+		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}
+	case "FAILED":
+		transactionUpdate = dto.Transaction{TransactionStatus: dto.TransactionStatus.TERMINATED}
+		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.TERMINATED}
+	default:
+		transactionUpdate = dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}
+		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}
+	}
 
-		// Goes to chain transaction table, update the status of the chain transaction,
-		chainTransactionUpdate := dto.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
-		if err := tx.Model(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}).Updates(&chainTransactionUpdate).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)))
-			return
-		}
-
-		// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
-		transactionUpdate := dto.Transaction{TransactionStatus: dto.TransactionStatus.COMPLETED}
-		if err := tx.Model(&dto.Transaction{OnChainTxId: chainTransactionUpdate.ID}).Updates(&transactionUpdate).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-			return
-		}
-		// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
-		transactionQueueUpdate := dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.COMPLETED}
-		if err := tx.Model(&dto.TransactionQueue{TransactionId: transactionUpdate.ID}).Updates(&transactionQueueUpdate).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-			return
-		}
-
-	} else if transactionStatusResponse.Status == "FAILED" {
-
-		// Goes to chain transaction table, update the status of the chain transaction,
-		chainTransactionUpdate := dto.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
-		if err := tx.Model(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}).Updates(&chainTransactionUpdate).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)))
-			return
-		}
-
-		// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
-		transactionUpdate := dto.Transaction{TransactionStatus: dto.TransactionStatus.TERMINATED}
-		if err := tx.Model(&dto.Transaction{OnChainTxId: chainTransactionUpdate.ID}).Updates(&transactionUpdate).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-			return
-		}
-		// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
-		transactionQueueUpdate := dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.TERMINATED}
-		if err := tx.Model(&dto.TransactionQueue{TransactionId: transactionUpdate.ID}).Updates(&transactionQueueUpdate).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-			return
-		}
-
-	} else {
-		controller.Logger.Info("Outgoing response to ConfirmTransaction request %+v", apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+	// Goes to chain transaction table, update the status of the chain transaction,
+	if err := tx.Model(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}).Updates(&chainTransactionUpdate).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusOK)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)))
+		return
+	}
+	// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
+	if err := tx.Model(&dto.Transaction{OnChainTxId: chainTransactionUpdate.ID}).Updates(&transactionUpdate).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+	// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
+	if err := tx.Model(&dto.TransactionQueue{TransactionId: transactionUpdate.ID}).Updates(&transactionQueueUpdate).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
 
