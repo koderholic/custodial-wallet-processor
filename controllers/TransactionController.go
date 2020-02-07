@@ -368,8 +368,8 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	var transactionQueueUpdate dto.TransactionQueue
 	switch transactionStatusResponse.Status {
 	case "SUCCESS":
-		transactionUpdate = dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}
-		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}
+		transactionUpdate = dto.Transaction{TransactionStatus: dto.TransactionStatus.COMPLETED}
+		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.COMPLETED}
 	case "FAILED":
 		transactionUpdate = dto.Transaction{TransactionStatus: dto.TransactionStatus.TERMINATED}
 		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.TERMINATED}
