@@ -7,6 +7,7 @@ SECURITY_BUNDLE_PUBLICKEY : "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZU1BMEdDU3F
 authenticationServiceURL: "https://internal.dev.bundlewallet.com/authentication"
 keyManagementServiceURL: "https://internal.dev.bundlewallet.com/key-management"
 cryptoAdapterServiceURL: "https://internal.dev.bundlewallet.com/crypto-adapter"
+depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit"
 purgeCacheInterval: 5
 DB_HOST: "127.0.0.1:3306"
 DB_USER: ""

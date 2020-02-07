@@ -25,6 +25,7 @@ type Data struct {
 	AuthenticationService string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
 	CryptoAdapterService  string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
+	DepositWebhookURL     string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
 }
 

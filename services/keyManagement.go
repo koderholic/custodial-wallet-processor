@@ -39,6 +39,29 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 		}
 		return "", err
 	}
+	//call subscribe
+	subscriptionRequestData := model.SubscriptionRequest{}
+	subscriptionRequestData.Subscriptions = make(map[string][]string)
+	addressArray := []string{responseData.Address}
+	switch symbol {
+	case "BTC":
+		subscriptionRequestData.Subscriptions["0"] = addressArray
+		break
+	case "ETH":
+		subscriptionRequestData.Subscriptions["60"] = addressArray
+		break
+	case "BNB":
+		subscriptionRequestData.Subscriptions["714"] = addressArray
+		break
+	}
+	subscriptionRequestData.Webhook = config.DepositWebhookURL
+
+	subscriptionResponseData := model.SubscriptionResponse{}
+
+	if err := SubscribeAddress(logger, config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err == nil {
+		logger.Error("Failing to subscribe to address %s with err %s\n", responseData.Address, err)
+		return "", err
+	}
 
 	logger.Info("Response from GenerateAddress : %+v", responseData)
 	return responseData.Address, nil
