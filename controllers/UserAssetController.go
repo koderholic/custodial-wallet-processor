@@ -59,7 +59,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		}
 		balance, _ := decimal.NewFromString("0.00")
 		userAssetDTO := dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreate(userAssetDTO, &userAssetDTO)
+		_ = controller.Repository.FindOrCreate(dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
 		userAssetDTO.Symbol = denomination.Symbol
 
 		userAsset := model.Asset{}
