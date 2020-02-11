@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"testing"
 	"wallet-adapter/config"
 	"wallet-adapter/model"
@@ -12,12 +11,6 @@ import (
 func TestSubscribeAddress(t *testing.T) {
 
 	logger := utility.NewLogger()
-	supportedCoins := make(map[string]config.SupportedCoin)
-	supportedCoins["bitcoin"] = config.SupportedCoin{
-		Name:   "bitcoin",
-		Symbol: "btc",
-		Slip:   "0",
-	}
 	configTest := config.Data{
 		AppPort:               "9000",
 		ServiceName:           "crypto-wallet-adapter",
@@ -29,13 +22,12 @@ func TestSubscribeAddress(t *testing.T) {
 		KeyManagementService:  "https://internal.dev.bundlewallet.com/key-management",
 		CryptoAdapterService:  "https://internal.dev.bundlewallet.com/crypto-adapter",
 		DepositWebhookURL:     "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit",
-		SupportedCoins:        supportedCoins,
+		BtcSlipValue:          "0",
 	}
 
 	subs := make(map[string][]string)
 	addressArray := []string{"bc1qq65rn0wzjnmcwqz4jp0cx48lvj7ynectmw60jj"}
-	subs[configTest.SupportedCoins["bitcoin"].Slip] = addressArray
-	fmt.Print(subs["0"])
+	subs[configTest.BtcSlipValue] = addressArray
 	requestData := model.SubscriptionRequest{
 		Subscriptions: subs,
 		Webhook:       configTest.DepositWebhookURL,

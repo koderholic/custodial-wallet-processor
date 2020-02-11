@@ -26,15 +26,10 @@ type Data struct {
 	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
 	CryptoAdapterService  string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
 	DepositWebhookURL     string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
+	BtcSlipValue          string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
+	BnbSlipValue          string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
+	EthSlipValue          string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
-
-	//coin
-	SupportedCoins map[string]SupportedCoin `mapstructure:"supportedCoins"`
-}
-type SupportedCoin struct {
-	Name   string `mapstructure:"name"  yaml:"name,omitempty"`
-	Symbol string `mapstructure:"symbol"  yaml:"symbol,omitempty"`
-	Slip   string `mapstructure:"slip"  yaml:"slip,omitempty"`
 }
 
 //Init : initialize data
