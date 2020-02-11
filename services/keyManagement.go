@@ -45,13 +45,13 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 	addressArray := []string{responseData.Address}
 	switch symbol {
 	case "BTC":
-		subscriptionRequestData.Subscriptions[config.SupportedCoins["bitcoin"].Slip] = addressArray
+		subscriptionRequestData.Subscriptions[config.BtcSlipValue] = addressArray
 		break
 	case "ETH":
-		subscriptionRequestData.Subscriptions[config.SupportedCoins["ethereum"].Slip] = addressArray
+		subscriptionRequestData.Subscriptions[config.EthSlipValue] = addressArray
 		break
 	case "BNB":
-		subscriptionRequestData.Subscriptions[config.SupportedCoins["binance"].Slip] = addressArray
+		subscriptionRequestData.Subscriptions[config.BnbSlipValue] = addressArray
 		break
 	}
 	subscriptionRequestData.Webhook = config.DepositWebhookURL
