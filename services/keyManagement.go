@@ -58,7 +58,7 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 
 	subscriptionResponseData := model.SubscriptionResponse{}
 
-	if err := SubscribeAddress(logger, config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err == nil {
+	if err := SubscribeAddress(logger, config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
 		logger.Error("Failing to subscribe to address %s with err %s\n", responseData.Address, err)
 		return "", err
 	}
