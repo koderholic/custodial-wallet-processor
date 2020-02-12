@@ -42,6 +42,16 @@ type BroadcastToChainResponse struct {
 	Message         string `json:"message"`
 }
 
+type SubscriptionRequest struct {
+	Subscriptions map[string][]string `json:"subscriptions"`
+	Webhook       string              `json:"webhook"`
+}
+
+type SubscriptionResponse struct {
+	Message string `json:"message"`
+	Status  bool   `json:"status"`
+}
+
 // ServicesRequestErr ... Model definition for external services request made with error response
 type ServicesRequestErr struct {
 	Success bool              `json:"success"`
