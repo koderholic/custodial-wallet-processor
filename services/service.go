@@ -81,7 +81,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		return resp, err
 	}
 
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+	if resp.StatusCode != 200 || resp.StatusCode != 201 {
 		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
 	}
 

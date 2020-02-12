@@ -69,3 +69,38 @@ type TransactionStatusResponse struct {
 	Status          string `json:"status"`
 	AssetSymbol     string `json:"assetSymbol"`
 }
+
+// LockerServiceRequest ... Request definition for  acquire or renew lock, locker service
+type LockerServiceRequest struct {
+	Identifier   string `json:"identifier"`
+	Token        string `json:"token"`
+	ExpiresAfter int64  `json:"expiresAfter"`
+	Timeout      int64  `json:"timeout"`
+}
+
+// LockerServiceResponse ... Model definition for acquire lock successful response, locker service
+type LockerServiceResponse struct {
+	Identifier string `json:"identifier"`
+	Token      string `json:"token"`
+	ExpiresAt  string `json:"expiresAt"`
+	Fence      int64  `json:"fence"`
+}
+
+// LockReleaseRequest ...Request definition for release lock, locker service
+type LockReleaseRequest struct {
+	Identifier string `json:"identifier"`
+	Token      string `json:"token"`
+}
+
+// OnchainBalanceRequest ... Request definition for get on-chain balance, crypto-adapter service
+type OnchainBalanceRequest struct {
+	AssetSymbol string `json:"assetSymbol"`
+	Address     string `json:"address"`
+}
+
+// OnchainBalanceResponse ... Model definition for get on-chain balance successful response, crypto-adapter service
+type OnchainBalanceResponse struct {
+	Balance     string `json:"balance"`
+	AssetSymbol string `json:"assetSymbol"`
+	Decimals    int    `json:"decimals"`
+}

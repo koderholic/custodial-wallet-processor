@@ -42,6 +42,30 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.CryptoAdapterService,
 			Action:   "/transaction-status",
 		}
+	case "getOnchainBalance":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.CryptoAdapterService,
+			Action:   "/onchain-balance",
+		}
+	case "acquireLock":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.LockerService,
+			Action:   "/locks/acquire",
+		}
+	case "renewLockLease":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.LockerService,
+			Action:   "/locks/renew",
+		}
+	case "releaseLock":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.LockerService,
+			Action:   "/locks/release",
+		}
 	default:
 		return MetaData{}
 	}

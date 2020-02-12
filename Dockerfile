@@ -9,7 +9,8 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "purgeCacheInterval: 5" >> config.yaml && \
     echo "authenticationServiceURL: http://authentication" >> config.yaml && \
     echo "cryptoAdapterServiceURL: http://crypto-adapter" >> config.yaml && \
-    echo "keyManagementServiceURL: http://key-management" >> config.yaml
+    echo "keyManagementServiceURL: http://key-management" >> config.yaml && \
+    echo "lockerServiceURL: http://locker" >> config.yaml
 
 
 # RUN go get -d -v ./...

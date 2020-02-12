@@ -8,14 +8,14 @@ import (
 	"wallet-adapter/utility"
 )
 
-// broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func BroadcastToChain(logger *utility.Logger, config Config.Data, requestData model.BroadcastToChainRequest, responseData *model.BroadcastToChainResponse, serviceErr interface{}) error {
+// AcquireLock ... Calls locker service with information about the lock to lock down a transaction for processing
+func AcquireLock(logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(logger, config)
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("broadcastTransaction", config)
+	metaData := utility.GetRequestMetaData("acquireLock", config)
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -36,14 +36,14 @@ func BroadcastToChain(logger *utility.Logger, config Config.Data, requestData mo
 	return nil
 }
 
-// TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
-func TransactionStatus(logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
+// RenewLock ... Calls locker service with information about the lock to lock down a transaction for processing
+func RenewLock(logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(logger, config)
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("transactionStatus", config)
+	metaData := utility.GetRequestMetaData("renewLockLease", config)
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -64,14 +64,14 @@ func TransactionStatus(logger *utility.Logger, config Config.Data, requestData m
 	return nil
 }
 
-// GetOnchainBalance ... Calls crypto adapter with asset symbol and address to return balance of asset on-chain
-func GetOnchainBalance(logger *utility.Logger, config Config.Data, requestData model.OnchainBalanceRequest, responseData *model.OnchainBalanceResponse, serviceErr interface{}) error {
+// ReleaseLock ... Calls locker service with information about the lock to lock down a transaction for processing
+func ReleaseLock(logger *utility.Logger, config Config.Data, requestData model.LockReleaseRequest, responseData *model.ServicesRequestSuccess, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(logger, config)
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("getOnchainBalance", config)
+	metaData := utility.GetRequestMetaData("releaseLock", config)
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
