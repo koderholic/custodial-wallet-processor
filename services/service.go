@@ -58,6 +58,7 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 }
 
 func (c *Client) AddHeader(req *http.Request, headers map[string]string) *http.Request {
+	c.Logger.Info("Outgoing header for request to %s : %+v", c.BaseURL, headers)
 	for header, value := range headers {
 		req.Header.Set(header, value)
 	}
@@ -81,10 +82,11 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		return resp, err
 	}
 
-	if resp.StatusCode != 200 || resp.StatusCode != 201 {
+	fmt.Println("resp.StatusCode >> ", resp.StatusCode)
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
 	}
-
+	fmt.Println("resp.StatusCode >> ", resp.StatusCode)
 	err = json.Unmarshal(resBody, v)
 	c.Logger.Info("Incoming response from %s : %+v", c.BaseURL, v)
 	return resp, err

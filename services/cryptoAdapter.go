@@ -98,8 +98,8 @@ func GetOnchainBalance(logger *utility.Logger, config Config.Data, requestData m
 	}
 	metaData := utility.GetRequestMetaData("getOnchainBalance", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol ))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err
 	}

@@ -441,7 +441,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 		for _, transaction := range transactionQueue {
 			err := controller.ProcessSingleTxn(transaction)
-			fmt.Println("err >> ", err)
 			controller.Logger.Error("Error response from ProcessTransactions job : %s", err)
 		}
 		done <- true
@@ -463,17 +462,17 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 		return err
 	}
 	// It calls the lock service to obtain a lock for the transaction
-	// lockerServiceRequest := model.LockerServiceRequest{
-	// 	Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
-	// 	ExpiresAfter: 600000,
-	// }
-	// lockerServiceResponse := model.LockerServiceResponse{}
-	// if err := services.AcquireLock(controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
-	// 	if serviceErr.Code != "" {
-	// 		return errors.New(serviceErr.Message)
-	// 	}
-	// 	return err
-	// }
+	lockerServiceRequest := model.LockerServiceRequest{
+		Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
+		ExpiresAfter: 600000,
+	}
+	lockerServiceResponse := model.LockerServiceResponse{}
+	if err := services.AcquireLock(controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+		if !serviceErr.Success && serviceErr.Message != "" {
+			return errors.New(serviceErr.Message)
+		}
+		return err
+	}
 
 	// It makes a call to crypto adapter to get the current float amount
 	onchainBalanceRequest := model.OnchainBalanceRequest{
@@ -497,6 +496,7 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 	if floatBalance < transaction.Value {
 		// If BTC, trigger BTC sweep
 		// Else, trigger sweep for other Asset
+		// return errors.New("Not enough balance in float for this transaction")
 	}
 
 	// Calls key-management to sign transaction
@@ -507,7 +507,7 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 		CoinType:    transaction.Denomination,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignTransaction(controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err == nil {
+	if err := services.SignTransaction(controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		return err
 	}
 
@@ -536,17 +536,17 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 	}
 
 	// The routine returns the lock to the lock service and terminates
-	// lockReleaseRequest := model.LockReleaseRequest{
-	// 	Identifier: fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
-	// 	Token:      lockerServiceResponse.Token,
-	// }
-	// lockReleaseResponse := model.ServicesRequestSuccess{}
-	// if err := services.ReleaseLock(controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil {
-	// 	if serviceErr.Code != "" {
-	// 		return errors.New(serviceErr.Message)
-	// 	}
-	// 	return err
-	// }
+	lockReleaseRequest := model.LockReleaseRequest{
+		Identifier: fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
+		Token:      lockerServiceResponse.Token,
+	}
+	lockReleaseResponse := model.ServicesRequestSuccess{}
+	if err := services.ReleaseLock(controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil {
+		if serviceErr.Code != "" {
+			return errors.New(serviceErr.Message)
+		}
+		return err
+	}
 
 	return nil
 }
