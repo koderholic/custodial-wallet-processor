@@ -111,7 +111,7 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 
 func ExecuteCronJob(logger *utility.Logger, config Config.Data, userAssetRepository database.BaseRepository) {
 	s := gocron.NewScheduler()
-	s.Every(10).Minutes().From(gocron.NextTick()).Do(SweepTransactions, logger, config, userAssetRepository)
+	s.Every(10).Minutes().From(gocron.NextTick()).DoSafely(SweepTransactions, logger, config, userAssetRepository)
 	<-s.Start()
 }
 
