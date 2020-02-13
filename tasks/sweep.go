@@ -13,7 +13,6 @@ import (
 )
 
 func SweepTransactions(logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
-	fmt.Println("This task will run periodically")
 	serviceErr := model.ServicesRequestErr{}
 
 	var transactions []dto.Transaction
@@ -114,8 +113,3 @@ func ExecuteCronJob(logger *utility.Logger, config Config.Data, userAssetReposit
 	s.Every(10).Minutes().From(gocron.NextTick()).DoSafely(SweepTransactions, logger, config, userAssetRepository)
 	<-s.Start()
 }
-
-/*func main() {
-	go executeCronJob()
-	SomeAPICallHandler() // handler which accepts requests and responds
-}*/
