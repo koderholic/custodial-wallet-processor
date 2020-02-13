@@ -80,8 +80,9 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	if err != nil {
 		return resp, err
 	}
-
+	fmt.Println(" >>>> ", resp.StatusCode)
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		fmt.Println(" !! >>>>>>>.. ", string(resBody))
 		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
 	}
 

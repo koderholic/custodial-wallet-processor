@@ -25,6 +25,8 @@ type Data struct {
 	AuthenticationService string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
 	CryptoAdapterService  string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
+	LockerService         string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
+	LockerPrefix          string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
 	DepositWebhookURL     string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
 	BtcSlipValue          string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
 	BnbSlipValue          string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`

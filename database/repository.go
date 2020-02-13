@@ -99,14 +99,14 @@ func (repo *BaseRepository) Create(model interface{}) error {
 // Update ... Update a specified record from the database for a given id
 func (repo *BaseRepository) Update(id, model interface{}) error {
 
-	if err := repo.DB.Model(model).Update(model).Error; err != nil {
+	if err := repo.DB.Model(id).Update(model).Error; err != nil {
 		repo.Logger.Error("Error with repository Update : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     errors.New(strings.Join(strings.Split(err.Error(), " ")[2:], " ")),
 		}
 	}
-	repo.DB.Where("id = ?", id).First(model)
+	repo.DB.Where(id).First(model)
 	return nil
 }
 

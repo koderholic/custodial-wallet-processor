@@ -88,3 +88,31 @@ func TransactionStatus(logger *utility.Logger, config Config.Data, requestData m
 
 	return nil
 }
+
+// GetOnchainBalance ... Calls crypto adapter with asset symbol and address to return balance of asset on-chain
+func GetOnchainBalance(logger *utility.Logger, config Config.Data, requestData model.OnchainBalanceRequest, responseData *model.OnchainBalanceResponse, serviceErr interface{}) error {
+
+	authToken, err := GetAuthToken(logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("getOnchainBalance", config)
+
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol ))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+}

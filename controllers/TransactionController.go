@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -379,7 +380,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	}
 
 	// Goes to chain transaction table, update the status of the chain transaction,
-	if err := tx.Model(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}).Updates(&chainTransactionUpdate).Error; err != nil {
+	if err := tx.Model(&chainTransaction).Updates(&chainTransactionUpdate).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -388,7 +389,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 	// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
-	if err := tx.Model(&dto.Transaction{OnChainTxId: chainTransactionUpdate.ID}).Updates(&transactionUpdate).Error; err != nil {
+	if err := tx.Model(&transactionDetails).Updates(&transactionUpdate).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -397,7 +398,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 	// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
-	if err := tx.Model(&dto.TransactionQueue{TransactionId: transactionUpdate.ID}).Updates(&transactionQueueUpdate).Error; err != nil {
+	if err := tx.Model(&transactionQueueDetails).Updates(&transactionQueueUpdate).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -420,4 +421,163 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
 
+}
+
+// ProcessTransaction ...
+func (controller UserAssetController) ProcessTransactions(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	apiResponse := utility.NewResponse()
+
+	// Endpoint spins up a go-routine to process queued transactions and sends back an acknowledgement to the scheduler
+	done := make(chan bool)
+	go func() {
+
+		// Fetches all PENDING transactions from the transaction queue table for processing
+		var transactionQueue []dto.TransactionQueue
+		if err := controller.Repository.FetchByFieldName(&dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PENDING}, &transactionQueue); err != nil {
+			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
+			done <- true
+		}
+
+		for _, transaction := range transactionQueue {
+			serviceErr := model.ServicesRequestErr{}
+
+			// It calls the lock service to obtain a lock for the transaction
+			lockerServiceRequest := model.LockerServiceRequest{
+				Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
+				ExpiresAfter: 600000,
+			}
+			lockerServiceResponse := model.LockerServiceResponse{}
+			if err := services.AcquireLock(controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+				controller.Logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
+				continue
+			}
+
+			transactionQueueDetails := dto.TransactionQueue{}
+			if err := controller.Repository.GetByFieldName(&dto.TransactionQueue{TransactionId: transaction.TransactionId}, &transactionQueueDetails); err != nil {
+				controller.Logger.Error("Error occured while reverting transaction (%s) to pending : %s", transaction.TransactionId, err)
+				continue
+			}
+			if err := controller.Repository.Update(&transactionQueueDetails, &dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}); err != nil {
+				controller.Logger.Error("Error occured while updating transaction (%s) to On-going : %s", transaction.TransactionId, err)
+				continue
+			}
+
+			err := controller.ProcessSingleTxn(transaction)
+			if err != nil {
+				controller.Logger.Error("The transaction '%+v' could not be processed : ", transaction, err)
+
+				// Revert the transaction status back to pending
+				if err := controller.Repository.Update(&transactionQueueDetails, &dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PENDING}); err != nil {
+					controller.Logger.Error("Error occured while reverting transaction (%s) to pending : %s", transaction.TransactionId, err)
+					continue
+				}
+			}
+
+			// The routine returns the lock to the lock service and terminates
+			lockReleaseRequest := model.LockReleaseRequest{
+				Identifier: fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
+				Token:      lockerServiceResponse.Token,
+			}
+			lockReleaseResponse := model.ServicesRequestSuccess{}
+			if err := services.ReleaseLock(controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
+				controller.Logger.Error("Error occured while releasing lock : %+v; %s", serviceErr, err)
+			}
+			fmt.Printf("xlockReleaseRequest >>> ", lockReleaseRequest)
+		}
+		done <- true
+	}()
+
+	controller.Logger.Info("Outgoing response to ProcessTransactions request %+v", utility.SUCCESS)
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+
+	<-done
+}
+
+func (controller UserAssetController) ProcessSingleTxn(transaction dto.TransactionQueue) error {
+	var floatAccount dto.HotWalletAsset
+	serviceErr := model.ServicesRequestErr{}
+
+	// The routine fetches the float account info from the db
+	if err := controller.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
+		return err
+	}
+
+	// It makes a call to crypto adapter to get the current float amount
+	onchainBalanceRequest := model.OnchainBalanceRequest{
+		Address:     floatAccount.Address,
+		AssetSymbol: transaction.Denomination,
+	}
+	onchainBalanceResponse := model.OnchainBalanceResponse{}
+	if err := services.GetOnchainBalance(controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
+		if serviceErr.Code != "" {
+			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
+			return errors.New(serviceErr.Message)
+		}
+		return err
+	}
+
+	floatBalance, err := strconv.ParseInt(onchainBalanceResponse.Balance, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	// If float amount is lesser than the amount to send, it triggers sweep operation
+	if floatBalance < transaction.Value {
+		// If BTC, trigger BTC sweep
+		// Else, trigger sweep for other Asset
+		return errors.New("Not enough balance in float for this transaction")
+	}
+
+	// Calls key-management to sign transaction
+	signTransactionRequest := model.SignTransactionRequest{
+		FromAddress: floatAccount.Address,
+		ToAddress:   transaction.Recipient,
+		Amount:      transaction.Value,
+		CoinType:    transaction.Denomination,
+	}
+	signTransactionResponse := model.SignTransactionResponse{}
+	if err := services.SignTransaction(controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+		if serviceErr.Code != "" {
+			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
+			return errors.New(serviceErr.Message)
+		}
+		return err
+	}
+
+	// Send the signed data to crypto adapter to send to chain
+	broadcastToChainRequest := model.BroadcastToChainRequest{
+		SignedData:  signTransactionResponse.SignedData,
+		AssetSymbol: transaction.Denomination,
+	}
+	broadcastToChainResponse := model.BroadcastToChainResponse{}
+
+	if err := services.BroadcastToChain(controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
+		if serviceErr.Code != "" {
+			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
+			return errors.New(serviceErr.Message)
+		}
+		return err
+	}
+
+	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter
+	chainTransaction := dto.ChainTransaction{
+		TransactionHash: broadcastToChainResponse.TransactionHash,
+	}
+	if err := controller.Repository.Create(&chainTransaction); err != nil {
+		return err
+	}
+
+	// Updates the transaction status to in progress
+	transactionDetails := dto.Transaction{}
+	if err = controller.Repository.Get(&dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &transactionDetails); err != nil {
+		return err
+	}
+	if err := controller.Repository.Update(&transactionDetails, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}); err != nil {
+		return err
+	}
+
+	return nil
 }
