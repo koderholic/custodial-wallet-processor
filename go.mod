@@ -13,8 +13,8 @@ require (
 	github.com/go-redis/redis/v7 v7.0.0-beta.4
 	github.com/golang/protobuf v1.3.2-0.20190517061210-b285ee9cfc6c // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
-	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
+	github.com/jasonlvhit/gocron v0.0.0-20191228163020-98b59b546dee
 	github.com/jeanphorn/log4go v0.0.0-20190526082429-7dbb8deb9468
 	github.com/jinzhu/gorm v1.9.11
 	github.com/leodido/go-urn v1.2.0 // indirect
@@ -28,6 +28,5 @@ require (
 	github.com/toolkits/file v0.0.0-20160325033739-a5b3c5147e07 // indirect
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
 	golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7 // indirect
-	golang.org/x/tools v0.0.0-20190611222205-d73e1c7e250b
 	gopkg.in/go-playground/validator.v9 v9.30.2
 )

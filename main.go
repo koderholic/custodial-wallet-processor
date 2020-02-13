@@ -4,8 +4,9 @@ import (
 	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
-	"wallet-adapter/utility"
 	"wallet-adapter/services"
+	"wallet-adapter/tasks"
+	"wallet-adapter/utility"
 
 	"log"
 	"net/http"
@@ -40,6 +41,11 @@ func main() {
 	serviceAddress := ":" + config.AppPort
 
 	// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
+	db := *Database
+	baseRepository := database.BaseRepository{Database: db}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+
+	go tasks.ExecuteCronJob(logger, config, userAssetRepository)
 
 	logger.Info("Server started and listening on port %s", config.AppPort)
 	log.Fatal(http.ListenAndServe(serviceAddress, router))
