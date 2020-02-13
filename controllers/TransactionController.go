@@ -380,7 +380,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	}
 
 	// Goes to chain transaction table, update the status of the chain transaction,
-	if err := tx.Model(&dto.ChainTransaction{TransactionHash: requestData.TransactionHash}).Updates(&chainTransactionUpdate).Error; err != nil {
+	if err := tx.Model(&chainTransaction).Updates(&chainTransactionUpdate).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -389,7 +389,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 	// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
-	if err := tx.Model(&dto.Transaction{OnChainTxId: chainTransactionUpdate.ID}).Updates(&transactionUpdate).Error; err != nil {
+	if err := tx.Model(&transactionDetails).Updates(&transactionUpdate).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -398,7 +398,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 	// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
-	if err := tx.Model(&dto.TransactionQueue{TransactionId: transactionUpdate.ID}).Updates(&transactionQueueUpdate).Error; err != nil {
+	if err := tx.Model(&transactionQueueDetails).Updates(&transactionQueueUpdate).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -453,8 +453,26 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				continue
 			}
 
+			transactionQueueDetails := dto.TransactionQueue{}
+			if err := controller.Repository.GetByFieldName(&dto.TransactionQueue{TransactionId: transaction.TransactionId}, &transactionQueueDetails); err != nil {
+				controller.Logger.Error("Error occured while reverting transaction (%s) to pending : %s", transaction.TransactionId, err)
+				continue
+			}
+			if err := controller.Repository.Update(&transactionQueueDetails, &dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}); err != nil {
+				controller.Logger.Error("Error occured while updating transaction (%s) to On-going : %s", transaction.TransactionId, err)
+				continue
+			}
+
 			err := controller.ProcessSingleTxn(transaction)
-			controller.Logger.Error("The transaction '%+v' could not be processed : ", transaction, err)
+			if err != nil {
+				controller.Logger.Error("The transaction '%+v' could not be processed : ", transaction, err)
+
+				// Revert the transaction status back to pending
+				if err := controller.Repository.Update(&transactionQueueDetails, &dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PENDING}); err != nil {
+					controller.Logger.Error("Error occured while reverting transaction (%s) to pending : %s", transaction.TransactionId, err)
+					continue
+				}
+			}
 
 			// The routine returns the lock to the lock service and terminates
 			lockReleaseRequest := model.LockReleaseRequest{
@@ -465,7 +483,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			if err := services.ReleaseLock(controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
 				controller.Logger.Error("Error occured while releasing lock : %+v; %s", serviceErr, err)
 			}
-
+			fmt.Printf("xlockReleaseRequest >>> ", lockReleaseRequest)
 		}
 		done <- true
 	}()
@@ -553,7 +571,11 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 	}
 
 	// Updates the transaction status to in progress
-	if err := controller.Repository.Update(dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}); err != nil {
+	transactionDetails := dto.Transaction{}
+	if err = controller.Repository.Get(&dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &transactionDetails); err != nil {
+		return err
+	}
+	if err := controller.Repository.Update(&transactionDetails, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}); err != nil {
 		return err
 	}
 
