@@ -18,7 +18,7 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 	var transactions []dto.Transaction
 	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
 		SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &transactions); err != nil {
-		logger.Error("Error response from Sweep job : %+v", err)
+		logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
 		return
 	}
 
@@ -27,19 +27,19 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 
 		chainTransaction := dto.ChainTransaction{}
 		if err := repository.Get(tx.OnChainTxId, &chainTransaction); err != nil {
-			logger.Error("Error response from Sweep job : %+v", err)
-			return
+			logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+			continue
 		}
 
 		recipientAsset := dto.UserAssetBalance{}
 		if err := repository.Get(tx.RecipientID, &recipientAsset); err != nil {
-			logger.Error("Error response from Sweep job : %+v", err)
-			return
+			logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+			continue
 		}
 		recipientAddress := dto.UserAddress{}
 		if err := repository.Get(tx.RecipientID, &recipientAddress); err != nil {
-			logger.Error("Error response from Sweep job : %+v", err)
-			return
+			logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+			continue
 		}
 		// Get address onchain balance
 		onchainBalanceRequest := model.OnchainBalanceRequest{
@@ -49,22 +49,22 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 		onchainBalanceResponse := model.OnchainBalanceResponse{}
 		if err := services.GetOnchainBalance(logger, config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
 			if serviceErr.Code != "" {
-				logger.Error("Error response from Sweep job : %+v", err)
-				return
+				logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+				continue
 			}
-			return
+			continue
 		}
 
 		recipientBalance, err := strconv.ParseInt(onchainBalanceResponse.Balance, 10, 64)
 		if err != nil {
-			logger.Error("Error response from Sweep job : %+v", err)
-			return
+			logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+			continue
 		}
 		var floatAccount dto.HotWalletAsset
 		// The routine fetches the float account info from the db
 		if err := repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: recipientAsset.Symbol}, &floatAccount); err != nil {
-			logger.Error("Error response from Sweep job : %+v", err)
-			return
+			logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+			continue
 		}
 		//signTx
 		switch recipientAsset.Symbol {
@@ -79,8 +79,8 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 				}
 				signTransactionResponse := model.SignTransactionResponse{}
 				if err := services.SignTransaction(logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-					logger.Error("Error response from Sweep job : %+v", err)
-					return
+					logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+					continue
 				}
 
 				// Send the signed data to crypto adapter to send to chain
@@ -91,13 +91,13 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 				broadcastToChainResponse := model.BroadcastToChainResponse{}
 
 				if err := services.BroadcastToChain(logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err == nil {
-					logger.Error("Error response from Sweep job : %+v", err)
-					return
+					logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+					continue
 				}
 				tx.SweptStatus = true
 				if err := repository.Update(tx.ID, &tx); err != nil {
-					logger.Error("Error response from Sweep job : %+v", err)
-					return
+					logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+					continue
 				}
 			}
 
