@@ -12,18 +12,12 @@ import (
 	"wallet-adapter/utility"
 )
 
-func sweepAddresses(logger *utility.Logger, config Config.Data, userAssetRepository database.UserAssetRepository) {
-
-	//get candidates
-
-}
-
-func SweepTransactions(logger *utility.Logger, config Config.Data, userAssetRepository database.UserAssetRepository) {
+func SweepTransactions(logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	fmt.Println("This task will run periodically")
 	serviceErr := model.ServicesRequestErr{}
 
 	var transactions []dto.Transaction
-	if err := userAssetRepository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
+	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
 		SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &transactions); err != nil {
 		logger.Error("Error response from Sweep job : %+v", err)
 		return
@@ -33,18 +27,18 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, userAssetRepo
 		fmt.Println(i, tx.ID)
 
 		chainTransaction := dto.ChainTransaction{}
-		if err := userAssetRepository.Get(tx.OnChainTxId, &chainTransaction); err != nil {
+		if err := repository.Get(tx.OnChainTxId, &chainTransaction); err != nil {
 			logger.Error("Error response from Sweep job : %+v", err)
 			return
 		}
 
 		recipientAsset := dto.UserAssetBalance{}
-		if err := userAssetRepository.Get(tx.RecipientID, &recipientAsset); err != nil {
+		if err := repository.Get(tx.RecipientID, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v", err)
 			return
 		}
 		recipientAddress := dto.UserAddress{}
-		if err := userAssetRepository.Get(tx.RecipientID, &recipientAddress); err != nil {
+		if err := repository.Get(tx.RecipientID, &recipientAddress); err != nil {
 			logger.Error("Error response from Sweep job : %+v", err)
 			return
 		}
@@ -69,7 +63,7 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, userAssetRepo
 		}
 		var floatAccount dto.HotWalletAsset
 		// The routine fetches the float account info from the db
-		if err := userAssetRepository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: recipientAsset.Symbol}, &floatAccount); err != nil {
+		if err := repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: recipientAsset.Symbol}, &floatAccount); err != nil {
 			logger.Error("Error response from Sweep job : %+v", err)
 			return
 		}
@@ -102,7 +96,7 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, userAssetRepo
 					return
 				}
 				tx.SweptStatus = true
-				if err := userAssetRepository.Update(tx.ID, &tx); err != nil {
+				if err := repository.Update(tx.ID, &tx); err != nil {
 					logger.Error("Error response from Sweep job : %+v", err)
 					return
 				}
@@ -115,9 +109,9 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, userAssetRepo
 	}
 }
 
-func ExecuteCronJob(logger *utility.Logger, config Config.Data, userAssetRepository database.UserAssetRepository) {
+func ExecuteCronJob(logger *utility.Logger, config Config.Data, userAssetRepository database.BaseRepository) {
 	s := gocron.NewScheduler()
-	s.Every(10).Seconds().From(gocron.NextTick()).Do(SweepTransactions, logger, config, userAssetRepository)
+	s.Every(10).Minutes().From(gocron.NextTick()).Do(SweepTransactions, logger, config, userAssetRepository)
 	<-s.Start()
 }
 

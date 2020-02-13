@@ -23,7 +23,6 @@ func (s *Suite) TestSweep() {
 		BtcSlipValue:          "0",
 	}
 	baseRepository := database.BaseRepository{Database: s.Database}
-	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-	tasks.SweepTransactions(logger, configTest, userAssetRepository)
+	tasks.SweepTransactions(logger, configTest, baseRepository)
 
 }
