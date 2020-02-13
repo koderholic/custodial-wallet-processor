@@ -453,6 +453,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 	<-done
 }
+
 func (controller UserAssetController) ProcessSingleTxn(transaction dto.TransactionQueue) error {
 	var floatAccount dto.HotWalletAsset
 	serviceErr := model.ServicesRequestErr{}

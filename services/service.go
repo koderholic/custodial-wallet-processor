@@ -82,11 +82,10 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		return resp, err
 	}
 
-	fmt.Println("resp.StatusCode >> ", resp.StatusCode)
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
 	}
-	fmt.Println("resp.StatusCode >> ", resp.StatusCode)
+
 	err = json.Unmarshal(resBody, v)
 	c.Logger.Info("Incoming response from %s : %+v", c.BaseURL, v)
 	return resp, err
