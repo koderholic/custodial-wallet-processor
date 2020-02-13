@@ -232,7 +232,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
 	decodedToken := model.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
+	fmt.Println("requestReader.Body ... !!!  > ", requestReader.Body)
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
 

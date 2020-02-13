@@ -26,7 +26,7 @@ type SignTransactionRequest struct {
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
 type SignTransactionResponse struct {
-	SignedData string `json:"signedData"`
+	SignedData string `json:"signedTransaction"`
 }
 
 // BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
