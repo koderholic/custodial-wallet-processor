@@ -18,7 +18,7 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 	var transactions []dto.Transaction
 	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
 		SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &transactions); err != nil {
-		logger.Error("Error response from Sweep job : %+v at tx id %+v", err, tx.ID)
+		logger.Error("Error response from Sweep job : could not fetch sweep candidates %+v", err)
 		return
 	}
 
