@@ -21,6 +21,8 @@ func (s *Suite) TestSweep() {
 		CryptoAdapterService:  "https://internal.dev.bundlewallet.com/crypto-adapter",
 		DepositWebhookURL:     "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit",
 		BtcSlipValue:          "0",
+		EthTreshholdValue:     5,
+		LockerService:         "https://internal.dev.bundlewallet.com/locker",
 	}
 	baseRepository := database.BaseRepository{Database: s.Database}
 	tasks.SweepTransactions(logger, configTest, baseRepository)

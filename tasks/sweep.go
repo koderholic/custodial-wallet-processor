@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jasonlvhit/gocron"
 	"strconv"
@@ -14,6 +15,11 @@ import (
 
 func SweepTransactions(logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	serviceErr := model.ServicesRequestErr{}
+	token, err := acquireLock(logger, config, serviceErr)
+	if err != nil {
+		logger.Error("Could not acquire lock", err)
+		return
+	}
 
 	var transactions []dto.Transaction
 	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
@@ -106,6 +112,41 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 		}
 
 	}
+	if err := releaseLock(logger, config, token, serviceErr); err != nil {
+		logger.Error("Could not release lock", err)
+		return
+	}
+}
+
+func acquireLock(logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {
+	// It calls the lock service to obtain a lock for the transaction
+	lockerServiceRequest := model.LockerServiceRequest{
+		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
+		ExpiresAfter: 600000,
+	}
+	lockerServiceResponse := model.LockerServiceResponse{}
+	if err := services.AcquireLock(logger, config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+		if !serviceErr.Success && serviceErr.Message != "" {
+			return "", errors.New(serviceErr.Message)
+		}
+		return "", err
+	}
+	return lockerServiceResponse.Token, nil
+}
+
+func releaseLock(logger *utility.Logger, config Config.Data, lockerServiceToken string, serviceErr model.ServicesRequestErr) error {
+	lockReleaseRequest := model.LockReleaseRequest{
+		Identifier: fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
+		Token:      lockerServiceToken,
+	}
+	lockReleaseResponse := model.ServicesRequestSuccess{}
+	if err := services.ReleaseLock(logger, config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil {
+		if serviceErr.Code != "" {
+			return errors.New(serviceErr.Message)
+		}
+		return err
+	}
+	return nil
 }
 
 func ExecuteCronJob(logger *utility.Logger, config Config.Data, userAssetRepository database.BaseRepository) {
