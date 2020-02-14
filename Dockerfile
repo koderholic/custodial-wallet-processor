@@ -11,7 +11,7 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "cryptoAdapterServiceURL: http://crypto-adapter" >> config.yaml && \
     echo "keyManagementServiceURL: http://key-management" >> config.yaml && \
     echo "lockerServiceURL: http://locker" >> config.yaml && \
-    echo "lockerServicePrefix : Withdrawal-TXN-" >> config.yaml && \
+    echo "lockerServicePrefix : Wallet-Adapter-Lock-" >> config.yaml && \
     echo "depositWebhookURL: http://crypto-adapter/incoming-deposit" >> config.yaml && \
     echo "BTC_SLIP_VALUE: 0" >> config.yaml && \
     echo "BNB_SLIP_VALUE: 714" >> config.yaml && \
