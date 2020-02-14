@@ -34,11 +34,11 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 	for _, tx := range transactions {
 		transactionsPerAssetId[tx.RecipientID] = append(transactionsPerAssetId[tx.RecipientID], tx)
 	}
-	for _, userTransactions := range transactionsPerAssetId {
+	for _, assetTransactions := range transactionsPerAssetId {
 		//Get total sum to be swept for this assetId
 		var sum = int64(0)
 		var count = 0
-		for _, tx := range userTransactions {
+		for _, tx := range assetTransactions {
 			floatValue, err := strconv.ParseFloat(tx.Value, 64)
 			if err == nil {
 				//Value has no values after dp, as we expect the all crypto values are in their smallest unit
@@ -46,7 +46,7 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 				count++
 			}
 		}
-		if err := sweepPerAssetId(logger, config, repository, serviceErr, userTransactions, sum); err != nil {
+		if err := sweepPerAssetId(logger, config, repository, serviceErr, assetTransactions, sum); err != nil {
 			continue
 		}
 	}
