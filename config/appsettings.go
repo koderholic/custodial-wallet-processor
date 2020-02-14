@@ -32,6 +32,7 @@ type Data struct {
 	BnbSlipValue          string `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
 	EthSlipValue          string `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
 	EthTreshholdValue     int64  `mapstructure:"ETH_TRESHHOLD_VALUE"  yaml:"ETH_TRESHHOLD_VALUE,omitempty"`
+	SweepCronInterval     string `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
 
 	PurgeCacheInterval time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
 }

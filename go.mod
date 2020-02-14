@@ -14,11 +14,13 @@ require (
 	github.com/golang/protobuf v1.3.2-0.20190517061210-b285ee9cfc6c // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gorilla/mux v1.7.3
-	github.com/jasonlvhit/gocron v0.0.0-20191228163020-98b59b546dee
 	github.com/jeanphorn/log4go v0.0.0-20190526082429-7dbb8deb9468
 	github.com/jinzhu/gorm v1.9.11
 	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/onsi/ginkgo v1.10.1 // indirect
+	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/shopspring/decimal v0.0.0-20200105231215-408a2507e114
 	github.com/spf13/viper v1.5.0

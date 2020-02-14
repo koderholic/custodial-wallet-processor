@@ -15,7 +15,8 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "BTC_SLIP_VALUE: 0" >> config.yaml && \
     echo "BNB_SLIP_VALUE: 714" >> config.yaml && \
     echo "ETH_SLIP_VALUE: 60" >> config.yaml && \
-    echo "ETH_TRESHHOLD_VALUE: 5" >> config.yaml
+    echo "ETH_TRESHHOLD_VALUE: 5" >> config.yaml && \
+    echo "sweepCronInterval: 1/5 * * * *" >> config.yaml
 
 
 # RUN go get -d -v ./...
