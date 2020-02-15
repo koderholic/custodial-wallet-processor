@@ -93,6 +93,7 @@ func sweepPerAssetId(logger *utility.Logger, config Config.Data, repository data
 		ToAddress:   floatAccount.Address,
 		Amount:      sum,
 		CoinType:    recipientAsset.Symbol,
+		IsSweep:     true,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {

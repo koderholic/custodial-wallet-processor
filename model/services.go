@@ -22,6 +22,7 @@ type SignTransactionRequest struct {
 	ToAddress   string `json:"toAddress"`
 	Amount      int64  `json:"amount"`
 	CoinType    string `json:"coinType"`
+	IsSweep     bool   `json:"isSweep"`
 }
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
