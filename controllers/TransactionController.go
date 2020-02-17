@@ -251,6 +251,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		Recipient:      requestData.RecipientAddress,
 		Value:          transactionValue,
 		DebitReference: requestData.DebitReference,
+		Memo:           debitReferenceTransaction.Memo,
 		Denomination:   debitReferenceAsset.Symbol,
 		TransactionId:  transaction.ID,
 	}
@@ -532,11 +533,22 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 	}
 
 	// Calls key-management to sign transaction
-	signTransactionRequest := model.SignTransactionRequest{
-		FromAddress: floatAccount.Address,
-		ToAddress:   transaction.Recipient,
-		Amount:      transaction.Value,
-		CoinType:    transaction.Denomination,
+	var signTransactionRequest model.SignTransactionRequest
+	if transaction.Denomination == "BNB" {
+		signTransactionRequest = model.SignTransactionRequest{
+			FromAddress: floatAccount.Address,
+			ToAddress:   transaction.Recipient,
+			Amount:      transaction.Value,
+			Memo:        transaction.Memo,
+			CoinType:    transaction.Denomination,
+		}
+	} else {
+		signTransactionRequest = model.SignTransactionRequest{
+			FromAddress: floatAccount.Address,
+			ToAddress:   transaction.Recipient,
+			Amount:      transaction.Value,
+			CoinType:    transaction.Denomination,
+		}
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
