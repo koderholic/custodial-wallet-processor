@@ -20,6 +20,7 @@ type GenerateAddressResponse struct {
 type SignTransactionRequest struct {
 	FromAddress string `json:"fromAddress"`
 	ToAddress   string `json:"toAddress"`
+	Memo        string `json:"memo"`
 	Amount      int64  `json:"amount"`
 	CoinType    string `json:"coinType"`
 }

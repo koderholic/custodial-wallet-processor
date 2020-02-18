@@ -2,14 +2,13 @@ package services
 
 import (
 	"fmt"
-	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 )
 
 // UpdateAuthToken ...
-func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
+func UpdateAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
 
 	authorization := map[string]string{
 		"username": config.ServiceID,
@@ -29,24 +28,18 @@ func UpdateAuthToken(logger *utility.Logger, config Config.Data) (model.UpdateAu
 		return model.UpdateAuthTokenResponse{}, err
 	}
 
-	purgeInterval := config.PurgeCacheInterval * time.Second
-	createdAt, _ := time.Parse(time.RFC3339, authToken.CreatedAt)
-	expiresAt, _ := time.Parse(time.RFC3339, authToken.ExpiresAt)
-	cacheDuration := expiresAt.Sub(createdAt)
-	memorycache := utility.InitializeCache(cacheDuration, purgeInterval)
-	memorycache.Set("serviceAuth", &authToken, true)
+	cache.Set("serviceAuth", &authToken, true)
 
 	return authToken, nil
 }
 
 // GetAuthToken ...
-func GetAuthToken(logger *utility.Logger, config Config.Data) (string, error) {
+func GetAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (string, error) {
 
-	memorycache := utility.InitializeCache(0, 0)
-	cachedResult := memorycache.Get("serviceAuth")
+	cachedResult := cache.Get("serviceAuth")
 
 	if cachedResult == nil {
-		authTokenResponse, err := UpdateAuthToken(logger, config)
+		authTokenResponse, err := UpdateAuthToken(cache, logger, config)
 		if err != nil {
 			logger.Error("Service auth token could not be retrieved, error : %s", err)
 			return authTokenResponse.Token, err
@@ -58,7 +51,7 @@ func GetAuthToken(logger *utility.Logger, config Config.Data) (string, error) {
 	authToken := authTokenResponse.Token
 
 	if authToken == "" {
-		authTokenResponse, err := UpdateAuthToken(logger, config)
+		authTokenResponse, err := UpdateAuthToken(cache, logger, config)
 		if err != nil {
 			logger.Error("Service auth token could not be retrieved, error : %s", err)
 			return authTokenResponse.Token, err

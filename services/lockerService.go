@@ -9,9 +9,9 @@ import (
 )
 
 // AcquireLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func AcquireLock(logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
+func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
@@ -37,9 +37,9 @@ func AcquireLock(logger *utility.Logger, config Config.Data, requestData model.L
 }
 
 // RenewLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func RenewLock(logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
+func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
@@ -65,9 +65,9 @@ func RenewLock(logger *utility.Logger, config Config.Data, requestData model.Loc
 }
 
 // ReleaseLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func ReleaseLock(logger *utility.Logger, config Config.Data, requestData model.LockReleaseRequest, responseData *model.ServicesRequestSuccess, serviceErr interface{}) error {
+func ReleaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.LockReleaseRequest, responseData *model.ServicesRequestSuccess, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}

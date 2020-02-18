@@ -35,6 +35,6 @@ func TestSubscribeAddress(t *testing.T) {
 	subscriptionResponseData := model.SubscriptionResponse{}
 	serviceErr := model.ServicesRequestErr{}
 
-	services.SubscribeAddress(logger, configTest, requestData, &subscriptionResponseData, serviceErr)
+	services.SubscribeAddress(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
 
 }

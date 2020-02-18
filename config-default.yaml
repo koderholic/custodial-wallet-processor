@@ -10,6 +10,7 @@ cryptoAdapterServiceURL: "https://internal.dev.bundlewallet.com/crypto-adapter"
 depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit"
 lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
 purgeCacheInterval: 5
+expireCacheDuration: 400
 DB_HOST: "127.0.0.1:3306"
 DB_USER: ""
 DB_PASSWORD: ""
