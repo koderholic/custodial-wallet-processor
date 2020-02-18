@@ -73,6 +73,10 @@ var (
 	once sync.Once
 )
 
+var purgeInterval = 5 * time.Second
+var cacheDuration = 60 * time.Second
+var authCache = utility.InitializeCache(cacheDuration, purgeInterval)
+
 func TestInit(t *testing.T) {
 	suite.Run(t, new(Suite))
 }
@@ -124,8 +128,8 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		baseRepository := database.BaseRepository{Database: s.Database}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-		controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
-		userAssetController := controllers.NewUserAssetController(s.Logger, s.Config, validator, &userAssetRepository)
+		controller := controllers.NewController(authCache, s.Logger, s.Config, validator, &baseRepository)
+		userAssetController := controllers.NewUserAssetController(authCache, s.Logger, s.Config, validator, &userAssetRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)

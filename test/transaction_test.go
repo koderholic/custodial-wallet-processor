@@ -84,7 +84,7 @@ func (s *TestingSuite) RegisterRoutes(logger *utility.Logger, Config config.Data
 	once.Do(func() {
 
 		baseRepository := database.BaseRepository{Database: s.Database}
-		controller := controllers.NewController(s.Logger, s.Config, validator, &baseRepository)
+		controller := controllers.NewController(authCache, s.Logger, s.Config, validator, &baseRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)

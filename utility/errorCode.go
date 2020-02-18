@@ -20,3 +20,8 @@ var (
 	INVALID_DEBIT_AMOUNT      = "Value in debit reference does not match value provided."
 	DEBIT_PROCESSED_ERR       = "Debit reference has already been processed for external transfer"
 )
+
+const (
+	SVCS_CRYPTOADAPTER_ERR = "SVCS_CRYPTOADAPTER_ERR"
+	SVCS_KEYMGT_ERR        = "SVCS_KEYMGT_ERR"
+)

@@ -8,11 +8,14 @@ authenticationServiceURL: "https://internal.dev.bundlewallet.com/authentication"
 keyManagementServiceURL: "https://internal.dev.bundlewallet.com/key-management"
 cryptoAdapterServiceURL: "https://internal.dev.bundlewallet.com/crypto-adapter"
 depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit"
+lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
 purgeCacheInterval: 5
+expireCacheDuration: 400
 DB_HOST: "127.0.0.1:3306"
 DB_USER: ""
 DB_PASSWORD: ""
 DB_NAME: "walletAdapter"
+lockerServicePrefix : "Withdrawal-TXN-"
 BTC_SLIP_VALUE: 0
 BNB_SLIP_VALUE: 714
 ETH_SLIP_VALUE: 60

@@ -10,6 +10,7 @@ import (
 
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	validation "gopkg.in/go-playground/validator.v9"
@@ -32,11 +33,15 @@ func main() {
 	Database.RunDbMigrations()
 	Database.DBSeeder()
 
-	if err := services.InitHotWallet(Database.DB, logger, config); err != nil {
+	purgeInterval := config.PurgeCacheInterval * time.Second
+	cacheDuration := config.ExpireCacheDuration * time.Second
+	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+
+	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
 		logger.Error("Server started and listening on port %s", config.AppPort)
 	}
 
-	app.RegisterRoutes(router, validator, config, logger, Database.DB)
+	app.RegisterRoutes(router, validator, config, logger, Database.DB, authCache)
 
 	serviceAddress := ":" + config.AppPort
 

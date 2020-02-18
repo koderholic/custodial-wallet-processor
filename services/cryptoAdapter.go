@@ -9,9 +9,9 @@ import (
 )
 
 // broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func BroadcastToChain(logger *utility.Logger, config Config.Data, requestData model.BroadcastToChainRequest, responseData *model.BroadcastToChainResponse, serviceErr interface{}) error {
+func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.BroadcastToChainRequest, responseData *model.BroadcastToChainResponse, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func BroadcastToChain(logger *utility.Logger, config Config.Data, requestData mo
 	return nil
 }
 
-func SubscribeAddress(logger *utility.Logger, config Config.Data, requestData model.SubscriptionRequest, responseData *model.SubscriptionResponse, serviceErr interface{}) error {
+func SubscribeAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.SubscriptionRequest, responseData *model.SubscriptionResponse, serviceErr interface{}) error {
 	metaData := utility.GetRequestMetaData("subscribeAddress", config)
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -62,15 +62,15 @@ func SubscribeAddress(logger *utility.Logger, config Config.Data, requestData mo
 }
 
 // TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
-func TransactionStatus(logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
+func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("transactionStatus", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -90,15 +90,15 @@ func TransactionStatus(logger *utility.Logger, config Config.Data, requestData m
 }
 
 // GetOnchainBalance ... Calls crypto adapter with asset symbol and address to return balance of asset on-chain
-func GetOnchainBalance(logger *utility.Logger, config Config.Data, requestData model.OnchainBalanceRequest, responseData *model.OnchainBalanceResponse, serviceErr interface{}) error {
+func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.OnchainBalanceRequest, responseData *model.OnchainBalanceResponse, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("getOnchainBalance", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol ))
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err

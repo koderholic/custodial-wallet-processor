@@ -20,6 +20,7 @@ type GenerateAddressResponse struct {
 type SignTransactionRequest struct {
 	FromAddress string `json:"fromAddress"`
 	ToAddress   string `json:"toAddress"`
+	Memo        string `json:"memo"`
 	Amount      int64  `json:"amount"`
 	CoinType    string `json:"coinType"`
 	IsSweep     bool   `json:"isSweep"`
@@ -27,7 +28,7 @@ type SignTransactionRequest struct {
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
 type SignTransactionResponse struct {
-	SignedData string `json:"signedData"`
+	SignedData string `json:"signedTransaction"`
 }
 
 // BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
