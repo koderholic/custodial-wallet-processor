@@ -55,7 +55,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 		}
 
 		// Calls key-management service to create an address for the user asset
-		address, errGenerateAddress := services.GenerateAddress(controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol, &externalServiceErr)
+		address, errGenerateAddress := services.GenerateAddress(controller.Cache, controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol, &externalServiceErr)
 		if errGenerateAddress != nil || address == "" {
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", errGenerateAddress)
 			responseWriter.Header().Set("Content-Type", "application/json")

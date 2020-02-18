@@ -181,32 +181,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Get asset associated with the debit reference
-	debitReferenceAsset := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-		return
-	}
-
-	// Convert value to crypto smallest unit
-	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
-	baseExp := decimal.NewFromInt(10)
-	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
-	if err != nil {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
-		return
-	}
-
 	tx := controller.Repository.Db().Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -243,6 +217,86 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
+	// If recipient address is on platform, credit recipient asset and complete transaction
+	recipientInternalAddress := dto.UserAddress{}
+	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: requestData.RecipientAddress}, &recipientInternalAddress); err == nil {
+		recipientAsset := dto.UserAssetBalance{}
+		if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: recipientInternalAddress.AssetID}}, &recipientAsset); err != nil {
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			if err.Error() == utility.SQL_404 {
+				responseWriter.WriteHeader(http.StatusNotFound)
+			} else {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+			}
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			return
+		}
+
+		recipientBalance, err := decimal.NewFromString(recipientAsset.AvailableBalance)
+		if err != nil {
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", err.Error()))
+			return
+		}
+		recipientNewBalance := (recipientBalance.Add(value)).String()
+
+		if err := tx.Model(&recipientAsset).Updates(dto.UserBalance{AvailableBalance: recipientNewBalance}).Error; err != nil {
+			tx.Rollback()
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", err.Error()))
+			return
+		}
+		if err := tx.Model(&transaction).Updates(dto.Transaction{TransactionStatus: dto.TransactionStatus.COMPLETED}).Error; err != nil {
+			tx.Rollback()
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", err.Error()))
+			return
+		}
+
+		responseData.TransactionReference = transaction.TransactionReference
+		responseData.DebitReference = requestData.DebitReference
+		responseData.TransactionStatus = transaction.TransactionStatus
+
+		controller.Logger.Info("Outgoing response to ExternalTransfer request %+v", responseData)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusOK)
+		json.NewEncoder(responseWriter).Encode(responseData)
+		return
+	}
+
+	// Get asset associated with the debit reference
+	debitReferenceAsset := dto.UserAssetBalance{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
+	// Convert value to crypto smallest unit
+	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
+	baseExp := decimal.NewFromInt(10)
+	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+	if err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 		return
 	}
 
@@ -353,12 +407,12 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		AssetSymbol:     transactionQueueDetails.Denomination,
 	}
 	transactionStatusResponse := model.TransactionStatusResponse{}
-	if err := services.TransactionStatus(controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
+	if err := services.TransactionStatus(controller.Cache, controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v : %+v", serviceErr, err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		if serviceErr.Code != "" {
-			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", serviceErr.Message))
+			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_CRYPTOADAPTER_ERR", serviceErr.Message))
 			return
 		}
 		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())))
@@ -449,7 +503,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				ExpiresAfter: 600000,
 			}
 			lockerServiceResponse := model.LockerServiceResponse{}
-			if err := services.AcquireLock(controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+			if err := services.AcquireLock(controller.Cache, controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
 				controller.Logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
 				continue
 			}
@@ -464,7 +518,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				continue
 			}
 
-			err := controller.ProcessSingleTxn(transaction)
+			err := controller.processSingleTxn(transaction)
 			if err != nil {
 				controller.Logger.Error("The transaction '%+v' could not be processed : ", transaction, err)
 
@@ -481,7 +535,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				Token:      lockerServiceResponse.Token,
 			}
 			lockReleaseResponse := model.ServicesRequestSuccess{}
-			if err := services.ReleaseLock(controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
+			if err := services.ReleaseLock(controller.Cache, controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
 				controller.Logger.Error("Error occured while releasing lock : %+v; %s", serviceErr, err)
 			}
 			fmt.Printf("xlockReleaseRequest >>> ", lockReleaseRequest)
@@ -497,7 +551,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 	<-done
 }
 
-func (controller UserAssetController) ProcessSingleTxn(transaction dto.TransactionQueue) error {
+func (controller UserAssetController) processSingleTxn(transaction dto.TransactionQueue) error {
 	var floatAccount dto.HotWalletAsset
 	serviceErr := model.ServicesRequestErr{}
 
@@ -512,7 +566,7 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 		AssetSymbol: transaction.Denomination,
 	}
 	onchainBalanceResponse := model.OnchainBalanceResponse{}
-	if err := services.GetOnchainBalance(controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
+	if err := services.GetOnchainBalance(controller.Cache, controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
 		if serviceErr.Code != "" {
 			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
@@ -551,7 +605,7 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 		}
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignTransaction(controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		if serviceErr.Code != "" {
 			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
@@ -566,7 +620,7 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
-	if err := services.BroadcastToChain(controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
+	if err := services.BroadcastToChain(controller.Cache, controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
 		if serviceErr.Code != "" {
 			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
@@ -587,7 +641,7 @@ func (controller UserAssetController) ProcessSingleTxn(transaction dto.Transacti
 	if err = controller.Repository.Get(&dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &transactionDetails); err != nil {
 		return err
 	}
-	if err := controller.Repository.Update(&transactionDetails, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING}); err != nil {
+	if err := controller.Repository.Update(&transactionDetails, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING, OnChainTxId: chainTransaction.ID}); err != nil {
 		return err
 	}
 

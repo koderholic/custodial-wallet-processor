@@ -11,9 +11,9 @@ import (
 )
 
 // GenerateAddress ...
-func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUID, symbol string, serviceErr interface{}) (string, error) {
+func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, userID uuid.UUID, symbol string, serviceErr interface{}) (string, error) {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return "", err
 	}
@@ -58,7 +58,7 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 
 	subscriptionResponseData := model.SubscriptionResponse{}
 
-	if err := SubscribeAddress(logger, config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
+	if err := SubscribeAddress(cache, logger, config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
 		logger.Error("Failing to subscribe to address %s with err %s\n", responseData.Address, err)
 		return "", err
 	}
@@ -68,9 +68,9 @@ func GenerateAddress(logger *utility.Logger, config Config.Data, userID uuid.UUI
 }
 
 // SignTransaction ... Calls key-management service with a transaction object to sign
-func SignTransaction(logger *utility.Logger, config Config.Data, requestData model.SignTransactionRequest, responseData *model.SignTransactionResponse, serviceErr interface{}) error {
+func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.SignTransactionRequest, responseData *model.SignTransactionResponse, serviceErr interface{}) error {
 
-	authToken, err := GetAuthToken(logger, config)
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}

@@ -12,6 +12,7 @@ import (
 
 //Controller : Controller struct
 type Controller struct {
+	Cache     *utility.MemoryCache
 	Logger    *utility.Logger
 	Config    config.Data
 	Validator *validation.Validate
@@ -30,9 +31,10 @@ type UserAssetController struct {
 }
 
 // NewController ... Create a new base controller instance
-func NewController(logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
+func NewController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
 	controller := &BaseController{}
 	controller.Logger = logger
+	controller.Cache = cache
 	controller.Config = configData
 	controller.Validator = validator
 	controller.Repository = repository
@@ -41,8 +43,9 @@ func NewController(logger *utility.Logger, configData config.Data, validator *va
 }
 
 // NewUserAssetController ... Create a new user asset controller instance
-func NewUserAssetController(logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IUserAssetRepository) *UserAssetController {
+func NewUserAssetController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IUserAssetRepository) *UserAssetController {
 	controller := &UserAssetController{}
+	controller.Cache = cache
 	controller.Logger = logger
 	controller.Config = configData
 	controller.Validator = validator

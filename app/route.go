@@ -21,15 +21,15 @@ var (
 )
 
 // RegisterRoutes ... Adds router handle to general handler function
-func RegisterRoutes(router *mux.Router, validator *validation.Validate, config Config.Data, logger *utility.Logger, db *gorm.DB) {
+func RegisterRoutes(router *mux.Router, validator *validation.Validate, config Config.Data, logger *utility.Logger, db *gorm.DB, memoryCache *utility.MemoryCache) {
 
 	once.Do(func() {
 		DB := database.Database{Logger: logger, Config: config, DB: db}
 		baseRepository := database.BaseRepository{Database: DB}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-		controller := controllers.NewController(logger, config, validator, &baseRepository)
-		userAssetController := controllers.NewUserAssetController(logger, config, validator, &userAssetRepository)
+		controller := controllers.NewController(memoryCache, logger, config, validator, &baseRepository)
+		userAssetController := controllers.NewUserAssetController(memoryCache, logger, config, validator, &userAssetRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
