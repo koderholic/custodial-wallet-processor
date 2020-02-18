@@ -73,6 +73,10 @@ var (
 	once sync.Once
 )
 
+var purgeInterval = 5 * time.Second
+var cacheDuration = 60 * time.Second
+var authCache = utility.InitializeCache(cacheDuration, purgeInterval)
+
 func TestInit(t *testing.T) {
 	suite.Run(t, new(Suite))
 }
@@ -120,10 +124,6 @@ func (s *Suite) SetupSuite() {
 func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, router *mux.Router, validator *validation.Validate) {
 
 	once.Do(func() {
-
-		purgeInterval := 5 * time.Second
-		cacheDuration := 60 * time.Second
-		authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 
 		baseRepository := database.BaseRepository{Database: s.Database}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}

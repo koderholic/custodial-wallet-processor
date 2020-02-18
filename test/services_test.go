@@ -31,7 +31,7 @@ func TestSignTransactionImplementation(t *testing.T) {
 	responseData := model.SignTransactionResponse{}
 	serviceErr := model.ServicesRequestErr{}
 
-	if err := services.SignTransaction(logger, Config, requestData, &responseData, serviceErr); err == nil {
+	if err := services.SignTransaction(authCache, logger, Config, requestData, &responseData, serviceErr); err == nil {
 		t.Errorf("Expected SignTransaction to error due to validation on request data, got %s\n", err)
 	}
 
@@ -61,7 +61,7 @@ func TestBroadcastTransactionImplementation(t *testing.T) {
 	responseData := model.BroadcastToChainResponse{}
 	serviceErr := model.ServicesRequestErr{}
 
-	if err := services.BroadcastToChain(logger, Config, requestData, &responseData, serviceErr); err == nil {
+	if err := services.BroadcastToChain(authCache, logger, Config, requestData, &responseData, serviceErr); err == nil {
 		t.Errorf("Expected SignTransaction to error due to incorrect signed data, got %s\n", err)
 	}
 
