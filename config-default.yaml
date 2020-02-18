@@ -19,6 +19,5 @@ lockerServicePrefix : "Withdrawal-TXN-"
 BTC_SLIP_VALUE: 0
 BNB_SLIP_VALUE: 714
 ETH_SLIP_VALUE: 60
-ETH_TRESHHOLD_VALUE: 5
-lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
 sweepCronInterval: "1/5 * * * *"
+sweepFeePercentageThreshold: 20

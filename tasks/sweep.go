@@ -14,10 +14,10 @@ import (
 	"wallet-adapter/utility"
 )
 
-func SweepTransactions(logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
+func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	logger.Info("Sweep operation begins")
 	serviceErr := model.ServicesRequestErr{}
-	token, err := acquireLock(logger, config, serviceErr)
+	token, err := acquireLock(cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -46,19 +46,19 @@ func SweepTransactions(logger *utility.Logger, config Config.Data, repository da
 				count++
 			}
 		}
-		if err := sweepPerAssetId(logger, config, repository, serviceErr, assetTransactions, sum); err != nil {
+		if err := sweepPerAssetId(cache, logger, config, repository, serviceErr, assetTransactions, sum); err != nil {
 			continue
 		}
 	}
 
-	if err := releaseLock(logger, config, token, serviceErr); err != nil {
+	if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 		logger.Error("Could not release lock", err)
 		return
 	}
 	logger.Info("Sweep operation ends successfully, lock released")
 }
 
-func sweepPerAssetId(logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, sum int64) error {
+func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, sum int64) error {
 	//need recipient Asset to get recipient address
 	recipientAsset := dto.UserAssetBalance{}
 	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
@@ -79,14 +79,6 @@ func sweepPerAssetId(logger *utility.Logger, config Config.Data, repository data
 		return err
 	}
 
-	switch recipientAsset.Symbol {
-	case "ETH":
-		if sum < config.EthTreshholdValue {
-			return errors.New(fmt.Sprintf("Skipping asset, %s total sum for this asset, for this coin %s is not up to treshhold value %s", recipientAsset.ID, recipientAsset.Symbol, config.EthTreshholdValue))
-		}
-	default:
-		logger.Error("Could not sweep for asset with id %+v : %+v with unknown assetSymbol of type %+v", recipientAsset.ID, recipientAsset.Symbol)
-	}
 	// Calls key-management to sign transaction
 	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: recipientAddress.Address,
@@ -96,9 +88,14 @@ func sweepPerAssetId(logger *utility.Logger, config Config.Data, repository data
 		IsSweep:     true,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignTransaction(logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
+	}
+
+	//Check that fee is below X% of the total value.
+	if (((signTransactionResponse.Fee) / sum) * 100) > config.SweepFeePercentageThreshold {
+		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.Symbol, config.SweepFeePercentageThreshold))
 	}
 
 	// Send the signed data to crypto adapter to send to chain
@@ -108,7 +105,7 @@ func sweepPerAssetId(logger *utility.Logger, config Config.Data, repository data
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
-	if err := services.BroadcastToChain(logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err == nil {
+	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err == nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
@@ -123,14 +120,14 @@ func sweepPerAssetId(logger *utility.Logger, config Config.Data, repository data
 	return nil
 }
 
-func acquireLock(logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {
+func acquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {
 	// It calls the lock service to obtain a lock for the transaction
 	lockerServiceRequest := model.LockerServiceRequest{
 		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
 		ExpiresAfter: 600000,
 	}
 	lockerServiceResponse := model.LockerServiceResponse{}
-	if err := services.AcquireLock(logger, config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+	if err := services.AcquireLock(cache, logger, config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
 		if !serviceErr.Success && serviceErr.Message != "" {
 			return "", errors.New(serviceErr.Message)
 		}
@@ -139,13 +136,13 @@ func acquireLock(logger *utility.Logger, config Config.Data, serviceErr model.Se
 	return lockerServiceResponse.Token, nil
 }
 
-func releaseLock(logger *utility.Logger, config Config.Data, lockerServiceToken string, serviceErr model.ServicesRequestErr) error {
+func releaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, lockerServiceToken string, serviceErr model.ServicesRequestErr) error {
 	lockReleaseRequest := model.LockReleaseRequest{
 		Identifier: fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
 		Token:      lockerServiceToken,
 	}
 	lockReleaseResponse := model.ServicesRequestSuccess{}
-	if err := services.ReleaseLock(logger, config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil {
+	if err := services.ReleaseLock(cache, logger, config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil {
 		if serviceErr.Code != "" {
 			return errors.New(serviceErr.Message)
 		}
@@ -154,8 +151,8 @@ func releaseLock(logger *utility.Logger, config Config.Data, lockerServiceToken 
 	return nil
 }
 
-func ExecuteCronJob(logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
+func ExecuteCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	c := cron.New()
-	c.AddFunc(config.SweepCronInterval, func() { SweepTransactions(logger, config, repository) })
+	c.AddFunc(config.SweepCronInterval, func() { SweepTransactions(cache, logger, config, repository) })
 	c.Start()
 }

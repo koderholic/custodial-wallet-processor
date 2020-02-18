@@ -31,4 +31,6 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "BTC_SLIP_VALUE: 0" >> config.yaml && \
     echo "BNB_SLIP_VALUE: 714" >> config.yaml && \
     echo "expireCacheDuration: 400" >> config.yaml && \
-    echo "ETH_SLIP_VALUE: 60" >> config.yaml
+    echo "ETH_SLIP_VALUE: 60" >> config.yaml && \
+    echo "sweepCronInterval: 1/5 * * * *" >> config.yaml && \
+    echo "sweepFeePercentageThreshold: 20" >> config.yaml
