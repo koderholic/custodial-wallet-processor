@@ -412,7 +412,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		if serviceErr.Code != "" {
-			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_CRYPTOADAPTER_ERR", serviceErr.Message))
+			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError(utility.SVCS_CRYPTOADAPTER_ERR, serviceErr.Message))
 			return
 		}
 		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())))
@@ -588,21 +588,12 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 
 	// Calls key-management to sign transaction
 	var signTransactionRequest model.SignTransactionRequest
-	if transaction.Denomination == "BNB" {
-		signTransactionRequest = model.SignTransactionRequest{
-			FromAddress: floatAccount.Address,
-			ToAddress:   transaction.Recipient,
-			Amount:      transaction.Value,
-			Memo:        transaction.Memo,
-			CoinType:    transaction.Denomination,
-		}
-	} else {
-		signTransactionRequest = model.SignTransactionRequest{
-			FromAddress: floatAccount.Address,
-			ToAddress:   transaction.Recipient,
-			Amount:      transaction.Value,
-			CoinType:    transaction.Denomination,
-		}
+	signTransactionRequest = model.SignTransactionRequest{
+		FromAddress: floatAccount.Address,
+		ToAddress:   transaction.Recipient,
+		Amount:      transaction.Value,
+		Memo:        transaction.Memo,
+		CoinType:    transaction.Denomination,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {

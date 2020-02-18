@@ -61,7 +61,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			if externalServiceErr.Code != "" {
-				_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SVCS_KEYMGT_ERR", externalServiceErr.Message))
+				_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError(utility.SVCS_KEYMGT_ERR, externalServiceErr.Message))
 				return
 			}
 			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
