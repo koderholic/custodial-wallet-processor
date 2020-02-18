@@ -33,4 +33,4 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "expireCacheDuration: 400" >> config.yaml && \
     echo "ETH_SLIP_VALUE: 60" >> config.yaml && \
     echo "sweepCronInterval: 1/5 * * * *" >> config.yaml && \
-    echo "sweepFeePercentageThreshold: 20" >> config.yaml
+    echo "sweepFeePercentageThreshold: 2" >> config.yaml
