@@ -11,5 +11,6 @@ var (
 		"GetTransaction":     "get-transactions",
 		"OnChainDeposit":     "on-chain-deposit",
 		"ConfirmTransaction": "confirm-transaction",
+		"ExternalTransfer":   "external-transfer",
 	}
 )
