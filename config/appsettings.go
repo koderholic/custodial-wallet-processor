@@ -12,27 +12,30 @@ import (
 
 //Data : config data
 type Data struct {
-	AppPort               string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
-	ServiceName           string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
-	DBHost                string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
-	DBUser                string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
-	DBPassword            string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
-	DBName                string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
-	BasePath              string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
-	ServiceID             string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"AUTHENTICATION_SERVICE_SERVICE_ID,omitempty"`
-	ServiceKey            string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"AUTHENTICATION_SERVICE_TOKEN,omitempty"`
-	AuthenticatorKey      string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
-	AuthenticationService string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
-	KeyManagementService  string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
-	CryptoAdapterService  string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
-	LockerService         string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
-	LockerPrefix          string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
-	DepositWebhookURL     string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
-	BtcSlipValue          string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
-	BnbSlipValue          string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
-	EthSlipValue          string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
-	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
-	ExpireCacheDuration   time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
+	AppPort                     string `mapstructure:"appPort"  yaml:"appPort,omitempty"`
+	ServiceName                 string `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
+	DBHost                      string `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
+	DBUser                      string `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
+	DBPassword                  string `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
+	DBName                      string `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
+	BasePath                    string `mapstructure:"basePath"  yaml:"basePath,omitempty"`
+	ServiceID                   string `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"AUTHENTICATION_SERVICE_SERVICE_ID,omitempty"`
+	ServiceKey                  string `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"AUTHENTICATION_SERVICE_TOKEN,omitempty"`
+	AuthenticatorKey            string `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
+	AuthenticationService       string `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
+	KeyManagementService        string `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
+	CryptoAdapterService        string `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
+	LockerService               string `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
+	LockerPrefix                string `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
+	DepositWebhookURL           string `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
+	BtcSlipValue                string `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
+	BnbSlipValue                string `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
+	EthSlipValue                string `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
+	SweepFeePercentageThreshold int64  `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
+	SweepCronInterval           string `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
+
+	PurgeCacheInterval  time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
+	ExpireCacheDuration time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
 }
 
 //Init : initialize data

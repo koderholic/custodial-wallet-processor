@@ -19,3 +19,5 @@ lockerServicePrefix : "Withdrawal-TXN-"
 BTC_SLIP_VALUE: 0
 BNB_SLIP_VALUE: 714
 ETH_SLIP_VALUE: 60
+sweepCronInterval: "1/5 * * * *"
+sweepFeePercentageThreshold: 2
