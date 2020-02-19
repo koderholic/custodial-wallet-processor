@@ -52,5 +52,5 @@ type BatchBTCRequest struct {
 
 type BatchRecipients struct {
 	Address string `json:"address"`
-	Value   int    `json:"value"`
+	Value   int64  `json:"value"`
 }

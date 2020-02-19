@@ -1,12 +1,22 @@
 package test
 
 import (
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 	"wallet-adapter/config"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
+)
+
+const (
+	okResponse = `{
+		"signedData": "01000000000101f0da3bdfa7649bd82e150df03c1f1afd6192c02204201e1e87143c4897d950f30000000000ffffffff016243000000000000160014c20e807c07ab32d83d06ca9fbec3261a949575720247304402201fdb6a0e54178f17d5f0e942a9c60dd2c67a81fabeba665f46d77b8886f6d0e802202c27d3286b77376ac4a7afed60d6b7d1496b8a0b359adae0309da04a24250dee0121022b963c18cfa779aceb86501ef79b846aa6e0784658cbef6aa62e6bdd91a60ca800000000",
+		"fee": 5250
+	}`
 )
 
 func TestSignTransactionImplementation(t *testing.T) {
@@ -55,13 +65,20 @@ func TestBatchSignBtcImplementation(t *testing.T) {
 		AuthenticationService: "https://internal.dev.bundlewallet.com/authentication",
 		KeyManagementService:  "https://internal.dev.bundlewallet.com/key-management",
 	}
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//assert.Equal(t, "key", r.Header.Get("Key"))
+		//assert.Equal(t, "secret", r.Header.Get("Secret"))
+		w.Write([]byte(okResponse))
+	})
+	httpClient, teardown := testingHTTPClient(h)
+	defer teardown()
 
 	// Calls key-management to batch sign transaction
 	recipientData := []model.BatchRecipients{}
 	//get float
 
 	floatRecipient := model.BatchRecipients{
-		Address: "bc1qs5gu88wflpnnx5ve9wgay79rn9ajr8masy7akj",
+		Address: "bc1qcg8gqlq84veds0gxe20masexr22f2atjn6g6yj",
 		Value:   0,
 	}
 	recipientData = append(recipientData, floatRecipient)
@@ -70,7 +87,7 @@ func TestBatchSignBtcImplementation(t *testing.T) {
 
 	signTransactionRequest := model.BatchBTCRequest{
 		AssetSymbol:   "BTC",
-		ChangeAddress: "bc1qs5gu88wflpnnx5ve9wgay79rn9ajr8masy7akj",
+		ChangeAddress: "bc1qcg8gqlq84veds0gxe20masexr22f2atjn6g6yj",
 		IsSweep:       true,
 		Origins:       btcAssets,
 		Recipients:    recipientData,
@@ -80,7 +97,7 @@ func TestBatchSignBtcImplementation(t *testing.T) {
 	purgeInterval := Config.PurgeCacheInterval * time.Second
 	cacheDuration := Config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
-	if err := services.SignBatchBTCTransaction(authCache, logger, Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	if err := services.SignBatchBTCTransaction(httpClient, authCache, logger, Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		t.Errorf("Expected SignTransaction to error due to validation on request data, got %s\n", err)
 	}
 
@@ -115,4 +132,18 @@ func TestBroadcastTransactionImplementation(t *testing.T) {
 	// if responseData.TransactionHash == "" {
 	// 	t.Errorf("Expected SignTransaction to error due to incorrect signed data, got %s\n", responseData.TransactionHash)
 	// }
+}
+
+func testingHTTPClient(handler http.Handler) (*http.Client, func()) {
+	s := httptest.NewServer(handler)
+
+	cli := &http.Client{
+		Transport: &http.Transport{
+			DialTLS: func(network, _ string) (net.Conn, error) {
+				return net.Dial(network, s.Listener.Addr().String())
+			},
+		},
+	}
+
+	return cli, s.Close
 }

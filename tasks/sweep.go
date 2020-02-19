@@ -116,7 +116,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		Recipients:    recipientData,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignBatchBTCTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	if err := services.SignBatchBTCTransaction(nil, cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping batch transactions for BTC", err)
 		return err
 	}
