@@ -27,6 +27,10 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
 		SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &transactions); err != nil {
 		logger.Error("Error response from Sweep job : could not fetch sweep candidates %+v", err)
+		if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+			logger.Error("Could not release lock", err)
+			return
+		}
 		return
 	}
 	//group transactions by recipientId
@@ -110,12 +114,13 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 	//update all assetTransactions with new swept status
+	var assetIdList []uuid.UUID
 	for _, tx := range assetTransactions {
-		tx.SweptStatus = true
-		if err := repository.Update(tx.ID, &tx); err != nil {
-			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-			return err
-		}
+		assetIdList = append(assetIdList, tx.ID)
+	}
+	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+		return err
 	}
 	return nil
 }
