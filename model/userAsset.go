@@ -1,7 +1,8 @@
 package model
 
 import (
-	uuid "github.com/satori/go.uuid"
+	uuid "github.
+	m/satori/go.uuid"
 )
 
 // CreateUserAssetRequest ... Model definition for create asset request
@@ -35,7 +36,7 @@ type ChainData struct {
 	Status          *bool  `json:"status" validate:"required"`
 	TransactionHash string `json:"transactionHash" validate:"required"`
 	TransactionFee  string `json:"transactionFee" validate:"required"`
-	BlockHeight     int64  `json:"blockHeight" validate:"required"`
+	BlockHeight     int64  `json:"blockHeight"`
 }
 
 type OnChainCreditUserAssetRequest struct {
