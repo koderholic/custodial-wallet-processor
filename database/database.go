@@ -44,9 +44,9 @@ func (database *Database) LoadDBInstance() {
 			database.Logger.Error("Database connection closed. Error > %s", err.Error())
 		}
 
-		db.DB().SetMaxIdleConns(25)
-		db.DB().SetMaxOpenConns(50)
-		db.DB().SetConnMaxLifetime(time.Second * 300)
+		db.DB().SetMaxIdleConns(database.Config.MaxIdleConns)
+		db.DB().SetMaxOpenConns(database.Config.MaxOpenConns)
+		db.DB().SetConnMaxLifetime(time.Second * time.Duration(database.Config.ConnMaxLifetime))
 
 		db.LogMode(true)
 		database.DB = db

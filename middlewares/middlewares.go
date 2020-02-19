@@ -56,7 +56,6 @@ func (m *Middleware) Timeout(duration time.Duration) *Middleware {
 	}
 
 	nextHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, requestReader *http.Request) {
-		m.logger.Info("Timeout middleware registered successfully.")
 		ctx, releaseContext := context.WithTimeout(requestReader.Context(), duration)
 		defer releaseContext()
 
@@ -66,7 +65,6 @@ func (m *Middleware) Timeout(duration time.Duration) *Middleware {
 		case <-nextRequestCompleted:
 			break
 		case <-ctx.Done():
-			m.logger.Info("Timeout !!!!")
 			json.NewEncoder(responseWriter).Encode(response.PlainError("TIMEOUT_ERR", utility.TIMEOUT_ERR))
 			m.logger.Warning("Request Timeout: [duration = %f seconds.]", duration.Seconds())
 			return
