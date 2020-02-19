@@ -41,3 +41,16 @@ type ExternalTransferResponse struct {
 	DebitReference       string `json:"debitReference,omitempty"`
 	TransactionStatus    string `json:"transactionStatus,omitempty"`
 }
+
+type BatchBTCRequest struct {
+	AssetSymbol   string            `json:"assetSymbol"`
+	ChangeAddress string            `json:"changeAddress"`
+	IsSweep       bool              `json:"isSweep"`
+	Origins       []string          `json:"origins"`
+	Recipients    []BatchRecipients `json:"recipients"`
+}
+
+type BatchRecipients struct {
+	Address string `json:"address"`
+	Value   int    `json:"value"`
+}
