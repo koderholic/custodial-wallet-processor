@@ -1,0 +1,60 @@
+{
+    "tables" : [
+        "credentials", 
+        "clients", 
+        "txns"
+    ],
+    "columns" : {
+        "credentials" : {
+            "id" : "serial",
+            "key" : "VARCHAR (355)",
+            "iv" : "VARCHAR (355)",
+            "auth_token" : "VARCHAR",
+            "auth_expires" : "timestamp",
+            "username" : "VARCHAR",
+            "created_at" : "timestamp DEFAULT current_timestamp", 
+            "updated_at" : "timestamp DEFAULT current_timestamp",
+            "deleted_at" : "timestamp DEFAULT current_timestamp"
+        },
+
+        "clients" : {
+            "id" : "serial",
+            "app_name" : "VARCHAR (355) UNIQUE NOT NULL",
+            "ip_address" : "VARCHAR (355) NOT NULL",
+            "app_description" : "text",
+            "client_id" : "VARCHAR NOT NULL",
+            "password" : "VARCHAR NOT NULL",
+            "Enabled" : "BOOLEAN NOT NULL DEFAULT true",
+            "created_at" : "timestamp DEFAULT current_timestamp", 
+            "updated_at" : "timestamp DEFAULT current_timestamp",
+            "deleted_at" : "timestamp DEFAULT current_timestamp"
+        },
+        "txns" : {
+            "id" : "serial",
+            "client_id" : "integer NOT NULL",
+            "request_type" : "VARCHAR (300) NOT NULL",
+            "request_payload" : "text",
+            "response_payload" : "text",
+            "created_at" : "timestamp DEFAULT current_timestamp", 
+            "updated_at" : "timestamp DEFAULT current_timestamp",
+            "deleted_at" : "timestamp DEFAULT current_timestamp"
+        }
+    },
+    "primaryKeys" : {
+        "credentials" : "id",
+        "clients" : "id",
+        "txns" : "id"
+    },
+    "references" : {
+        "credentials" : [],
+        "clients" : [],
+        "txns" :[
+            {
+                "foreignKey" : "client_id",
+                "reference" : "clients",
+	            "referenceKey" : "id",
+	            "tableActions" : "MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION"
+            }
+        ]
+    }
+}

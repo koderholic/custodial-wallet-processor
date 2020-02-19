@@ -2,14 +2,19 @@ package database
 
 import (
 	"wallet-adapter/dto"
+	// "wallet-adapter/utility"
+
+	// "github.com/trustwallet/blockatlas/pkg/logger"
 )
 
 // RunDbMigrations ... This creates corresponding tables for dtos on the db and watches the dto for field additions
 func (database *Database) RunDbMigrations() {
-	database.DB.DropTable(&dto.TransactionQueue{})
 	database.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserBalance{}, &dto.HotWalletAsset{}, &dto.TransactionQueue{})
 	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
 	database.DB.Model(&dto.UserBalance{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
+
+
+	// database.CreateTables()
 }
 
 // DBSeeder .. This seeds supported assets into the database

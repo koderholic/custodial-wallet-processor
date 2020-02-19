@@ -1,0 +1,8 @@
+{
+    "primaryKeys" : {
+        "users" : "id"
+    },
+    "drop" : {
+        
+    }
+}

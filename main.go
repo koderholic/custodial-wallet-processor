@@ -32,6 +32,9 @@ func main() {
 	Database.RunDbMigrations()
 	Database.DBSeeder()
 
+	// done := make(chan bool, 1)
+	// go migration(done)
+
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
@@ -48,4 +51,28 @@ func main() {
 
 	logger.Info("Server started and listening on port %s", config.AppPort)
 	log.Fatal(http.ListenAndServe(serviceAddress, router))
+
+	// <-done
 }
+
+// Handles database migrations
+// func migration(done chan bool) {
+// 	var keyword, action, location string
+// 	go func() {
+// 		for {
+// 			if fmt.Scan(&keyword, &action, &location); keyword == "migration:" {
+// 				if action == "CREATE" || action == "DROP" || action == "ALTER" || action == "ALTERKEY" || action == "ALTERREF" || action == "TRUNCATE" {
+// 					if location != "" {
+// 						database.Migration.Action = action
+// 						database.Migration.Location = location
+// 						database.Migrate()
+
+// 					}
+// 				}
+// 			}
+// 		}
+// 		done <- true
+
+// 	}()
+
+// }

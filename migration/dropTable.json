@@ -1,0 +1,14 @@
+{
+    "drop" : [
+        "skills",
+        "projects",
+        "profiles",
+        "users"
+    ],
+    "truncate" : [
+        "skills",
+        "projects",
+        "profiles",
+        "users"
+    ]
+}
