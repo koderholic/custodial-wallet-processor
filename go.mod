@@ -28,7 +28,7 @@ require (
 	github.com/swaggo/http-swagger v0.0.0-20190614090009-c2865af9083e
 	github.com/swaggo/swag v1.6.3
 	github.com/toolkits/file v0.0.0-20160325033739-a5b3c5147e07 // indirect
-	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
+	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 	golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7 // indirect
 	gopkg.in/go-playground/validator.v9 v9.30.2
 )

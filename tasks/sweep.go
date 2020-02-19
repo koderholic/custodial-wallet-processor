@@ -38,7 +38,30 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	for _, tx := range transactions {
 		transactionsPerAssetId[tx.RecipientID] = append(transactionsPerAssetId[tx.RecipientID], tx)
 	}
-	for _, assetTransactions := range transactionsPerAssetId {
+
+	var btcAssets []string
+	var btcAssetTransactionsToSweep []dto.Transaction
+	for assetId, assetTransactions := range transactionsPerAssetId {
+		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
+		//need recipient Asset to check assetSymbol
+		recipientAsset := dto.UserAssetBalance{}
+		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
+		if err := repository.Get(assetId, &recipientAsset); err != nil {
+			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+			return
+		}
+		if recipientAsset.Symbol == "BTC" {
+			//get recipient address
+			recipientAddress := dto.UserAddress{}
+			if err := repository.Get(assetId, &recipientAddress); err != nil {
+				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+				return
+			}
+			btcAssets = append(btcAssets, recipientAddress.Address)
+			btcAssetTransactionsToSweep = append(btcAssetTransactionsToSweep, assetTransactions...)
+			//skip futher processing for this asset, will be included a part of batch btc processing
+			continue
+		}
 		//Get total sum to be swept for this assetId
 		var sum = int64(0)
 		var count = 0
@@ -54,12 +77,55 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			continue
 		}
 	}
-
+	//batch process btc
+	if len(btcAssets) > 0 {
+		if err := sweepBatchTx(cache, logger, config, repository, serviceErr, btcAssets, btcAssetTransactionsToSweep); err != nil {
+			logger.Error("Error response from Sweep job : %+v while sweeping batch transactions for BTC", err)
+			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+				logger.Error("Could not release lock", err)
+				return
+			}
+			return
+		}
+	}
 	if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 		logger.Error("Could not release lock", err)
 		return
 	}
 	logger.Info("Sweep operation ends successfully, lock released")
+}
+
+func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr model.ServicesRequestErr, btcAssets []string, btcAssetTransactionsToSweep []dto.Transaction) error {
+	// Calls key-management to batch sign transaction
+	recipientData := []model.BatchRecipients{}
+	//get float
+	floatAccount, err := getFloatDetails(repository, "BTC", logger)
+	if err != nil {
+		return err
+	}
+	floatRecipient := model.BatchRecipients{
+		Address: floatAccount.Address,
+		Value:   0,
+	}
+	recipientData = append(recipientData, floatRecipient)
+	signTransactionRequest := model.BatchBTCRequest{
+		AssetSymbol:   "BTC",
+		ChangeAddress: floatAccount.Address,
+		IsSweep:       true,
+		Origins:       btcAssets,
+		Recipients:    recipientData,
+	}
+	signTransactionResponse := model.SignTransactionResponse{}
+	if err := services.SignBatchBTCTransaction(nil, cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping batch transactions for BTC", err)
+		return err
+	}
+	e, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, "BTC", cache, logger, serviceErr, btcAssetTransactionsToSweep, repository)
+	if done {
+		return e
+	}
+	return nil
+
 }
 
 func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, sum int64) error {
@@ -76,10 +142,8 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
-	//Get the float address
-	var floatAccount dto.HotWalletAsset
-	if err := repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: recipientAsset.Symbol}, &floatAccount); err != nil {
-		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+	floatAccount, err := getFloatDetails(repository, recipientAsset.Symbol, logger)
+	if err != nil {
 		return err
 	}
 
@@ -96,22 +160,38 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
-
 	//Check that fee is below X% of the total value.
 	if (((signTransactionResponse.Fee) / sum) * 100) > config.SweepFeePercentageThreshold {
 		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.Symbol, config.SweepFeePercentageThreshold))
 	}
 
+	e, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.Symbol, cache, logger, serviceErr, assetTransactions, repository)
+	if done {
+		return e
+	}
+	return nil
+}
+
+func getFloatDetails(repository database.BaseRepository, symbol string, logger *utility.Logger) (dto.HotWalletAsset, error) {
+	//Get the float address
+	var floatAccount dto.HotWalletAsset
+	if err := repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id and trying to get float detials", err)
+		return dto.HotWalletAsset{}, err
+	}
+	return floatAccount, nil
+}
+
+func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionResponse, config Config.Data, symbol string, cache *utility.MemoryCache, logger *utility.Logger, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, repository database.BaseRepository) (error, bool) {
 	// Send the signed data to crypto adapter to send to chain
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: recipientAsset.Symbol,
+		AssetSymbol: symbol,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
-
 	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err == nil {
-		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return err
+		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		return err, true
 	}
 	//update all assetTransactions with new swept status
 	var assetIdList []uuid.UUID
@@ -119,10 +199,10 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		assetIdList = append(assetIdList, tx.ID)
 	}
 	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
-		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return err
+		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		return err, true
 	}
-	return nil
+	return nil, false
 }
 
 func acquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {

@@ -30,6 +30,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.KeyManagementService,
 			Action:   "/sign-transaction",
 		}
+	case "signBatchTransaction":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.KeyManagementService,
+			Action:   "/sign-batch-transaction",
+		}
 	case "broadcastTransaction":
 		return MetaData{
 			Type:     http.MethodPost,
