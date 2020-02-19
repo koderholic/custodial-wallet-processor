@@ -19,6 +19,7 @@ var (
 	INVALID_DEBIT             = "Debit reference provided was not successful."
 	INVALID_DEBIT_AMOUNT      = "Value in debit reference does not match value provided."
 	DEBIT_PROCESSED_ERR       = "Debit reference has already been processed for external transfer"
+	TIMEOUT_ERR = "Request timedout, taking longer than usual to process"
 )
 
 const (

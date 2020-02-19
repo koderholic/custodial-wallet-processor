@@ -1,8 +1,7 @@
 package model
 
 import (
-	uuid "github.
-	m/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 // CreateUserAssetRequest ... Model definition for create asset request

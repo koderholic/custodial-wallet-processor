@@ -3,8 +3,10 @@ package middlewares
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 	"net/http"
 	"strings"
+	"context"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -35,6 +37,43 @@ func (m *Middleware) LogAPIRequests() *Middleware {
 		m.logger.Info(fmt.Sprintf("Incoming request from : %s with IP : %s to : %s", requestReader.UserAgent(), utility.GetIPAdress(requestReader), requestReader.URL.Path))
 		m.next.ServeHTTP(responseWriter, requestReader)
 	})
+
+	return &Middleware{logger: m.logger, config: m.config, next: nextHandler}
+}
+
+
+// Timeout cancels a slow request after a given duration
+func (m *Middleware) Timeout(duration time.Duration) *Middleware {
+	AttemptNextRequest := func(responseWriter http.ResponseWriter, requestReader *http.Request) <-chan struct{} {
+		completed := make(chan struct{})
+
+		go func(responseWriter *http.ResponseWriter, requestReader *http.Request) {
+			m.next.ServeHTTP(*responseWriter, requestReader)
+			completed <- struct{}{}
+		}(&responseWriter, requestReader)
+
+		return completed
+	}
+
+	nextHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, requestReader *http.Request) {
+		m.logger.Info("Timeout middleware registered successfully.")
+		ctx, releaseContext := context.WithTimeout(requestReader.Context(), duration)
+		defer releaseContext()
+
+		nextRequestCompleted := AttemptNextRequest(responseWriter, requestReader.WithContext(ctx))
+
+		select {
+		case <-nextRequestCompleted:
+			break
+		case <-ctx.Done():
+			m.logger.Info("Timeout !!!!")
+			json.NewEncoder(responseWriter).Encode(response.PlainError("TIMEOUT_ERR", utility.TIMEOUT_ERR))
+			m.logger.Warning("Request Timeout: [duration = %f seconds.]", duration.Seconds())
+			return
+		}
+	})
+
+	// m.logger.Info("Timeout middleware registered successfully.")
 
 	return &Middleware{logger: m.logger, config: m.config, next: nextHandler}
 }

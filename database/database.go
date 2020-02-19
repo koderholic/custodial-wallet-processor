@@ -46,7 +46,7 @@ func (database *Database) LoadDBInstance() {
 
 		db.DB().SetMaxIdleConns(25)
 		db.DB().SetMaxOpenConns(50)
-		db.DB().SetConnMaxLifetime(time.Minute * 10)
+		db.DB().SetConnMaxLifetime(time.Second * 300)
 
 		db.LogMode(true)
 		database.DB = db
