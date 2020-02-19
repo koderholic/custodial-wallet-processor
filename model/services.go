@@ -23,11 +23,13 @@ type SignTransactionRequest struct {
 	Memo        string `json:"memo"`
 	Amount      int64  `json:"amount"`
 	CoinType    string `json:"coinType"`
+	IsSweep     bool   `json:"isSweep"`
 }
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
 type SignTransactionResponse struct {
 	SignedData string `json:"signedTransaction"`
+	Fee        int64  `json:"fee"`
 }
 
 // BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service

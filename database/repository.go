@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	uuid "github.com/satori/go.uuid"
 	"strings"
 	"wallet-adapter/utility"
 )
@@ -126,6 +127,17 @@ func (repo *BaseRepository) Delete(model interface{}) error {
 func (repo *BaseRepository) FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error {
 	if err := repo.DB.FirstOrCreate(model, checkExistOrUpdate).Error; err != nil {
 		repo.Logger.Error("Error with repository FindOrCreateUserAsset : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+func (repo *BaseRepository) BulkUpdateTransactionSweptStatus(idList []uuid.UUID) error {
+	if err := repo.DB.Exec("UPDATE transactions SET swept_status=true WHERE id IN (?)", idList).Error; err != nil {
+		repo.Logger.Error("Error with repository bulk update transaction swept_status : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
