@@ -34,6 +34,8 @@ type Data struct {
 	PurgeCacheInterval    time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
 	RequestTimeout          time.Duration `mapstructure:"requestTimeout"  yaml:"requestTimeout,omitempty"`
 	ExpireCacheDuration   time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
+	SweepFeePercentageThreshold int64  `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
+	SweepCronInterval           string `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
 }
 
 //Init : initialize data
