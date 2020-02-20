@@ -106,7 +106,7 @@ func TestBatchSignBtcImplementation(t *testing.T) {
 	cacheDuration := Config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 
-	if err := services.SignBatchBTCTransaction(httpClient, authCache, logger, Config, signTransactionRequest, &signTransactionResponse, serviceErr); err == nil {
+	if err := services.SignBatchBTCTransaction(httpClient, authCache, logger, Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		t.Errorf("Expected SignTransaction to error due to validation on request data, got %s\n", err)
 	}
 

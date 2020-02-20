@@ -8,8 +8,8 @@ RUN go mod download
 
 COPY ./ /build
 ENV PATH $GOPATH/bin:$PATH
+RUN go get bitbucket.org/liamstask/goose/cmd/goose
 RUN cd ./database/migrations  && \ 
-    go get bitbucket.org/liamstask/goose/cmd/goose && \ 
     goose mysql "$DB_USER:$DB_PASSWORD@tcp($DB_HOST)/$DB_NAME?parseTime=true" up
 RUN go build -o /build/service
 
