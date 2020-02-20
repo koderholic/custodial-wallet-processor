@@ -4,6 +4,7 @@ import (
 	"wallet-adapter/dto"
 )
 
+
 // DBSeeder .. This seeds supported assets into the database
 func (database *Database) DBSeeder() {
 

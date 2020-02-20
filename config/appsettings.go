@@ -39,6 +39,8 @@ type Data struct {
 	MaxOpenConns int  `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
 	ConnMaxLifetime int  `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
 	SweepCronInterval           string `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
+	DBMigrationPath          string `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
+	DBMigrationENV          string `mapstructure:"dbMigrationENV"  yaml:"dbMigrationENV,omitempty"`
 }
 
 //Init : initialize data

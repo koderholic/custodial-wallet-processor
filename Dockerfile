@@ -7,10 +7,6 @@ COPY go.sum .
 RUN go mod download
 
 COPY ./ /build
-ENV PATH $GOPATH/bin:$PATH
-RUN  go get -u github.com/pressly/goose/cmd/goose
-RUN cd ./database/migrations  && \ 
-    goose mysql "$DB_USER:$DB_PASSWORD@tcp($DB_HOST)/$DB_NAME?parseTime=true" up
 RUN go build -o /build/service
 
 FROM debian:latest
