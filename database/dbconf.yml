@@ -1,0 +1,11 @@
+production:
+    driver: mysql 
+    open: root:4504@Mysql@tcp(127.0.0.1:3306)/walletAdapter?parseTime=true
+    dialect: mysql
+    import: github.com/jinzhu/gorm/dialects/mysql
+development:
+    driver: mysql 
+    open: root:4504@Mysql@tcp(127.0.0.1:3306)/walletAdapter?parseTime=true
+    dialect: mysql
+    import: github.com/jinzhu/gorm/dialects/mysql
+    

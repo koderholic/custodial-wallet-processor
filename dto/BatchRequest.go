@@ -14,11 +14,11 @@ type BTHStatus struct {
 var (
 	// BatchStatus ...
 	BatchStatus = BTHStatus{
-		PENDING:    "Pending",
-		PROCESSING: "Processing",
-		COMPLETED:  "Completed",
-		TERMINATED: "Terminated",
-		REVERSED:   "Reversed",
+		PENDING:    "PENDING",
+		PROCESSING: "PROCESSING",
+		COMPLETED:  "COMPLETED",
+		TERMINATED: "TERMINATED",
+		REVERSED:   "REVERSED",
 	}
 )
 
@@ -26,7 +26,7 @@ var (
 type BatchRequest struct {
 	BaseDTO
 	DenominationID   uuid.UUID     `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"asset_id"`
-	Status           string        `gorm:"index:status;not null;default:'Pending'" json:"status"`
+	Status           string        `gorm:"index:status;not null;default:'PENDING'" json:"status"`
 	DateOfprocessing time.Time     `json:"date_of_processing"`
 	DateCompleted    time.Time     `json:"date_completed"`
 	Records          int           `json:"no_of_records"`

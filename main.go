@@ -30,7 +30,6 @@ func main() {
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
-	Database.RunDbMigrations()
 	Database.DBSeeder()
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
