@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"sync"
+	"time"
 	"wallet-adapter/controllers"
 	"wallet-adapter/database"
 	"wallet-adapter/middlewares"
@@ -37,23 +38,24 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		// General Routes
 		apiRouter.HandleFunc("/ping", controller.Ping).Methods(http.MethodGet)
 
-		// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
+		// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Timeout(requestTimeout).Build()
 
 		// User Asset Routes
-		apiRouter.HandleFunc("/users/assets", middlewares.NewMiddleware(logger, config, userAssetController.CreateUserAssets).ValidateAuthToken(utility.Permissions["CreateUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/users/{userId}/assets", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssets).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/onchain-deposit", middlewares.NewMiddleware(logger, config, userAssetController.OnChainCreditUserAsset).ValidateAuthToken(utility.Permissions["OnChainDeposit"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(logger, config, userAssetController.InternalTransfer).ValidateAuthToken(utility.Permissions["InternalTransfer"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["ExternalTransfer"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/confirm-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ConfirmTransaction).ValidateAuthToken(utility.Permissions["ConfirmTransaction"]).LogAPIRequests().Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ProcessTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
+		var requestTimeout = time.Duration(config.RequestTimeout) * time.Second
+		apiRouter.HandleFunc("/users/assets", middlewares.NewMiddleware(logger, config, userAssetController.CreateUserAssets).ValidateAuthToken(utility.Permissions["CreateUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/users/{userId}/assets", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssets).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/onchain-deposit", middlewares.NewMiddleware(logger, config, userAssetController.OnChainCreditUserAsset).ValidateAuthToken(utility.Permissions["OnChainDeposit"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(logger, config, userAssetController.InternalTransfer).ValidateAuthToken(utility.Permissions["InternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["ExternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/confirm-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ConfirmTransaction).ValidateAuthToken(utility.Permissions["ConfirmTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ProcessTransactions).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 
 	})
 

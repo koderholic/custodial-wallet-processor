@@ -228,11 +228,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	requestData := model.CreditUserAssetRequest{}
 	responseData := model.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
-
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-	fmt.Println("requestReader.Body ... !!!  > ", requestReader.Body)
+	
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
 
@@ -244,6 +240,10 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
 	}
+
+	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+	decodedToken := model.TokenClaims{}
+	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and then fetch asset
 	assetDetails := dto.UserAssetBalance{}
@@ -360,10 +360,6 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	responseData := model.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreditUserAssets : %+v", requestData)
 
@@ -375,6 +371,10 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
 	}
+
+	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+	decodedToken := model.TokenClaims{}
+	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and fetc asset
 	assetDetails := dto.UserAssetBalance{}
@@ -483,10 +483,6 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	responseData := model.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for OnChainCreditUserAssets : %+v", requestData)
 
@@ -498,6 +494,10 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
 	}
+
+	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+	decodedToken := model.TokenClaims{}
+	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and fetc asset
 	assetDetails := dto.UserAssetBalance{}
@@ -630,10 +630,6 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	responseData := model.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for InternalTransfer : %+v", requestData)
 
@@ -645,6 +641,10 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
 	}
+
+	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+	decodedToken := model.TokenClaims{}
+	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and then fetch asset
 	initiatorAssetDetails := dto.UserAssetBalance{}

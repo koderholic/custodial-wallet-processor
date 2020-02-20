@@ -124,10 +124,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	responseData := model.ExternalTransferResponse{}
 	paymentRef := utility.RandomString(16)
 
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for ExternalTransfer : %+v", requestData)
 
@@ -139,6 +135,10 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
 		return
 	}
+
+	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+	decodedToken := model.TokenClaims{}
+	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// A check is done to ensure the debitReference points to an actual previous debit
 	debitReferenceTransaction := dto.Transaction{}
@@ -181,20 +181,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	tx := controller.Repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Failed to complete external transafer on %s : %s", requestData.DebitReference, err)))
-		return
-	}
-	// Create a transaction record for the transaction on the db for the request
+	// Build transaction object
 	transaction := dto.Transaction{
 		InitiatorID:          decodedToken.ServiceID,
 		RecipientID:          debitReferenceTransaction.RecipientID,
@@ -211,16 +198,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 	}
-	if err := tx.Create(&transaction).Error; err != nil {
-		tx.Rollback()
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-		return
-	}
 
-	// If recipient address is on platform, credit recipient asset and complete transaction
+	// If recipient address is on platform, do internal credit on recipient asset and create a complete transaction
 	recipientInternalAddress := dto.UserAddress{}
 	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: requestData.RecipientAddress}, &recipientInternalAddress); err == nil {
 		recipientAsset := dto.UserAssetBalance{}
@@ -246,23 +225,47 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		}
 		recipientNewBalance := (recipientBalance.Add(value)).String()
 
-		if err := tx.Model(&recipientAsset).Updates(dto.UserBalance{AvailableBalance: recipientNewBalance}).Error; err != nil {
-			tx.Rollback()
+
+		dbTX := controller.Repository.Db().Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				dbTX.Rollback()
+			}
+		}()
+		if err := dbTX.Error; err != nil {
 			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", err.Error()))
-			return
-		}
-		if err := tx.Model(&transaction).Updates(dto.Transaction{TransactionStatus: dto.TransactionStatus.COMPLETED}).Error; err != nil {
-			tx.Rollback()
-			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", err.Error()))
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Failed to complete external transafer on %s : %s", requestData.DebitReference, err)))
 			return
 		}
 
+		if err := dbTX.Model(&recipientAsset).Updates(dto.UserBalance{AvailableBalance: recipientNewBalance}).Error; err != nil {
+			dbTX.Rollback()
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", err.Error()))
+			return
+		}
+		transaction.TransactionStatus = dto.TransactionStatus.COMPLETED
+		if err := dbTX.Create(&transaction).Error; err != nil {
+			dbTX.Rollback()
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			return
+		}
+
+		if err := dbTX.Commit().Error; err != nil {
+			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+			return
+		}
+	
 		responseData.TransactionReference = transaction.TransactionReference
 		responseData.DebitReference = requestData.DebitReference
 		responseData.TransactionStatus = transaction.TransactionStatus
@@ -300,6 +303,30 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Failed to complete external transafer on %s : %s", requestData.DebitReference, err)))
+		return
+	}
+
+	// Create a transaction entry
+	if err := tx.Create(&transaction).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
 	// Queue transaction up for processing
 	queue := dto.TransactionQueue{
 		Recipient:      requestData.RecipientAddress,
@@ -319,7 +346,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -355,20 +381,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
-		return
-	}
-
-	tx := controller.Repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 		return
 	}
 
@@ -434,6 +446,21 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}
 	}
 
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		return
+	}
+
 	// Goes to chain transaction table, update the status of the chain transaction,
 	if err := tx.Model(&chainTransaction).Updates(&chainTransactionUpdate).Error; err != nil {
 		tx.Rollback()
@@ -463,7 +490,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
 		controller.Logger.Error("Outgoing response to ConfirmTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -538,7 +564,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			if err := services.ReleaseLock(controller.Cache, controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
 				controller.Logger.Error("Error occured while releasing lock : %+v; %s", serviceErr, err)
 			}
-			fmt.Printf("xlockReleaseRequest >>> ", lockReleaseRequest)
 		}
 		done <- true
 	}()
