@@ -10,9 +10,9 @@ COPY ./ /build
 RUN go build -o /build/service
 
 FROM debian:latest
-RUN mkdir -p /app/bin && mkdir -p /app/bin/service/migration
+RUN mkdir -p /app/bin
 COPY --from=builder /build/service /app/bin/service
-COPY --from=builder /build/migration /app/bin/service/migration
+COPY --from=builder /build/migration /app/bin/migration
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 WORKDIR /app/bin/
 
