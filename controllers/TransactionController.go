@@ -546,7 +546,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 			err := controller.processSingleTxn(transaction)
 			if err != nil {
-				controller.Logger.Error("The transaction '%+v' could not be processed : ", transaction, err)
+				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
 
 				// Revert the transaction status back to pending
 				if err := controller.Repository.Update(&transactionQueueDetails, &dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PENDING}); err != nil {
@@ -592,8 +592,8 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 	}
 	onchainBalanceResponse := model.OnchainBalanceResponse{}
 	if err := services.GetOnchainBalance(controller.Cache, controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
-		if serviceErr.Code != "" {
-			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
+		if serviceErr.Message != "" {
+			controller.Logger.Error("Error occured while getting on-chain balance : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
 		}
 		return err
@@ -618,12 +618,12 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value,
 		Memo:        transaction.Memo,
-		CoinType:    transaction.Denomination,
+		AssetSymbol:    transaction.Denomination,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		if serviceErr.Code != "" {
-			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
+		if serviceErr.Message != "" {
+			controller.Logger.Error("Error occured while signing transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
 		}
 		return err
@@ -637,8 +637,8 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
 	if err := services.BroadcastToChain(controller.Cache, controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
-		if serviceErr.Code != "" {
-			controller.Logger.Error("Error occured while obtaining lock : %+v", serviceErr)
+		if serviceErr.Message != "" {
+			controller.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
 		}
 		return err

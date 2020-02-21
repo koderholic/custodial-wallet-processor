@@ -39,7 +39,7 @@ func TestSignTransactionImplementation(t *testing.T) {
 		FromAddress: "0xcDb4D4dbe1a5154E5046b4fBa2efA2FA5E6a64Ec",
 		ToAddress:   "0x6CB3F3b958287fD63FA39ED8a392414115c089b3",
 		Amount:      1510000000000000,
-		CoinType:    "ETH",
+		AssetSymbol:    "ETH",
 	}
 	responseData := model.SignTransactionResponse{}
 	serviceErr := model.ServicesRequestErr{}
