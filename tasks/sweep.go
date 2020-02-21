@@ -152,7 +152,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		FromAddress: recipientAddress.Address,
 		ToAddress:   floatAccount.Address,
 		Amount:      sum,
-		CoinType:    recipientAsset.Symbol,
+		AssetSymbol:    recipientAsset.Symbol,
 		IsSweep:     true,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}

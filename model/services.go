@@ -22,7 +22,7 @@ type SignTransactionRequest struct {
 	ToAddress   string `json:"toAddress"`
 	Memo        string `json:"memo"`
 	Amount      int64  `json:"amount"`
-	CoinType    string `json:"coinType"`
+	AssetSymbol    string `json:"assetSymbol"`
 	IsSweep     bool   `json:"isSweep"`
 }
 
