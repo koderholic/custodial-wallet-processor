@@ -698,6 +698,9 @@ func ProcessTxnWithInsufficientFloat(controller UserAssetController, transaction
 				if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: txn.RecipientID}}, &txnAsset); err != nil {
 					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
 				}
+				if txnAsset.Symbol == "BTC" {
+					continue
+				}
 				// Convert value to crypto smallest unit
 				denominationDecimal := decimal.NewFromInt(int64(txnAsset.Decimal))
 				txnValue, err := decimal.NewFromString(txn.Value)
