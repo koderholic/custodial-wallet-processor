@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"time"
 	"wallet-adapter/dto"
+	"wallet-adapter/tasks"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
+	"wallet-adapter/database"
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
@@ -511,6 +513,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 	// Endpoint spins up a go-routine to process queued transactions and sends back an acknowledgement to the scheduler
 	done := make(chan bool)
+
 	go func() {
 
 		// Fetches all PENDING transactions from the transaction queue table for processing
@@ -578,12 +581,14 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 func (controller UserAssetController) processSingleTxn(transaction dto.TransactionQueue) error {
 	var floatAccount dto.HotWalletAsset
+	var fromAddress string
 	serviceErr := model.ServicesRequestErr{}
 
 	// The routine fetches the float account info from the db
 	if err := controller.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
 		return err
 	}
+	fromAddress = floatAccount.Address
 
 	// It makes a call to crypto adapter to get the current float amount
 	onchainBalanceRequest := model.OnchainBalanceRequest{
@@ -606,15 +611,73 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 
 	// If float amount is lesser than the amount to send, it triggers sweep operation
 	if floatBalance < transaction.Value {
-		// If BTC, trigger BTC sweep
-		// Else, trigger sweep for other Asset
-		return errors.New("Not enough balance in float for this transaction")
+		DB := database.Database{Logger: controller.Logger, Config: controller.Config, DB: controller.Repository.Db()}
+		baseRepository := database.BaseRepository{Database: DB}
+
+		switch transaction.Denomination {
+		case "BTC":
+			// Trigger sweep operation
+			go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+			return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
+		case "ETH":
+		case "BNB":	
+			// Fetches all COMPLETED transactions yet to be swept
+			var unSweptTransactions []dto.Transaction
+			if err := controller.Repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
+				SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &unSweptTransactions); err != nil {
+				go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+				return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+			}
+			if len(unSweptTransactions) < 1 {
+				go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+				return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
+			}
+
+			// Loops through all COMPLETED unswept transaction and selects a befiting one as input 
+			for _, txn := range unSweptTransactions {
+				txnAsset := dto.UserAssetBalance{}
+				if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: txn.RecipientID}}, &txnAsset); err != nil {
+					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+				}
+				// Convert value to crypto smallest unit
+				denominationDecimal := decimal.NewFromInt(int64(txnAsset.Decimal))
+				txnValue, err := decimal.NewFromString(txn.Value)
+				if err != nil {
+					go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+				}
+				baseExp := decimal.NewFromInt(10)
+				txnAssetValue, err := strconv.ParseInt(txnValue.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+				if err != nil {
+					go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+				}
+
+				if txnAssetValue > transaction.Value {
+					// Get asset address	
+					assetAddress := dto.UserAddress{}
+					if err := controller.Repository.GetByFieldName(&dto.UserAddress{BaseDTO: dto.BaseDTO{ID: txnAsset.ID}}, &assetAddress); err != nil {
+						go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+						return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+					}
+					fromAddress = assetAddress.Address
+					break
+				}
+			}
+
+			// If no befiting transaction is found, triggers sweep
+			go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+			return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
+
+		default:
+			return errors.New("Not enough balance in float for this transaction")
+		}
 	}
 
 	// Calls key-management to sign transaction
 	var signTransactionRequest model.SignTransactionRequest
 	signTransactionRequest = model.SignTransactionRequest{
-		FromAddress: floatAccount.Address,
+		FromAddress: fromAddress,
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value,
 		Memo:        transaction.Memo,
