@@ -18,7 +18,7 @@ func Up20200220214444(tx *sql.Tx) error {
 		address varchar(255) NOT NULL, 
 		asset_symbol varchar(255) NOT NULL, 
 		balance bigint, 
-		is_disabled tinyint(1) DEFAULT 1, 
+		is_disabled tinyint(1) DEFAULT 0, 
 	
 		PRIMARY KEY (id), 
 		CONSTRAINT uix_hot_wallet_assets_asset_symbol UNIQUE (asset_symbol)
