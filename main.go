@@ -5,6 +5,7 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/services"
+	"wallet-adapter/migration"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
@@ -30,7 +31,7 @@ func main() {
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
-	Database.RunDbMigrations()
+	migration.RunDbMigrations(logger, config)
 	Database.DBSeeder()
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
