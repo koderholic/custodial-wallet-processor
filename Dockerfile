@@ -36,5 +36,6 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "maxIdleConns : 25" >> config.yaml && \
     echo "maxOpenConns : 50" >> config.yaml && \
     echo "connMaxLifetime: 300" >> config.yaml && \
+    echo "dbMigrationPath : ./migration" >> config.yaml && \
     echo "sweepCronInterval: 1/5 * * * *" >> config.yaml && \
     echo "sweepFeePercentageThreshold: 2" >> config.yaml

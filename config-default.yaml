@@ -15,6 +15,7 @@ maxIdleConns : 25
 maxOpenConns : 50
 connMaxLifetime: 300
 lockerServicePrefix : "Wallet-Adapter-Lock-"
+dbMigrationPath : ./migration
 DB_HOST: "127.0.0.1:3306"
 DB_USER: ""
 DB_PASSWORD: ""
