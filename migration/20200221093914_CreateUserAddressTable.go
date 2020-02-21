@@ -6,10 +6,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(Up20200220215023, Down20200220215023)
+	goose.AddMigration(Up20200221093914, Down20200221093914)
 }
 
-func Up20200220215023(tx *sql.Tx) error {
+func Up20200221093914(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
 	_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS user_addresses (
 		id varchar(36) NOT NULL, 
@@ -29,7 +29,7 @@ func Up20200220215023(tx *sql.Tx) error {
 	return nil
 }
 
-func Down20200220215023(tx *sql.Tx) error {
+func Down20200221093914(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS user_addresses;")
     if err != nil {

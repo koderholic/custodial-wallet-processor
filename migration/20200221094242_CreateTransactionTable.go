@@ -6,11 +6,11 @@ import (
 )
 
 func init() {
-	goose.AddMigration(Up20200220214727, Down20200220214727)
+	goose.AddMigration(Up20200221094242, Down20200221094242)
 }
 
-func Up20200220214727(tx *sql.Tx) error {
-	// This code is executed when the migration is applied._, err := tx.Exec("ALTER TABLE transaction_queues MODIFY value BIGINT(20);")
+func Up20200221094242(tx *sql.Tx) error {
+	// This code is executed when the migration is applied.
 	_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS transactions (
 		id varchar(36) NOT NULL, 
 		created_at timestamp NULL, 
@@ -46,8 +46,8 @@ func Up20200220214727(tx *sql.Tx) error {
 	return nil
 }
 
-func Down20200220214727(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back._, err := tx.Exec("ALTER TABLE transaction_queues MODIFY value BIGINT(20);")
+func Down20200221094242(tx *sql.Tx) error {
+	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS transactions;")
     if err != nil {
         return err
