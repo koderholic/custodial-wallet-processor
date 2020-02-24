@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/tasks"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
-	"wallet-adapter/database"
+	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
@@ -227,7 +227,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		}
 		recipientNewBalance := (recipientBalance.Add(value)).String()
 
-
 		dbTX := controller.Repository.Db().Begin()
 		defer func() {
 			if r := recover(); r != nil {
@@ -267,7 +266,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 			return
 		}
-	
+
 		responseData.TransactionReference = transaction.TransactionReference
 		responseData.DebitReference = requestData.DebitReference
 		responseData.TransactionStatus = transaction.TransactionStatus
@@ -448,7 +447,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}
 	}
 
-
 	tx := controller.Repository.Db().Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -580,67 +578,54 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 }
 
 func (controller UserAssetController) processSingleTxn(transaction dto.TransactionQueue) error {
-	var floatAccount dto.HotWalletAsset
-	var fromAddress string
+	var signedData string
 	serviceErr := model.ServicesRequestErr{}
 
 	// The routine fetches the float account info from the db and sets the floatAddress as the fromAddress
+	var floatAccount dto.HotWalletAsset
 	if err := controller.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
 		return err
 	}
-	fromAddress = floatAccount.Address
+	fromAddress := floatAccount.Address
 
-	// It makes a call to crypto adapter to get the current float amount
-	onchainBalanceRequest := model.OnchainBalanceRequest{
-		Address:     floatAccount.Address,
-		AssetSymbol: transaction.Denomination,
-	}
-	onchainBalanceResponse := model.OnchainBalanceResponse{}
-	if err := services.GetOnchainBalance(controller.Cache, controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
-		if serviceErr.Message != "" {
-			controller.Logger.Error("Error occured while getting on-chain balance : %+v", serviceErr)
-			return errors.New(serviceErr.Message)
-		}
-		return err
-	}
-
-	floatBalance, err := strconv.ParseInt(onchainBalanceResponse.Balance, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	if floatBalance < transaction.Value {
-		if err := ProcessTxnWithInsufficientFloat(controller, transaction, &fromAddress, floatAccount); err != nil {
-			return err
-		}
-	}
-
-	// Calls key-management to sign transaction
-	var signTransactionRequest model.SignTransactionRequest
-	signTransactionRequest = model.SignTransactionRequest{
+	// Get the transaction fee estimate by calling key-management to sign transaction
+	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: fromAddress,
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value,
 		Memo:        transaction.Memo,
-		AssetSymbol:    transaction.Denomination,
+		AssetSymbol: transaction.Denomination,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
 		if serviceErr.Message != "" {
 			controller.Logger.Error("Error occured while signing transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
 		}
 		return err
 	}
+	transactionValue := signTransactionResponse.Fee + transaction.Value
+	signedData = signTransactionResponse.SignedData
+
+	isSufficientFloat, err := checkFloatBalance(controller, floatAccount, serviceErr, transactionValue)
+	if err != nil {
+		return err
+	}
+
+	if !isSufficientFloat {
+		if err := ProcessTxnWithInsufficientFloat(controller, transaction, transactionValue, &signedData, floatAccount, serviceErr); err != nil {
+			return err
+		}
+	}
 
 	// Send the signed data to crypto adapter to send to chain
 	broadcastToChainRequest := model.BroadcastToChainRequest{
-		SignedData:  signTransactionResponse.SignedData,
+		SignedData:  signedData,
 		AssetSymbol: transaction.Denomination,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
-	if err := services.BroadcastToChain(controller.Cache, controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
+	if err := services.BroadcastToChain(controller.Cache, controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, &serviceErr); err != nil {
 		if serviceErr.Message != "" {
 			controller.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
@@ -668,75 +653,117 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 	return nil
 }
 
-func ProcessTxnWithInsufficientFloat(controller UserAssetController, transaction dto.TransactionQueue, fromAddress *string, floatAccount dto.HotWalletAsset) error {
+func ProcessTxnWithInsufficientFloat(controller UserAssetController, transaction dto.TransactionQueue, transactionValue int64, signedData *string, floatAccount dto.HotWalletAsset, serviceErr model.ServicesRequestErr) error {
 
 	DB := database.Database{Logger: controller.Logger, Config: controller.Config, DB: controller.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
 
 	switch transaction.Denomination {
-		case "BTC":
-			// Trigger sweep operation
+	case "BTC":
+		// Trigger sweep operation
+		go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
+	case "ETH", "BNB":
+
+		// Fetches all COMPLETED transactions yet to be swept
+		var unSweptTransactions []dto.Transaction
+		if err := controller.Repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
+			SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &unSweptTransactions); err != nil {
+			go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+			return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+		}
+		if len(unSweptTransactions) < 1 {
 			go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
 			return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
-		case "ETH", "BNB":	
+		}
 
-			// Fetches all COMPLETED transactions yet to be swept
-			var unSweptTransactions []dto.Transaction
-			if err := controller.Repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
-				SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &unSweptTransactions); err != nil {
-				go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
-				return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+		// Loops through all COMPLETED unswept transaction and selects a befiting one as input
+		for _, txn := range unSweptTransactions {
+			txnAsset := dto.UserAssetBalance{}
+			if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: txn.RecipientID}}, &txnAsset); err != nil {
+				controller.Logger.Error("Error with getting a befittin fromAddress, See additional context : %s", err)
+				continue
 			}
-			if len(unSweptTransactions) < 1 {
-				go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
-				return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
+			if txnAsset.Symbol == "BTC" {
+				continue
+			}
+			// Convert value to crypto smallest unit
+			denominationDecimal := decimal.NewFromInt(int64(txnAsset.Decimal))
+			txnValue, err := decimal.NewFromString(txn.Value)
+			if err != nil {
+				controller.Logger.Error("Error with getting a befittin fromAddress, See additional context : %s", err)
+				continue
+			}
+			baseExp := decimal.NewFromInt(10)
+			txnAssetValue, err := strconv.ParseInt(txnValue.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+			if err != nil {
+				controller.Logger.Error("Error with getting a befittin fromAddress, See additional context : %s", err)
+				continue
 			}
 
-			// Loops through all COMPLETED unswept transaction and selects a befiting one as input 
-			for _, txn := range unSweptTransactions {
-				txnAsset := dto.UserAssetBalance{}
-				if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: txn.RecipientID}}, &txnAsset); err != nil {
-					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
-				}
-				if txnAsset.Symbol == "BTC" {
+			if txnAssetValue > transactionValue {
+				// Get asset address
+				assetAddress := dto.UserAddress{}
+				if err := controller.Repository.GetByFieldName(&dto.UserAddress{BaseDTO: dto.BaseDTO{ID: txnAsset.ID}}, &assetAddress); err != nil {
+					controller.Logger.Error("Error with getting a befittin fromAddress, See additional context : %s", err)
 					continue
 				}
-				// Convert value to crypto smallest unit
-				denominationDecimal := decimal.NewFromInt(int64(txnAsset.Decimal))
-				txnValue, err := decimal.NewFromString(txn.Value)
-				if err != nil {
-					go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
-					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+				// Get the transaction fee estimate by calling key-management to sign transaction
+				signTransactionRequest := model.SignTransactionRequest{
+					FromAddress: assetAddress.Address,
+					ToAddress:   transaction.Recipient,
+					Amount:      transaction.Value,
+					Memo:        transaction.Memo,
+					AssetSymbol: transaction.Denomination,
 				}
-				baseExp := decimal.NewFromInt(10)
-				txnAssetValue, err := strconv.ParseInt(txnValue.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
-				if err != nil {
-					go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
-					return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
-				}
-
-				if txnAssetValue > transaction.Value {
-					// Get asset address	
-					assetAddress := dto.UserAddress{}
-					if err := controller.Repository.GetByFieldName(&dto.UserAddress{BaseDTO: dto.BaseDTO{ID: txnAsset.ID}}, &assetAddress); err != nil {
-						go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
-						return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation. See additional context : %s", err))
+				signTransactionResponse := model.SignTransactionResponse{}
+				if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
+					if serviceErr.Message != "" {
+						controller.Logger.Error("Error occured while signing transaction : %+v", serviceErr)
+						continue
 					}
-					fromAddress = &assetAddress.Address
-					break
+					controller.Logger.Error("Error with getting a befittin fromAddress, See additional context : %s", err)
+					continue
 				}
+				signedData = &signTransactionResponse.SignedData
+				return nil
 			}
+		}
 
-			// If no befiting transaction is found, triggers sweep
-			if *fromAddress == floatAccount.Address {
-				go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
-				return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
-			}
-			return nil
+		// If no befiting transaction is found, triggers sweep
+		go tasks.SweepTransactions(controller.Cache, controller.Logger, controller.Config, baseRepository)
+		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
 
-		default:
-			return errors.New("Not enough balance in float for this transaction")
+	default:
+		return errors.New("Not enough balance in float for this transaction")
 	}
 
 	return nil
+}
+
+func checkFloatBalance(controller UserAssetController, floatAccount dto.HotWalletAsset, serviceErr model.ServicesRequestErr, transactionValue int64) (bool, error) {
+	// It makes a call to crypto adapter to get the current float amount
+	onchainBalanceRequest := model.OnchainBalanceRequest{
+		Address:     floatAccount.Address,
+		AssetSymbol: floatAccount.AssetSymbol,
+	}
+	onchainBalanceResponse := model.OnchainBalanceResponse{}
+	if err := services.GetOnchainBalance(controller.Cache, controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
+		if serviceErr.Message != "" {
+			controller.Logger.Error("Error occured while getting on-chain balance : %+v", serviceErr)
+			return false, errors.New(serviceErr.Message)
+		}
+		return false, err
+	}
+
+	floatBalance, err := strconv.ParseInt(onchainBalanceResponse.Balance, 10, 64)
+	if err != nil {
+		return false, err
+	}
+
+	if floatBalance < transactionValue {
+		return false, nil
+	}
+
+	return true, nil
 }
