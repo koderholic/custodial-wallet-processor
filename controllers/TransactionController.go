@@ -537,7 +537,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
 			done <- true
 		}
-		processor := TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+		processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
 
 		for _, transaction := range transactionQueue {
 			serviceErr := model.ServicesRequestErr{}
@@ -595,7 +595,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 	<-done
 }
 
-func (processor TransactionProccessor) processSingleTxn(transaction dto.TransactionQueue) error {
+func (processor *TransactionProccessor) processSingleTxn(transaction dto.TransactionQueue) error {
 	serviceErr := model.ServicesRequestErr{}
 
 	// The routine fetches the float account info from the db and sets the floatAddress as the fromAddress
@@ -657,7 +657,7 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 	return nil
 }
 
-func (processor TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string) error {
+func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string) error {
 
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
