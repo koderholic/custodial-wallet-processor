@@ -25,17 +25,17 @@ func Up20200220215204(tx *sql.Tx) error {
 		INDEX denomination_id (denomination_id), 
 		INDEX idx_user_assets_deleted_at (deleted_at)
 	);`)
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 	return nil
 }
 
 func Down20200220215204(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS user_assets;")
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 	return nil
 }

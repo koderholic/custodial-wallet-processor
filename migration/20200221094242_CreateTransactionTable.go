@@ -22,7 +22,6 @@ func Up20200221094242(tx *sql.Tx) error {
 		transaction_tag varchar(255) DEFAULT 'SELL' NOT NULL, 
 		processing_type varchar(255) DEFAULT 'SINGLE' NOT NULL, 
 		batch_id varchar(36), 
-		asset_symbol varchar(255),
 		transaction_start_date timestamp NULL, 
 		transaction_end_date timestamp NULL, 
 		recipient_id varchar(36), 
@@ -41,17 +40,17 @@ func Up20200221094242(tx *sql.Tx) error {
 		CONSTRAINT transactions_recipient_id_recipient_id_foreign FOREIGN KEY (recipient_id) REFERENCES user_assets (id) ON DELETE NO ACTION ON UPDATE NO ACTION, 
 		INDEX initiator_id (initiator_id), INDEX transaction_status (transaction_status)
 	);`)
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 	return nil
 }
 
 func Down20200221094242(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS transactions;")
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 	return nil
 }

@@ -18,7 +18,7 @@ func Up20200221094404(tx *sql.Tx) error {
 		sender varchar(255), 
 		recipient varchar(255) NOT NULL, 
 		value BIGINT(20) NOT NULL, 
-		asset_symbol varchar(255) NOT NULL, 
+		denomination varchar(36) NOT NULL, 
 		debit_reference varchar(150) NOT NULL, 
 		transaction_id varchar(36) NOT NULL, 
 		transaction_status varchar(255) DEFAULT 'PENDING' NOT NULL, 
@@ -30,17 +30,17 @@ func Up20200221094404(tx *sql.Tx) error {
 		INDEX transaction_status (transaction_status), 
 		INDEX transaction_id (transaction_id)
 	);`)
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 	return nil
 }
 
 func Down20200221094404(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS transactions;")
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 	return nil
 }

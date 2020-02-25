@@ -193,8 +193,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Get asset associated with the debit reference
-	debitReferenceAsset := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
+	debitReferenceAsset := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -218,7 +218,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.Symbol] {
+	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol] {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -247,8 +247,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// If recipient address is on platform, do internal credit on recipient asset and create a complete transaction
 	recipientInternalAddress := dto.UserAddress{}
 	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: requestData.RecipientAddress}, &recipientInternalAddress); err == nil {
-		recipientAsset := dto.UserAssetBalance{}
-		if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: recipientInternalAddress.AssetID}}, &recipientAsset); err != nil {
+		recipientAsset := dto.UserAsset{}
+		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientInternalAddress.AssetID}}, &recipientAsset); err != nil {
 			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
 			if err.Error() == utility.SQL_404 {
@@ -284,7 +284,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 			return
 		}
 
-		if err := dbTX.Model(&recipientAsset).Updates(dto.UserBalance{AvailableBalance: recipientNewBalance}).Error; err != nil {
+		if err := dbTX.Model(&recipientAsset).Updates(dto.UserAsset{AvailableBalance: recipientNewBalance}).Error; err != nil {
 			dbTX.Rollback()
 			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
@@ -351,7 +351,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		Value:          transactionValue,
 		DebitReference: requestData.DebitReference,
 		Memo:           debitReferenceTransaction.Memo,
-		AssetSymbol:    debitReferenceAsset.Symbol,
+		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
 	}
 	if err := tx.Create(&queue).Error; err != nil {
