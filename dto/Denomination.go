@@ -4,8 +4,8 @@ package dto
 type Denomination struct {
 	BaseDTO
 	Name          string         `json:"name,omitempty"`
-	Symbol        string         `gorm:"unique_index;not null" json:"symbol,omitempty"`
-	TokenType     string         `json:"token_type,omitempty"`
+	AssetSymbol   string         `gorm:"unique_index;not null" json:"asset_symbol,omitempty"`
+	CoinType      int64          `json:"coin_type,omitempty"`
 	Decimal       int            `json:"decimal,omitempty"`
 	IsEnabled     bool           `gorm:"default:1;index:isEnabled" json:"is_enabled,omitempty"`
 	Transactions  []Transaction  `json:"transactions,omitempty"`

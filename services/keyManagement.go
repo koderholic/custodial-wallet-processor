@@ -23,7 +23,7 @@ func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	metaData := utility.GetRequestMetaData("createAddress", config)
 
 	requestData.UserID = userID
-	requestData.Symbol = symbol
+	requestData.AssetSymbol = symbol
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)

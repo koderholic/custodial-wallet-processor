@@ -21,7 +21,7 @@ type UserAssetRepository struct {
 
 // GetAssetsByID ...
 func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
-	if err := repo.DB.Select("denominations.symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",

@@ -39,7 +39,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		denominationSymbol := requestData.Assets[i]
 		denomination := dto.Denomination{}
 
-		if err := controller.Repository.GetByFieldName(&dto.Denomination{Symbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
+		if err := controller.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
 			controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
 			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 				responseWriter.Header().Set("Content-Type", "application/json")
@@ -60,12 +60,12 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		balance, _ := decimal.NewFromString("0.00")
 		userAssetDTO := dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
 		_ = controller.Repository.FindOrCreate(dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
-		userAssetDTO.Symbol = denomination.Symbol
+		userAssetDTO.Symbol = denomination.AssetSymbol
 
 		userAsset := model.Asset{}
 		userAsset.ID = userAssetDTO.ID
 		userAsset.UserID = userAssetDTO.UserID
-		userAsset.Symbol = userAssetDTO.Symbol
+		userAsset.AssetSymbol = userAssetDTO.Symbol
 		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
 		userAsset.Decimal = denomination.Decimal
 
@@ -116,7 +116,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 		userAsset.ID = userAssetDTO.ID
 		userAsset.UserID = userAssetDTO.UserID
-		userAsset.Symbol = userAssetDTO.Symbol
+		userAsset.AssetSymbol = userAssetDTO.AssetSymbol
 		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
 		userAsset.Decimal = userAssetDTO.Decimal
 
@@ -130,7 +130,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 }
 
-// GetUserAssetById ... Get user asset balance by id
+// GetUserAssetById... Get user asset balance by id
 func (controller UserAssetController) GetUserAssetById(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var userAssets dto.UserAssetBalance
@@ -163,7 +163,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 
 	responseData.ID = userAssets.ID
 	responseData.UserID = userAssets.UserID
-	responseData.Symbol = userAssets.Symbol
+	responseData.AssetSymbol = userAssets.Symbol
 	responseData.AvailableBalance = userAssets.AvailableBalance
 	responseData.Decimal = userAssets.Decimal
 
@@ -212,7 +212,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 	responseData.ID = userAssets.ID
 	responseData.UserID = userAssets.UserID
-	responseData.Symbol = userAssets.Symbol
+	responseData.AssetSymbol = userAssets.Symbol
 	responseData.AvailableBalance = userAssets.AvailableBalance
 	responseData.Decimal = userAssets.Decimal
 
@@ -228,7 +228,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	requestData := model.CreditUserAssetRequest{}
 	responseData := model.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
-	
+
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
 

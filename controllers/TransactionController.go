@@ -351,7 +351,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		Value:          transactionValue,
 		DebitReference: requestData.DebitReference,
 		Memo:           debitReferenceTransaction.Memo,
-		Denomination:   debitReferenceAsset.Symbol,
+		AssetSymbol:    debitReferenceAsset.Symbol,
 		TransactionId:  transaction.ID,
 	}
 	if err := tx.Create(&queue).Error; err != nil {
@@ -434,7 +434,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	// Calls TransactionStatus on crypto adapter to verify the transaction status
 	transactionStatusRequest := model.TransactionStatusRequest{
 		TransactionHash: requestData.TransactionHash,
-		AssetSymbol:     transactionQueueDetails.Denomination,
+		AssetSymbol:     transactionQueueDetails.AssetSymbol,
 	}
 	transactionStatusResponse := model.TransactionStatusResponse{}
 	if err := services.TransactionStatus(controller.Cache, controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
@@ -600,7 +600,7 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 
 	// The routine fetches the float account info from the db and sets the floatAddress as the fromAddress
 	var floatAccount dto.HotWalletAsset
-	if err := processor.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
+	if err := processor.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.AssetSymbol}, &floatAccount); err != nil {
 		return err
 	}
 
@@ -610,12 +610,12 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value,
 		Memo:        transaction.Memo,
-		AssetSymbol: transaction.Denomination,
+		AssetSymbol: transaction.AssetSymbol,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			if err := processor.ProcessTxnWithInsufficientFloat(transaction.Denomination); err != nil {
+			if err := processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol); err != nil {
 				return err
 			}
 		}
@@ -625,7 +625,7 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 	// Send the signed data to crypto adapter to send to chain
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: transaction.Denomination,
+		AssetSymbol: transaction.AssetSymbol,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 

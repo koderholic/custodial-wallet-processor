@@ -23,17 +23,17 @@ func Up20200221093914(tx *sql.Tx) error {
 		CONSTRAINT user_addresses_asset_id_asset_id_foreign FOREIGN KEY (asset_id) REFERENCES user_assets (id) ON DELETE CASCADE ON UPDATE CASCADE, 
 		INDEX asset_id (asset_id)
 	);`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func Down20200221093914(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS user_addresses;")
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -17,6 +17,7 @@ func Up20200220214113(tx *sql.Tx) error {
 		updated_at timestamp NULL, 
 		status tinyint(1) DEFAULT 0 NOT NULL, 
 		batch_id varchar(36), 
+		asset_symbol varchar(255),
 		transaction_hash varchar(255) NOT NULL, 
 		block_height bigint, 
 		transaction_fee varchar(255),
@@ -25,17 +26,17 @@ func Up20200220214113(tx *sql.Tx) error {
 		INDEX idx_chain_transactions_status (status), 
 		INDEX batch_id (batch_id)
 	);`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func Down20200220214113(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("DROP TABLE IF EXISTS chain_transactions;")
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 	return nil
 }
