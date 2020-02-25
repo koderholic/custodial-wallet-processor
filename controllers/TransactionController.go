@@ -687,16 +687,19 @@ func (processor TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymb
 	case "BTC":
 		if !processor.SweepTriggers["BTC"] {
 			go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
+			processor.SweepTriggers["BTC"] = true
 		}
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 	case "ETH":
 		if !processor.SweepTriggers["ETH"] {
 			go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
+			processor.SweepTriggers["ETH"] = true
 		}
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 	case "BNB":
 		if !processor.SweepTriggers["BNB"] {
 			go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
+			processor.SweepTriggers["BNB"] = true
 		}
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 	default:
