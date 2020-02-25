@@ -21,11 +21,11 @@ import (
 )
 
 type TransactionProccessor struct {
-	Cache         *utility.MemoryCache
-	Logger        *utility.Logger
-	Config        config.Data
-	Repository    database.IUserAssetRepository
-	SweepTriggers map[string]bool
+	Cache          *utility.MemoryCache
+	Logger         *utility.Logger
+	Config         config.Data
+	Repository     database.IUserAssetRepository
+	SweepTriggered bool
 }
 
 // GetTransaction ... Retrieves the transaction details of the reference sent
@@ -134,7 +134,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	requestData := model.ExternalTransferRequest{}
 	responseData := model.ExternalTransferResponse{}
 	paymentRef := utility.RandomString(16)
-	serviceErr := model.ServicesRequestErr{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for ExternalTransfer : %+v", requestData)
@@ -207,7 +206,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Ensure transaction value is above minimum spendabl
+	// Ensure transaction value is above minimum send to chain
 	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
 	baseExp := decimal.NewFromInt(10)
 	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
@@ -219,32 +218,12 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	var floatAccount dto.HotWalletAsset
-	if err := controller.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: debitReferenceAsset.Symbol}, &floatAccount); err != nil {
+	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.Symbol] {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 		return
-	}
-	signTransactionRequest := model.SignTransactionRequest{
-		FromAddress: floatAccount.Address,
-		ToAddress:   requestData.RecipientAddress,
-		Amount:      transactionValue,
-		Memo:        debitReferenceTransaction.Memo,
-		AssetSymbol: debitReferenceAsset.Symbol,
-	}
-	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		if serviceErr.Code == "" {
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
-			return
-		} else if serviceErr.Code != "INSUFFICIENT_BALANCE" {
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError(serviceErr.Code, serviceErr.Message))
-		}
 	}
 
 	// Build transaction object
@@ -683,28 +662,11 @@ func (processor TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymb
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
 
-	switch assetSymbol {
-	case "BTC":
-		if !processor.SweepTriggers["BTC"] {
-			go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
-			processor.SweepTriggers["BTC"] = true
-		}
-		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
-	case "ETH":
-		if !processor.SweepTriggers["ETH"] {
-			go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
-			processor.SweepTriggers["ETH"] = true
-		}
-		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
-	case "BNB":
-		if !processor.SweepTriggers["BNB"] {
-			go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
-			processor.SweepTriggers["BNB"] = true
-		}
-		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
-	default:
-		return errors.New("Not enough balance in float for this transaction")
+	if !processor.SweepTriggered {
+		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
+		processor.SweepTriggered = true
+		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
 	}
 
-	return nil
+	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
