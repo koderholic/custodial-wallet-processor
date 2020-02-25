@@ -11,7 +11,7 @@ func init() {
 
 func Up20200225153733(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
-	_, err := tx.Exec("ALTER TABLE denominations Change token_type coin_type BIGINT(20);")
+	_, err := tx.Exec("ALTER TABLE denominations Change token_type coin_type bigint;")
 	if err != nil {
 		return err
 	}
