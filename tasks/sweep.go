@@ -152,7 +152,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		FromAddress: recipientAddress.Address,
 		ToAddress:   floatAccount.Address,
 		Amount:      sum,
-		AssetSymbol:    recipientAsset.Symbol,
+		AssetSymbol: recipientAsset.Symbol,
 		IsSweep:     true,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
@@ -165,9 +165,9 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.Symbol, config.SweepFeePercentageThreshold))
 	}
 
-	e, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.Symbol, cache, logger, serviceErr, assetTransactions, repository)
+	err, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.Symbol, cache, logger, serviceErr, assetTransactions, repository)
 	if done {
-		return e
+		return err
 	}
 	return nil
 }

@@ -7,15 +7,26 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
+	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 )
+
+type TransactionProccessor struct {
+	Cache          *utility.MemoryCache
+	Logger         *utility.Logger
+	Config         config.Data
+	Repository     database.IUserAssetRepository
+	SweepTriggered bool
+}
 
 // GetTransaction ... Retrieves the transaction details of the reference sent
 func (controller BaseController) GetTransaction(responseWriter http.ResponseWriter, requestReader *http.Request) {
@@ -181,6 +192,40 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	// Get asset associated with the debit reference
+	debitReferenceAsset := dto.UserAssetBalance{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		if err.Error() == utility.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		return
+	}
+
+	// Ensure transaction value is above minimum send to chain
+	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
+	baseExp := decimal.NewFromInt(10)
+	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+	if err != nil {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		return
+	}
+
+	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.Symbol] {
+		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		return
+	}
+
 	// Build transaction object
 	transaction := dto.Transaction{
 		InitiatorID:          decodedToken.ServiceID,
@@ -225,7 +270,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		}
 		recipientNewBalance := (recipientBalance.Add(value)).String()
 
-
 		dbTX := controller.Repository.Db().Begin()
 		defer func() {
 			if r := recover(); r != nil {
@@ -265,7 +309,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 			return
 		}
-	
+
 		responseData.TransactionReference = transaction.TransactionReference
 		responseData.DebitReference = requestData.DebitReference
 		responseData.TransactionStatus = transaction.TransactionStatus
@@ -274,32 +318,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusOK)
 		json.NewEncoder(responseWriter).Encode(responseData)
-		return
-	}
-
-	// Get asset associated with the debit reference
-	debitReferenceAsset := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
-		return
-	}
-
-	// Convert value to crypto smallest unit
-	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
-	baseExp := decimal.NewFromInt(10)
-	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
-	if err != nil {
-		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
 		return
 	}
 
@@ -446,7 +464,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		transactionQueueUpdate = dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.PROCESSING}
 	}
 
-
 	tx := controller.Repository.Db().Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -511,6 +528,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 	// Endpoint spins up a go-routine to process queued transactions and sends back an acknowledgement to the scheduler
 	done := make(chan bool)
+
 	go func() {
 
 		// Fetches all PENDING transactions from the transaction queue table for processing
@@ -519,6 +537,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
 			done <- true
 		}
+		processor := TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
 
 		for _, transaction := range transactionQueue {
 			serviceErr := model.ServicesRequestErr{}
@@ -544,7 +563,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				continue
 			}
 
-			err := controller.processSingleTxn(transaction)
+			err := processor.processSingleTxn(transaction)
 			if err != nil {
 				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
 
@@ -576,55 +595,29 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 	<-done
 }
 
-func (controller UserAssetController) processSingleTxn(transaction dto.TransactionQueue) error {
-	var floatAccount dto.HotWalletAsset
+func (processor TransactionProccessor) processSingleTxn(transaction dto.TransactionQueue) error {
 	serviceErr := model.ServicesRequestErr{}
 
-	// The routine fetches the float account info from the db
-	if err := controller.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
+	// The routine fetches the float account info from the db and sets the floatAddress as the fromAddress
+	var floatAccount dto.HotWalletAsset
+	if err := processor.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
 		return err
 	}
 
-	// It makes a call to crypto adapter to get the current float amount
-	onchainBalanceRequest := model.OnchainBalanceRequest{
-		Address:     floatAccount.Address,
-		AssetSymbol: transaction.Denomination,
-	}
-	onchainBalanceResponse := model.OnchainBalanceResponse{}
-	if err := services.GetOnchainBalance(controller.Cache, controller.Logger, controller.Config, onchainBalanceRequest, &onchainBalanceResponse, &serviceErr); err != nil {
-		if serviceErr.Message != "" {
-			controller.Logger.Error("Error occured while getting on-chain balance : %+v", serviceErr)
-			return errors.New(serviceErr.Message)
-		}
-		return err
-	}
-
-	floatBalance, err := strconv.ParseInt(onchainBalanceResponse.Balance, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	// If float amount is lesser than the amount to send, it triggers sweep operation
-	if floatBalance < transaction.Value {
-		// If BTC, trigger BTC sweep
-		// Else, trigger sweep for other Asset
-		return errors.New("Not enough balance in float for this transaction")
-	}
-
-	// Calls key-management to sign transaction
-	var signTransactionRequest model.SignTransactionRequest
-	signTransactionRequest = model.SignTransactionRequest{
+	// Get the transaction fee estimate by calling key-management to sign transaction
+	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value,
 		Memo:        transaction.Memo,
-		AssetSymbol:    transaction.Denomination,
+		AssetSymbol: transaction.Denomination,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
-	if err := services.SignTransaction(controller.Cache, controller.Logger, controller.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		if serviceErr.Message != "" {
-			controller.Logger.Error("Error occured while signing transaction : %+v", serviceErr)
-			return errors.New(serviceErr.Message)
+	if err := services.SignTransaction(processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
+		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
+			if err := processor.ProcessTxnWithInsufficientFloat(transaction.Denomination); err != nil {
+				return err
+			}
 		}
 		return err
 	}
@@ -636,9 +629,9 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
-	if err := services.BroadcastToChain(controller.Cache, controller.Logger, controller.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
+	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, &serviceErr); err != nil {
 		if serviceErr.Message != "" {
-			controller.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
+			processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
 		}
 		return err
@@ -648,18 +641,32 @@ func (controller UserAssetController) processSingleTxn(transaction dto.Transacti
 	chainTransaction := dto.ChainTransaction{
 		TransactionHash: broadcastToChainResponse.TransactionHash,
 	}
-	if err := controller.Repository.Create(&chainTransaction); err != nil {
+	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		return err
 	}
 
 	// Updates the transaction status to in progress
 	transactionDetails := dto.Transaction{}
-	if err = controller.Repository.Get(&dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &transactionDetails); err != nil {
+	if err := processor.Repository.Get(&dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &transactionDetails); err != nil {
 		return err
 	}
-	if err := controller.Repository.Update(&transactionDetails, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING, OnChainTxId: chainTransaction.ID}); err != nil {
+	if err := processor.Repository.Update(&transactionDetails, &dto.Transaction{TransactionStatus: dto.TransactionStatus.PROCESSING, OnChainTxId: chainTransaction.ID}); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (processor TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string) error {
+
+	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
+	baseRepository := database.BaseRepository{Database: DB}
+
+	if !processor.SweepTriggered {
+		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
+		processor.SweepTriggered = true
+		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
+	}
+
+	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
