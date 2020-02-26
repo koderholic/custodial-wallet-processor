@@ -41,12 +41,13 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 
 	var btcAssets []string
 	var btcAssetTransactionsToSweep []dto.Transaction
+	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	for assetId, assetTransactions := range transactionsPerAssetId {
 		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
 		recipientAsset := dto.UserAsset{}
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-		if err := repository.Get(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetId}}, &recipientAsset); err != nil {
+		if err := userAssetRepository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetId}}, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 			return
 		}
@@ -132,7 +133,8 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	//need recipient Asset to get recipient address
 	recipientAsset := dto.UserAsset{}
 	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-	if err := repository.Get(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
+	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+	if err := userAssetRepository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
@@ -175,7 +177,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 func getFloatDetails(repository database.BaseRepository, symbol string, logger *utility.Logger) (dto.HotWalletAsset, error) {
 	//Get the float address
 	var floatAccount dto.HotWalletAsset
-	if err := repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
+	if err := repository.Get(&dto.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id and trying to get float detials", err)
 		return dto.HotWalletAsset{}, err
 	}
