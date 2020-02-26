@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
+	"github.com/shopspring/decimal"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -69,8 +70,16 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		for _, tx := range assetTransactions {
 			floatValue, err := strconv.ParseFloat(tx.Value, 64)
 			if err == nil {
-				//Value has no values after dp, as we expect the all crypto values are in their smallest unit
-				sum = sum + int64(floatValue)
+				//convert to native units
+				value := decimal.NewFromFloat(floatValue)
+				denominationDecimal := decimal.NewFromInt(int64(recipientAsset.Decimal))
+				baseExp := decimal.NewFromInt(10)
+				transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+				if err != nil {
+					logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v and trying to convert to native units", err, recipientAsset.ID)
+					return
+				}
+				sum = sum + transactionValue
 				count++
 			}
 		}
