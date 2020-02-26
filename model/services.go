@@ -6,8 +6,8 @@ import (
 
 // GenerateAddressRequest ... Request definition for generate address , key-management service
 type GenerateAddressRequest struct {
-	UserID uuid.UUID `json:"userId"`
-	Symbol string    `json:"symbol"`
+	UserID      uuid.UUID `json:"userId"`
+	AssetSymbol string    `json:"symbol"`
 }
 
 // GenerateAddressResponse ... Model definition for generate address successful response, key-management service
@@ -22,7 +22,7 @@ type SignTransactionRequest struct {
 	ToAddress   string `json:"toAddress"`
 	Memo        string `json:"memo"`
 	Amount      int64  `json:"amount"`
-	AssetSymbol    string `json:"assetSymbol"`
+	AssetSymbol string `json:"assetSymbol"`
 	IsSweep     bool   `json:"isSweep"`
 }
 

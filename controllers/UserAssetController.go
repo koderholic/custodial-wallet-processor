@@ -39,7 +39,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		denominationSymbol := requestData.Assets[i]
 		denomination := dto.Denomination{}
 
-		if err := controller.Repository.GetByFieldName(&dto.Denomination{Symbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
+		if err := controller.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
 			controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
 			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
 				responseWriter.Header().Set("Content-Type", "application/json")
@@ -58,14 +58,14 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 			return
 		}
 		balance, _ := decimal.NewFromString("0.00")
-		userAssetDTO := dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreate(dto.UserBalance{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
-		userAssetDTO.Symbol = denomination.Symbol
+		userAssetDTO := dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
+		_ = controller.Repository.FindOrCreate(dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
+		userAssetDTO.AssetSymbol = denomination.AssetSymbol
 
 		userAsset := model.Asset{}
 		userAsset.ID = userAssetDTO.ID
 		userAsset.UserID = userAssetDTO.UserID
-		userAsset.Symbol = userAssetDTO.Symbol
+		userAsset.AssetSymbol = userAssetDTO.AssetSymbol
 		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
 		userAsset.Decimal = denomination.Decimal
 
@@ -82,7 +82,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 // GetUserAssets ... Get all user asset balance
 func (controller UserAssetController) GetUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAssets []dto.UserAssetBalance
+	var userAssets []dto.UserAsset
 	responseData := model.UserAssetResponse{}
 	apiResponse := utility.NewResponse()
 
@@ -97,7 +97,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{UserID: userID}, &userAssets); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{UserID: userID}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -116,7 +116,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 		userAsset.ID = userAssetDTO.ID
 		userAsset.UserID = userAssetDTO.UserID
-		userAsset.Symbol = userAssetDTO.Symbol
+		userAsset.AssetSymbol = userAssetDTO.AssetSymbol
 		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
 		userAsset.Decimal = userAssetDTO.Decimal
 
@@ -130,10 +130,10 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 
 }
 
-// GetUserAssetById ... Get user asset balance by id
+// GetUserAssetById... Get user asset balance by id
 func (controller UserAssetController) GetUserAssetById(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAssets dto.UserAssetBalance
+	var userAssets dto.UserAsset
 	responseData := model.Asset{}
 	apiResponse := utility.NewResponse()
 
@@ -148,7 +148,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssetById : assetID : %+v", assetID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAssets); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssetById request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -163,7 +163,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 
 	responseData.ID = userAssets.ID
 	responseData.UserID = userAssets.UserID
-	responseData.Symbol = userAssets.Symbol
+	responseData.AssetSymbol = userAssets.AssetSymbol
 	responseData.AvailableBalance = userAssets.AvailableBalance
 	responseData.Decimal = userAssets.Decimal
 
@@ -175,7 +175,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAssets dto.UserAssetBalance
+	var userAssets dto.UserAsset
 	var userAddress dto.UserAddress
 	responseData := model.Asset{}
 	apiResponse := utility.NewResponse()
@@ -197,7 +197,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAssets); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAssets); err != nil {
 		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -212,7 +212,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 	responseData.ID = userAssets.ID
 	responseData.UserID = userAssets.UserID
-	responseData.Symbol = userAssets.Symbol
+	responseData.AssetSymbol = userAssets.AssetSymbol
 	responseData.AvailableBalance = userAssets.AvailableBalance
 	responseData.Decimal = userAssets.Decimal
 
@@ -228,7 +228,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	requestData := model.CreditUserAssetRequest{}
 	responseData := model.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
-	
+
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
 
@@ -246,8 +246,8 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and then fetch asset
-	assetDetails := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+	assetDetails := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -294,7 +294,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		return
 	}
 
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -377,8 +377,8 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and fetc asset
-	assetDetails := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+	assetDetails := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -417,7 +417,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -500,8 +500,8 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and fetc asset
-	assetDetails := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+	assetDetails := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -540,7 +540,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserBalance{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -647,8 +647,8 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and then fetch asset
-	initiatorAssetDetails := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
+	initiatorAssetDetails := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -659,8 +659,8 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
 		return
 	}
-	recipientAssetDetails := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
+	recipientAssetDetails := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -726,7 +726,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	// Debit Inititor
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: initiatorAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: initiatorAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -736,7 +736,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	// Credit recipient
-	if err := tx.Model(&dto.UserBalance{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance + ?", value)).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance + ?", value)).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")

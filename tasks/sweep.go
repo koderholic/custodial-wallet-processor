@@ -44,13 +44,13 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	for assetId, assetTransactions := range transactionsPerAssetId {
 		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
-		recipientAsset := dto.UserAssetBalance{}
+		recipientAsset := dto.UserAsset{}
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
 		if err := repository.Get(assetId, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 			return
 		}
-		if recipientAsset.Symbol == "BTC" {
+		if recipientAsset.AssetSymbol == "BTC" {
 			//get recipient address
 			recipientAddress := dto.UserAddress{}
 			if err := repository.Get(assetId, &recipientAddress); err != nil {
@@ -130,7 +130,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, sum int64) error {
 	//need recipient Asset to get recipient address
-	recipientAsset := dto.UserAssetBalance{}
+	recipientAsset := dto.UserAsset{}
 	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
 	if err := repository.Get(assetTransactions[0].RecipientID, &recipientAsset); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
@@ -142,7 +142,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
-	floatAccount, err := getFloatDetails(repository, recipientAsset.Symbol, logger)
+	floatAccount, err := getFloatDetails(repository, recipientAsset.AssetSymbol, logger)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		FromAddress: recipientAddress.Address,
 		ToAddress:   floatAccount.Address,
 		Amount:      sum,
-		AssetSymbol: recipientAsset.Symbol,
+		AssetSymbol: recipientAsset.AssetSymbol,
 		IsSweep:     true,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
@@ -162,10 +162,10 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 	//Check that fee is below X% of the total value.
 	if (((signTransactionResponse.Fee) / sum) * 100) > config.SweepFeePercentageThreshold {
-		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.Symbol, config.SweepFeePercentageThreshold))
+		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold))
 	}
 
-	err, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.Symbol, cache, logger, serviceErr, assetTransactions, repository)
+	err, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.AssetSymbol, cache, logger, serviceErr, assetTransactions, repository)
 	if done {
 		return err
 	}

@@ -19,7 +19,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 	var externalServiceErr model.ServicesRequestErr
 	var responseData map[string]string
 	var userAddress dto.UserAddress
-	var userAsset dto.UserAssetBalance
+	var userAsset dto.UserAsset
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -33,7 +33,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
 		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -55,7 +55,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 		}
 
 		// Calls key-management service to create an address for the user asset
-		address, errGenerateAddress := services.GenerateAddress(controller.Cache, controller.Logger, controller.Config, userAsset.UserID, userAsset.Symbol, &externalServiceErr)
+		address, errGenerateAddress := services.GenerateAddress(controller.Cache, controller.Logger, controller.Config, userAsset.UserID, userAsset.AssetSymbol, &externalServiceErr)
 		if errGenerateAddress != nil || address == "" {
 			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", errGenerateAddress)
 			responseWriter.Header().Set("Content-Type", "application/json")

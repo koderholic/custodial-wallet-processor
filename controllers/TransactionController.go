@@ -193,8 +193,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Get asset associated with the debit reference
-	debitReferenceAsset := dto.UserAssetBalance{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
+	debitReferenceAsset := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		if err.Error() == utility.SQL_404 {
@@ -218,7 +218,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.Symbol] {
+	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol] {
 		controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -247,8 +247,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// If recipient address is on platform, do internal credit on recipient asset and create a complete transaction
 	recipientInternalAddress := dto.UserAddress{}
 	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: requestData.RecipientAddress}, &recipientInternalAddress); err == nil {
-		recipientAsset := dto.UserAssetBalance{}
-		if err := controller.Repository.GetAssetsByID(&dto.UserAssetBalance{BaseDTO: dto.BaseDTO{ID: recipientInternalAddress.AssetID}}, &recipientAsset); err != nil {
+		recipientAsset := dto.UserAsset{}
+		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientInternalAddress.AssetID}}, &recipientAsset); err != nil {
 			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
 			if err.Error() == utility.SQL_404 {
@@ -284,7 +284,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 			return
 		}
 
-		if err := dbTX.Model(&recipientAsset).Updates(dto.UserBalance{AvailableBalance: recipientNewBalance}).Error; err != nil {
+		if err := dbTX.Model(&recipientAsset).Updates(dto.UserAsset{AvailableBalance: recipientNewBalance}).Error; err != nil {
 			dbTX.Rollback()
 			controller.Logger.Error("Outgoing response to ExternalTransfer request %+v", err)
 			responseWriter.Header().Set("Content-Type", "application/json")
@@ -351,7 +351,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		Value:          transactionValue,
 		DebitReference: requestData.DebitReference,
 		Memo:           debitReferenceTransaction.Memo,
-		Denomination:   debitReferenceAsset.Symbol,
+		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
 	}
 	if err := tx.Create(&queue).Error; err != nil {
@@ -434,7 +434,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	// Calls TransactionStatus on crypto adapter to verify the transaction status
 	transactionStatusRequest := model.TransactionStatusRequest{
 		TransactionHash: requestData.TransactionHash,
-		AssetSymbol:     transactionQueueDetails.Denomination,
+		AssetSymbol:     transactionQueueDetails.AssetSymbol,
 	}
 	transactionStatusResponse := model.TransactionStatusResponse{}
 	if err := services.TransactionStatus(controller.Cache, controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
@@ -537,7 +537,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
 			done <- true
 		}
-		processor := TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+		processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
 
 		for _, transaction := range transactionQueue {
 			serviceErr := model.ServicesRequestErr{}
@@ -595,12 +595,12 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 	<-done
 }
 
-func (processor TransactionProccessor) processSingleTxn(transaction dto.TransactionQueue) error {
+func (processor *TransactionProccessor) processSingleTxn(transaction dto.TransactionQueue) error {
 	serviceErr := model.ServicesRequestErr{}
 
 	// The routine fetches the float account info from the db and sets the floatAddress as the fromAddress
 	var floatAccount dto.HotWalletAsset
-	if err := processor.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.Denomination}, &floatAccount); err != nil {
+	if err := processor.Repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: transaction.AssetSymbol}, &floatAccount); err != nil {
 		return err
 	}
 
@@ -610,12 +610,12 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value,
 		Memo:        transaction.Memo,
-		AssetSymbol: transaction.Denomination,
+		AssetSymbol: transaction.AssetSymbol,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			if err := processor.ProcessTxnWithInsufficientFloat(transaction.Denomination); err != nil {
+			if err := processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol); err != nil {
 				return err
 			}
 		}
@@ -625,7 +625,7 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 	// Send the signed data to crypto adapter to send to chain
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: transaction.Denomination,
+		AssetSymbol: transaction.AssetSymbol,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
@@ -657,7 +657,7 @@ func (processor TransactionProccessor) processSingleTxn(transaction dto.Transact
 	return nil
 }
 
-func (processor TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string) error {
+func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string) error {
 
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}

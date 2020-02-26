@@ -151,7 +151,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 
 func (s *Suite) Test_GetUserAsset() {
 	// s.Mock.ExpectQuery(regexp.QuoteMeta(
-	// 	fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_assets.* FROM `user_assets`"))).
+	// 	fmt.Sprintf("SELECT denominations.asset_symbol, denominations.decimal,user_assets.* FROM `user_assets`"))).
 	// 	WithArgs(sqlmock.AnyArg()).
 	// 	WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "reserved_balance", "symbol", "decimal"}).
 	// 		AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, 0, "BTC", 8),
@@ -174,14 +174,14 @@ func (s *Suite) Test_GetUserAsset() {
 
 func (s *Suite) Test_CreateUserAsset() {
 	s.Mock.ExpectQuery(regexp.QuoteMeta(
-		fmt.Sprintf("SELECT * FROM `denominations` WHERE (`denominations`.`symbol` = ?) AND (`denominations`.`is_enabled` = ?) ORDER BY `denominations`.`id` ASC LIMIT 1"))).
+		fmt.Sprintf("SELECT * FROM `denominations` WHERE (`denominations`.`asset_symbol` = ?) AND (`denominations`.`is_enabled` = ?) ORDER BY `denominations`.`id` ASC LIMIT 1"))).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "symbol", "tokenType", "decimal", "isEnabled"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "BTC", "BTC", 8, true),
 		)
 
 	s.Mock.ExpectQuery(regexp.QuoteMeta(
-		fmt.Sprintf("SELECT denominations.symbol, denominations.decimal,user_assets.* FROM `user_assets`"))).
+		fmt.Sprintf("SELECT denominations.asset_symbol, denominations.decimal,user_assets.* FROM `user_assets`"))).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "asset_id", "available_balance", "symbol", "decimal"}).
 			AddRow("60ed6eb5-41f9-482c-82e5-78abce7c142e", time.Now(), time.Now(), nil, "a10fce7b-7844-43af-9ed1-e130723a1ea3", "0c9f0ffe-169d-463e-b77f-bc36a8704db4", 0, "BTC", 8),

@@ -13,7 +13,7 @@ type CreateUserAssetRequest struct {
 type Asset struct {
 	ID               uuid.UUID `json:"id"`
 	UserID           uuid.UUID `json:"userId"`
-	Symbol           string    `json:"symbol"`
+	AssetSymbol      string    `json:"symbol"`
 	AvailableBalance string    `json:"availableBalance"`
 	Decimal          int       `json:"decimal"`
 }

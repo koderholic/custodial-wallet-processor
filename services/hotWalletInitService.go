@@ -21,14 +21,14 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 	}
 
 	for _, asset := range supportedAssets {
-		address, err := GetHotWalletAddressFor(cache, DB, logger, config, asset.Symbol)
+		address, err := GetHotWalletAddressFor(cache, DB, logger, config, asset.AssetSymbol)
 		if err != nil {
-			logger.Error("Error with getting hot wallet address for %s : %s", asset.Symbol, err)
+			logger.Error("Error with getting hot wallet address for %s : %s", asset.AssetSymbol, err)
 			return err
 		}
 		if address != "" {
-			if err := DB.Create(&dto.HotWalletAsset{Address: address, AssetSymbol: asset.Symbol}).Error; err != nil {
-				logger.Error("Error with creating hot wallet asset record %s : %s", asset.Symbol, err)
+			if err := DB.Create(&dto.HotWalletAsset{Address: address, AssetSymbol: asset.AssetSymbol}).Error; err != nil {
+				logger.Error("Error with creating hot wallet asset record %s : %s", asset.AssetSymbol, err)
 			}
 		}
 
