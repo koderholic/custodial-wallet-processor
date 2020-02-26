@@ -28,7 +28,7 @@ type CreditUserAssetRequest struct {
 	AssetID              uuid.UUID `json:"assetId" validate:"required"`
 	Value                float64   `json:"value" validate:"required"`
 	TransactionReference string    `json:"transactionReference" validate:"required"`
-	Memo                 string    `json:"memo" validate:"required"`
+	Memo                 string    `json:"memo"`
 }
 
 type ChainData struct {
