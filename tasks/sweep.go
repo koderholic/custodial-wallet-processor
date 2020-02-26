@@ -50,6 +50,10 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
 		if err := userAssetRepository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetId}}, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+				logger.Error("Could not release lock", err)
+				return
+			}
 			return
 		}
 		if recipientAsset.AssetSymbol == "BTC" {
@@ -57,6 +61,10 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			recipientAddress := dto.UserAddress{}
 			if err := repository.Get(dto.UserAddress{AssetID: assetId}, &recipientAddress); err != nil {
 				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+				if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+					logger.Error("Could not release lock", err)
+					return
+				}
 				return
 			}
 			btcAssets = append(btcAssets, recipientAddress.Address)
@@ -74,12 +82,17 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 				value := decimal.NewFromFloat(floatValue)
 				denominationDecimal := decimal.NewFromInt(int64(recipientAsset.Decimal))
 				baseExp := decimal.NewFromInt(10)
-				transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
+				//use float as an example like this 3.441122091000000000 fails after multiplying by 10*8
+				transactionValue, err := strconv.ParseFloat(value.Mul(baseExp.Pow(denominationDecimal)).String(), 64)
 				if err != nil {
 					logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v and trying to convert to native units", err, recipientAsset.ID)
+					if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+						logger.Error("Could not release lock", err)
+						return
+					}
 					return
 				}
-				sum = sum + transactionValue
+				sum = sum + int64(transactionValue)
 				count++
 			}
 		}
@@ -200,7 +213,7 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 		AssetSymbol: symbol,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
-	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err == nil {
+	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
 		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
 		return err, true
 	}
