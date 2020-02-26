@@ -46,14 +46,14 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		//need recipient Asset to check assetSymbol
 		recipientAsset := dto.UserAsset{}
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-		if err := repository.Get(assetId, &recipientAsset); err != nil {
+		if err := repository.Get(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetId}}, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 			return
 		}
 		if recipientAsset.AssetSymbol == "BTC" {
 			//get recipient address
 			recipientAddress := dto.UserAddress{}
-			if err := repository.Get(assetId, &recipientAddress); err != nil {
+			if err := repository.Get(dto.UserAddress{AssetID: assetId}, &recipientAddress); err != nil {
 				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 				return
 			}
@@ -132,13 +132,13 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	//need recipient Asset to get recipient address
 	recipientAsset := dto.UserAsset{}
 	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-	if err := repository.Get(assetTransactions[0].RecipientID, &recipientAsset); err != nil {
+	if err := repository.Get(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
 	//get recipient address
 	recipientAddress := dto.UserAddress{}
-	if err := repository.Get(assetTransactions[0].RecipientID, &recipientAddress); err != nil {
+	if err := repository.Get(dto.UserAddress{AssetID: assetTransactions[0].RecipientID}, &recipientAddress); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
