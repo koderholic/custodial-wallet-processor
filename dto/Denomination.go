@@ -11,5 +11,5 @@ type Denomination struct {
 	Transactions  []Transaction  `json:"transactions,omitempty"`
 	BatchRequests []BatchRequest `json:"batch_requests,omitempty"`
 	UserAddresses []UserAddress  `json:"user_addresses,omitempty"`
-	UserBalances  []UserAsset    `gorm:"foreignkey:asset_id" json:"user_balances,omitempty"`
+	UserAssets    []UserAsset    `gorm:"foreignkey:asset_id" json:"user_balances,omitempty"`
 }
