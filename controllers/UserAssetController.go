@@ -319,7 +319,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
@@ -418,7 +418,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(&assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return

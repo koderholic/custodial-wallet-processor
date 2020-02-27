@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
+	"github.com/shopspring/decimal"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -41,20 +42,29 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 
 	var btcAssets []string
 	var btcAssetTransactionsToSweep []dto.Transaction
+	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	for assetId, assetTransactions := range transactionsPerAssetId {
 		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
 		recipientAsset := dto.UserAsset{}
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-		if err := repository.Get(assetId, &recipientAsset); err != nil {
+		if err := userAssetRepository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetId}}, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+				logger.Error("Could not release lock", err)
+				return
+			}
 			return
 		}
 		if recipientAsset.AssetSymbol == "BTC" {
 			//get recipient address
 			recipientAddress := dto.UserAddress{}
-			if err := repository.Get(assetId, &recipientAddress); err != nil {
+			if err := repository.Get(dto.UserAddress{AssetID: assetId}, &recipientAddress); err != nil {
 				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+				if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+					logger.Error("Could not release lock", err)
+					return
+				}
 				return
 			}
 			btcAssets = append(btcAssets, recipientAddress.Address)
@@ -68,8 +78,21 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		for _, tx := range assetTransactions {
 			floatValue, err := strconv.ParseFloat(tx.Value, 64)
 			if err == nil {
-				//Value has no values after dp, as we expect the all crypto values are in their smallest unit
-				sum = sum + int64(floatValue)
+				//convert to native units
+				value := decimal.NewFromFloat(floatValue)
+				denominationDecimal := decimal.NewFromInt(int64(recipientAsset.Decimal))
+				baseExp := decimal.NewFromInt(10)
+				//use float as an example like this 3.441122091000000000 fails after multiplying by 10*8
+				transactionValue, err := strconv.ParseFloat(value.Mul(baseExp.Pow(denominationDecimal)).String(), 64)
+				if err != nil {
+					logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v and trying to convert to native units", err, recipientAsset.ID)
+					if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+						logger.Error("Could not release lock", err)
+						return
+					}
+					return
+				}
+				sum = sum + int64(transactionValue)
 				count++
 			}
 		}
@@ -132,13 +155,14 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	//need recipient Asset to get recipient address
 	recipientAsset := dto.UserAsset{}
 	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-	if err := repository.Get(assetTransactions[0].RecipientID, &recipientAsset); err != nil {
+	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+	if err := userAssetRepository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
 	//get recipient address
 	recipientAddress := dto.UserAddress{}
-	if err := repository.Get(assetTransactions[0].RecipientID, &recipientAddress); err != nil {
+	if err := repository.Get(dto.UserAddress{AssetID: assetTransactions[0].RecipientID}, &recipientAddress); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
@@ -175,7 +199,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 func getFloatDetails(repository database.BaseRepository, symbol string, logger *utility.Logger) (dto.HotWalletAsset, error) {
 	//Get the float address
 	var floatAccount dto.HotWalletAsset
-	if err := repository.GetByFieldName(&dto.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
+	if err := repository.Get(&dto.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id and trying to get float detials", err)
 		return dto.HotWalletAsset{}, err
 	}
@@ -189,7 +213,7 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 		AssetSymbol: symbol,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
-	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err == nil {
+	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
 		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
 		return err, true
 	}
