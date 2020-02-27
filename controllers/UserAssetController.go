@@ -27,10 +27,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", validationErr)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
+		ReturnError(responseWriter, "CreateUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -40,21 +37,11 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		denomination := dto.Denomination{}
 
 		if err := controller.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
-			controller.Logger.Error("Outgoing response to CreateUserAssets request %+v", err)
-			if err.(utility.AppError).Type() == utility.SYSTEM_ERR {
-				responseWriter.Header().Set("Content-Type", "application/json")
-				if err.Error() == utility.SQL_404 {
-					responseWriter.WriteHeader(http.StatusNotFound)
-				} else {
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-				}
-				json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset record (%s) could not be created for user. %s", denominationSymbol, utility.GetSQLErr(err.(utility.AppError)))))
+			if err.Error() == utility.SQL_404 {
+				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
 				return
 			}
-
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)))
+			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 			return
 		}
 		balance, _ := decimal.NewFromString("0.00")
@@ -89,23 +76,13 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	routeParams := mux.Vars(requestReader)
 	userID, err := uuid.FromString(routeParams["userId"])
 	if err != nil {
-		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
+		ReturnError(responseWriter, "GetUserAssets", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
 
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{UserID: userID}, &userAssets); err != nil {
-		controller.Logger.Error("Outgoing response to GetUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
+		ReturnError(responseWriter, "GetUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", userAssets)
@@ -140,23 +117,13 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		controller.Logger.Error("Outgoing response to GetUserAssetById request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
+		ReturnError(responseWriter, "GetUserAssetById", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssetById : assetID : %+v", assetID)
 
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAssets); err != nil {
-		controller.Logger.Error("Outgoing response to GetUserAssetById request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
+		ReturnError(responseWriter, "GetUserAssetById", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssetById request %+v", userAssets)
@@ -186,26 +153,12 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
 
 	if err := controller.Repository.GetByFieldName(&dto.UserAddress{Address: address}, &userAddress); err != nil {
-		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
 
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAssets); err != nil {
-		controller.Logger.Error("Outgoing response to GetUserAssetByAddress request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))))
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAssets)
@@ -234,10 +187,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", validationErr)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -248,14 +198,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	// ensure asset exists and then fetch asset
 	assetDetails := dto.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -265,21 +208,13 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Sub(value)).String()
 	if err != nil {
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
-
 	if availbal.Sub(value).IsNegative() {
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS), controller.Logger)
 		return
 	}
-
 	tx := controller.Repository.Db().Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -287,22 +222,14 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
-
 	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
-
 	// Create transaction record
 	transaction := dto.Transaction{
 
@@ -320,25 +247,17 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
+		AssetSymbol:          assetDetails.AssetSymbol,
 	}
-
 	if err := tx.Create(&transaction).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
-
 	if err := tx.Commit().Error; err != nil {
-		controller.Logger.Error("Outgoing response to DebitUserAsset request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
-
 	responseData.AssetID = requestData.AssetID
 	responseData.Value = transaction.Value
 	responseData.TransactionReference = transaction.TransactionReference
@@ -365,13 +284,9 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", validationErr)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
-
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
 	decodedToken := model.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
@@ -379,14 +294,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	// ensure asset exists and fetc asset
 	assetDetails := dto.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -396,10 +304,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Add(value)).String()
 	if err != nil {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
 
@@ -410,19 +315,13 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
 
 	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -443,22 +342,17 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
+		AssetSymbol:          assetDetails.AssetSymbol,
 	}
 
 	if err := tx.Create(&transaction).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
 
@@ -488,10 +382,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", validationErr)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -502,14 +393,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	// ensure asset exists and fetc asset
 	assetDetails := dto.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -519,10 +403,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Add(value)).String()
 	if err != nil {
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
 
@@ -533,19 +414,13 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
 
 	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -559,10 +434,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	if err := tx.Create(&chainTransaction).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -590,22 +462,17 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		OnChainTxId:          chainTransaction.ID,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
+		AssetSymbol:          assetDetails.AssetSymbol,
 	}
 
 	if err := tx.Create(&transaction).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -635,10 +502,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", validationErr)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -649,44 +513,24 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	// ensure asset exists and then fetch asset
 	initiatorAssetDetails := dto.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 	recipientAssetDetails := dto.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	// Ensure transfer cannot be done to self
 	if requestData.InitiatorAssetId == requestData.RecipientAssetId {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", utility.NON_MATCHING_DENOMINATION)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.TRANSFER_TO_SELF))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.NON_MATCHING_DENOMINATION, apiResponse.PlainError("INPUT_ERR", utility.TRANSFER_TO_SELF), controller.Logger)
 		return
 	}
 
 	// Check if the denomination in the transction request is same for initiator and recipient
 	if initiatorAssetDetails.DenominationID != recipientAssetDetails.DenominationID {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", utility.NON_MATCHING_DENOMINATION)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.NON_MATCHING_DENOMINATION))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.NON_MATCHING_DENOMINATION, apiResponse.PlainError("INPUT_ERR", utility.NON_MATCHING_DENOMINATION), controller.Logger)
 		return
 	}
 
@@ -696,18 +540,12 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	previousBalance := initiatorAssetDetails.AvailableBalance
 	currentAvailableBalance := (availbal.Sub(value)).String()
 	if err != nil {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("Transfer could not be completed :  %s", err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Transfer could not be completed :  %s", err)), controller.Logger)
 		return
 	}
 
 	if availbal.Sub(value).IsNegative() {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s", "User asset do not have sufficient balance for this operation")))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s", "User asset do not have sufficient balance for this operation")), controller.Logger)
 		return
 	}
 
@@ -718,30 +556,21 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("Transfer could not be completed :  %s", err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Transfer could not be completed :  %s", err)), controller.Logger)
 		return
 	}
 
 	// Debit Inititor
 	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: initiatorAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	// Credit recipient
 	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance + ?", value)).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
@@ -761,22 +590,17 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
+		AssetSymbol:          initiatorAssetDetails.AssetSymbol,
 	}
 
 	if err := tx.Create(&transaction).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		controller.Logger.Error("Outgoing response to InternalTransfer request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR))
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
