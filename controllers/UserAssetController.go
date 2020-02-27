@@ -417,7 +417,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to CreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
@@ -540,7 +540,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(&assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Outgoing response to OnChainCreditUserAssets request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
