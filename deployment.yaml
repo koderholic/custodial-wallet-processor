@@ -45,7 +45,7 @@ cronJobs:
       image: curlimages/curl:latest
       args:
         - '-Ssfv'
-        - 'http://crypto-wallet-adater/assets/process-transaction'
+        - 'http://crypto-wallet-adapter/assets/process-transaction'
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment
