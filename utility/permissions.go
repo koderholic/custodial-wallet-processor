@@ -12,6 +12,5 @@ var (
 		"OnChainDeposit":     "on-chain-deposit",
 		"ConfirmTransaction": "confirm-transaction",
 		"ExternalTransfer":   "do-external-transfer",
-		"ProcessTransactions" : "process-transactions",
 	}
 )
