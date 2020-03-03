@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
@@ -41,7 +43,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
 				return
 			}
-			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 			return
 		}
 		balance, _ := decimal.NewFromString("0.00")
@@ -298,15 +300,25 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	// // increment user account by volume
-	value := decimal.NewFromFloat(requestData.Value)
-	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
-	previousBalance := assetDetails.AvailableBalance
-	currentAvailableBalance := (availbal.Add(value)).String()
+	// increment user account by volume
+	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
+	availBal, err := strconv.ParseFloat(assetDetails.AvailableBalance, 64)
 	if err != nil {
 		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
+	previousBalance := assetDetails.AvailableBalance
+	currentAvailableBalance := availBal*math.Pow10(assetDetails.Decimal) + requestData.Value*math.Pow10(assetDetails.Decimal)
+	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(assetDetails.Decimal), 'g', assetDetails.Decimal, 64)
+
+	// value := decimal.NewFromFloat(requestData.Value)
+	// availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
+	// previousBalance := assetDetails.AvailableBalance
+	// currentAvailableBalance := (availbal.Add(value)).String()
+	// if err != nil {
+	// 	ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
+	// 	return
+	// }
 
 	tx := controller.Repository.Db().Begin()
 	defer func() {
@@ -319,7 +331,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalanceString}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
@@ -336,9 +348,9 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		TransactionType:      dto.TransactionType.OFFCHAIN,
 		TransactionStatus:    dto.TransactionStatus.COMPLETED,
 		TransactionTag:       dto.TransactionTag.CREDIT,
-		Value:                value.String(),
+		Value:                value,
 		PreviousBalance:      previousBalance,
-		AvailableBalance:     currentAvailableBalance,
+		AvailableBalance:     currentAvailableBalanceString,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
