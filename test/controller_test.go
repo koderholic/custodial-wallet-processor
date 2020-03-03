@@ -178,6 +178,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, s.Config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, s.Config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, s.Config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["ExternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, s.Config, userAssetController.ProcessTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
 
 	})
 }
@@ -685,7 +686,7 @@ func (s *Suite) Test_ProcessTransfer() {
 		require.NoError(s.T(), errors.New(fmt.Sprintf("Expected external transfer asset to not error >> %+v", externalTransferResponse)))
 	}
 
-	processTransactionRequest, _ := http.NewRequest("GET", test.ProcessTransactionEndpoint, bytes.NewBuffer([]byte("")))
+	processTransactionRequest, _ := http.NewRequest("POST", test.ProcessTransactionEndpoint, bytes.NewBuffer([]byte("")))
 	processTransactionRequest.Header.Set("x-auth-token", authToken)
 	response := httptest.NewRecorder()
 	s.Router.ServeHTTP(response, processTransactionRequest)
