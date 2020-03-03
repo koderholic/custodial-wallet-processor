@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -32,29 +33,29 @@ import (
 )
 
 type Test struct {
-	pingEndpoint           string
-	CreateAssetEndpoint    string
-	GetAssetEndpoint       string
-	CreditAssetEndpoint    string
-	DebitAssetEndpoint     string
-	GetAddressEndpoint     string
-	GetTransactionByRef    string
-	GetTransactionsByAsset string
-	GetAssetByIdEndpoint   string
-	OnchainDepositEndpoint string
+	pingEndpoint               string
+	CreateAssetEndpoint        string
+	GetAssetEndpoint           string
+	CreditAssetEndpoint        string
+	DebitAssetEndpoint         string
+	GetTransactionByRef        string
+	OnchainDepositEndpoint     string
+	InternalTransferEndpoint   string
+	TransferExternalEndpoint   string
+	ProcessTransactionEndpoint string
 }
 
 var test = Test{
-	pingEndpoint:           "/ping",
-	CreateAssetEndpoint:    "/users/assets",
-	GetAssetEndpoint:       "/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
-	GetAssetByIdEndpoint:   "/users/dbd77a9f-0dd9-4ff0-b17b-430e3895b82f/assets",
-	CreditAssetEndpoint:    "/assets/credit",
-	OnchainDepositEndpoint: "/assets/onchain-deposit",
-	DebitAssetEndpoint:     "/assets/debit",
-	GetAddressEndpoint:     "/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/address",
-	GetTransactionByRef:    "/assets/transactions/9b7227pba3d915ef756a",
-	GetTransactionsByAsset: "/assets/a10fce7b-7844-43af-9ed1-e130723a1ea3/transactions",
+	pingEndpoint:               "/ping",
+	CreateAssetEndpoint:        "/users/assets",
+	GetAssetEndpoint:           "/users/a10fce7b-7844-43af-9ed1-e130723a1ea3/assets",
+	CreditAssetEndpoint:        "/assets/credit",
+	OnchainDepositEndpoint:     "/assets/onchain-deposit",
+	DebitAssetEndpoint:         "/assets/debit",
+	InternalTransferEndpoint:   "/assets/transfer-internal",
+	GetTransactionByRef:        "/assets/transactions/",
+	TransferExternalEndpoint:   "/assets/transfer-external",
+	ProcessTransactionEndpoint: "/assets/process-transaction",
 }
 
 //BaseController : Base controller struct
@@ -89,11 +90,20 @@ func TestInit(t *testing.T) {
 
 // SetupSuite ...
 func (s *Suite) SetupSuite() {
+	dir, err := os.Getwd()
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	db, err := gorm.Open("sqlite3", dir+"/walletAdapter.db")
+	db.DB().SetMaxOpenConns(1)
 
-	db, err := gorm.Open("sqlite3", "./walletAdapter.db")
 	s.DB = db
 	require.NoError(s.T(), err)
 	s.DB.LogMode(true)
+
+	if err = os.Chmod(dir+"/walletAdapter.db", 0777); err != nil {
+		require.NoError(s.T(), err)
+	}
 
 	logger := utility.NewLogger()
 	router := mux.NewRouter()
@@ -128,16 +138,16 @@ func (s *Suite) SetupSuite() {
 	s.Config = Config
 	s.Router = router
 
-	s.RunMigration()
-	s.DBSeeder()
 	s.RegisterRoutes(logger, Config, router, validator)
 }
 
-func (s *Suite) TearDownTestSuite() {
-	err := os.Remove("./walletAdapter.db")
-	if err != nil {
-		s.Logger.Error("Error with deleting the test database : ", err)
-	}
+func (s *Suite) SetupTest() {
+	s.RunMigration()
+	s.DBSeeder()
+}
+
+func (s *Suite) TearDownTest() {
+	s.DB.DropTableIfExists(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserAsset{}, &dto.HotWalletAsset{}, &dto.TransactionQueue{})
 }
 
 // RegisterRoutes ...
@@ -161,15 +171,13 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		apiRouter.HandleFunc("/assets/credit", middlewares.NewMiddleware(logger, s.Config, userAssetController.CreditUserAsset).ValidateAuthToken(utility.Permissions["CreditUserAsset"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/onchain-deposit", middlewares.NewMiddleware(logger, s.Config, userAssetController.OnChainCreditUserAsset).ValidateAuthToken(utility.Permissions["OnChainDeposit"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/debit", middlewares.NewMiddleware(logger, s.Config, userAssetController.DebitUserAsset).ValidateAuthToken(utility.Permissions["DebitUserAsset"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(logger, s.Config, userAssetController.InternalTransfer).ValidateAuthToken(utility.Permissions["InternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(logger, s.Config, userAssetController.InternalTransfer).ValidateAuthToken(utility.Permissions["InternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, s.Config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, s.Config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, s.Config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["ExternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/confirm-transaction", middlewares.NewMiddleware(logger, s.Config, userAssetController.ConfirmTransaction).ValidateAuthToken(utility.Permissions["ConfirmTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, s.Config, userAssetController.ProcessTransactions).ValidateAuthToken(utility.Permissions["ProcessTransactions"]).LogAPIRequests().Build()).Methods(http.MethodGet)
 
 	})
 }
@@ -177,11 +185,6 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 // RunDbMigrations ... This creates corresponding tables for dtos on the db for testing
 func (s *Suite) RunMigration() {
 	s.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserAsset{}, &dto.HotWalletAsset{}, &dto.TransactionQueue{})
-	s.DB.Model(&dto.UserAsset{}).AddForeignKey("denomination_id", "denominations(id)", "CASCADE", "CASCADE")
-	s.DB.Model(&dto.UserAddress{}).AddForeignKey("asset_id", "user_assets(id)", "CASCADE", "CASCADE")
-	s.DB.Model(&dto.Transaction{}).AddForeignKey("recipient_id", "user_assets(id)", "CASCADE", "CASCADE")
-	s.DB.Model(&dto.TransactionQueue{}).AddForeignKey("transaction_id", "transactions(id)", "CASCADE", "CASCADE")
-	s.DB.Model(&dto.TransactionQueue{}).AddForeignKey("debit_reference", "transactions(transaction_reference)", "NO ACTION", "NO ACTION")
 }
 
 // DBSeeder .. This seeds supported assets into the database for testing
@@ -221,6 +224,7 @@ func (s *Suite) Test_CreateUserAsset() {
 		s.T().Errorf("Expected response code to be %d and length of assets returned to be %d. Got responseCode of %d and assets length of %d\n", 201, 3, response.Code, len(createAssetResponse.Assets))
 	}
 }
+
 func (s *Suite) Test_GetUserAsset() {
 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
@@ -244,6 +248,125 @@ func (s *Suite) Test_GetUserAsset() {
 		s.T().Errorf("Expected response code to be %d and length of assets returned to be %d. Got responseCode of %d and assets length of %d\n", 200, 3, response.Code, len(getAssetResponse.Assets))
 	}
 }
+func (s *Suite) Test_GetUserAssetById() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	getAssetRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-id/%s", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
+	getAssetRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAssetRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetResponse := model.Asset{}
+	err = json.Unmarshal(resBody, &getAssetResponse)
+
+	fmt.Printf("getAssetResponse >> %+v", getAssetResponse.UserID.String())
+
+	if response.Code != http.StatusOK || getAssetResponse.UserID.String() == "00000000-0000-0000-0000-000000000000" {
+		s.T().Errorf("Expected response code to be %d and userId not empty. Got responseCode of %d and %s\n", http.StatusOK, response.Code, getAssetResponse.UserID.String())
+	}
+}
+func (s *Suite) Test_GetUserAssetAddress() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+	// First time call to get address
+	getNewAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
+	getNewAssetAddressRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getNewAssetAddressRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getNewAssetAddressResponse := map[string]string{}
+	err = json.Unmarshal(resBody, &getNewAssetAddressResponse)
+	//  Second time call to get address
+	getOldAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
+	getOldAssetAddressRequest.Header.Set("x-auth-token", authToken)
+	response2 := httptest.NewRecorder()
+	s.Router.ServeHTTP(response2, getOldAssetAddressRequest)
+	resBody2, err := ioutil.ReadAll(response2.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getOldAssetAddressResponse := map[string]string{}
+	err = json.Unmarshal(resBody2, &getOldAssetAddressResponse)
+
+	if response.Code != http.StatusOK || response2.Code != http.StatusOK || getNewAssetAddressResponse["address"] == "" || getOldAssetAddressResponse["address"] != getOldAssetAddressResponse["address"] {
+		s.T().Errorf("Expected response code to be %d and asset address to not be empty and the two calls to get address to return same address. Got responseCode of %d and address of %s and the equality of both address to be %t\n", http.StatusOK, response.Code, getNewAssetAddressResponse["address"], getNewAssetAddressResponse["address"] == getOldAssetAddressResponse["address"])
+	}
+}
+func (s *Suite) Test_GetUserAssetByAddress() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+	// First time call to get address
+	getAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
+	getAssetAddressRequest.Header.Set("x-auth-token", authToken)
+	responseAddress := httptest.NewRecorder()
+	s.Router.ServeHTTP(responseAddress, getAssetAddressRequest)
+	resBody, err = ioutil.ReadAll(responseAddress.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetAddressResponse := map[string]string{}
+	err = json.Unmarshal(resBody, &getAssetAddressResponse)
+
+	getAssetRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-address/%s", getAssetAddressResponse["address"]), bytes.NewBuffer([]byte("")))
+	getAssetRequest.Header.Set("x-auth-token", authToken)
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAssetRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetResponse := model.Asset{}
+	err = json.Unmarshal(resBody, &getAssetResponse)
+
+	if response.Code != http.StatusOK || getAssetResponse.ID != createAssetResponse.Assets[0].ID {
+		s.T().Errorf("Expected response code to be %d and asset ID to be %s. Got responseCode of %d and %s\n", http.StatusOK, createAssetResponse.Assets[0].ID.String(), response.Code, getAssetResponse.ID.String())
+	}
+}
 func (s *Suite) Test_CreditUserAsset() {
 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
@@ -256,6 +379,9 @@ func (s *Suite) Test_CreditUserAsset() {
 	}
 	createAssetResponse := model.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
 
 	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
 	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
@@ -274,8 +400,11 @@ func (s *Suite) Test_CreditUserAsset() {
 	}
 	getAssetResponse := model.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
+	if len(getAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("No assests returned"))
+	}
 
-	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance == "200.30" {
+	if response.Code != http.StatusOK || len(getAssetResponse.Assets) < 1 || getAssetResponse.Assets[0].AvailableBalance == "200.30" {
 		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %s\n", http.StatusOK, "200.30", response.Code, createAssetResponse.Assets[0].AvailableBalance)
 	}
 }
@@ -292,6 +421,9 @@ func (s *Suite) Test_DebitUserAsset() {
 	}
 	createAssetResponse := model.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
 
 	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
 	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
@@ -316,8 +448,332 @@ func (s *Suite) Test_DebitUserAsset() {
 	}
 	getAssetResponse := model.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
+	if len(getAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("No assests returned"))
+	}
 
-	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "190" {
+	if response.Code != http.StatusOK || len(getAssetResponse.Assets) < 1 || getAssetResponse.Assets[0].AvailableBalance != "190" {
 		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %s\n", http.StatusOK, "190", response.Code, createAssetResponse.Assets[0].AvailableBalance)
+	}
+}
+func (s *Suite) Test_ExternalTransfer() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", authToken)
+	creditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+	if creditAssetResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New("Expected credit asset to not error"))
+	}
+
+	debitAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 10.30,"transactionReference" : "ra29bv7y111p945e17515","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	debitAssetRequest, _ := http.NewRequest("POST", test.DebitAssetEndpoint, bytes.NewBuffer(debitAssetInputData))
+	debitAssetRequest.Header.Set("x-auth-token", authToken)
+	debitAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(debitAssetResponse, debitAssetRequest)
+	if debitAssetResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New("Expected debit asset to not error"))
+	}
+	println("!!!!!!!!!!!!!!!!!!!!!!")
+	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516"}`)
+	externalTransferRequest, _ := http.NewRequest("POST", test.TransferExternalEndpoint, bytes.NewBuffer(externalTransferInputData))
+	externalTransferRequest.Header.Set("x-auth-token", authToken)
+	externalTransferResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(externalTransferResponse, externalTransferRequest)
+	if externalTransferResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New(fmt.Sprintf("Expected external transfer asset to not error >> %+v", externalTransferResponse)))
+	}
+
+	getAssetTransactionRequest, _ := http.NewRequest("GET", test.GetTransactionByRef+"ra29bv7y111p945e17516", bytes.NewBuffer([]byte("")))
+	getAssetTransactionRequest.Header.Set("x-auth-token", authToken)
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAssetTransactionRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetTransactionResponse := model.TransactionResponse{}
+	err = json.Unmarshal(resBody, &getAssetTransactionResponse)
+
+	queuedTransaction := dto.TransactionQueue{}
+	s.DB.Raw("SELECT * from transaction_queues where transaction_id = ?", getAssetTransactionResponse.ID).Scan(&queuedTransaction)
+
+	if response.Code != http.StatusOK || getAssetTransactionResponse.RecipientID.String() != createAssetResponse.Assets[0].ID.String() || queuedTransaction.Recipient != "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda" {
+		s.T().Errorf("Expected statusCode to be %d, external transaction recipientId to be %s and external recipient to be %s. Got %d, %s and %s\n", http.StatusOK, createAssetResponse.Assets[0].ID, "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda", response.Code, getAssetTransactionResponse.RecipientID, queuedTransaction.Recipient)
+	}
+}
+func (s *Suite) Test_InternalAssetTransfer() {
+	// Asset 1
+	createAssetInputData1 := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest1, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData1))
+	createAssetRequest1.Header.Set("x-auth-token", authToken)
+	createResponse1 := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse1, createAssetRequest1)
+	resBody, err := ioutil.ReadAll(createResponse1.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse1 := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse1)
+	if createResponse1.Code != http.StatusCreated || len(createAssetResponse1.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+	// Asset 2
+	createAssetInputData2 := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1e44"}`)
+	createAssetRequest2, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData2))
+	createAssetRequest2.Header.Set("x-auth-token", authToken)
+	createResponse2 := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse2, createAssetRequest2)
+	resBody, err = ioutil.ReadAll(createResponse2.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse2 := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse2)
+	if createResponse1.Code != http.StatusCreated || len(createAssetResponse2.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse1.Assets[0].ID))
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", authToken)
+	creditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+
+	initiator := createAssetResponse1.Assets[0]
+	recipient := createAssetResponse2.Assets[0]
+
+	transferAssetInputData := []byte(fmt.Sprintf(`{"initiatorAssetId" : "%s", "recipientAssetId" : "%s","value" : 50.09,"transactionReference" : "ra29bv7y111p945e17515","memo" :"Test credit transaction"}`, initiator.ID, recipient.ID))
+	transferAssetRequest, _ := http.NewRequest("POST", test.InternalTransferEndpoint, bytes.NewBuffer(transferAssetInputData))
+	transferAssetRequest.Header.Set("x-auth-token", authToken)
+	transferAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(transferAssetResponse, transferAssetRequest)
+
+	// Get asset 1
+	getAssetRequest1, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-id/%s", initiator.ID), bytes.NewBuffer([]byte("")))
+	getAssetRequest1.Header.Set("x-auth-token", authToken)
+	response1 := httptest.NewRecorder()
+	s.Router.ServeHTTP(response1, getAssetRequest1)
+	resBody, err = ioutil.ReadAll(response1.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetResponse1 := model.Asset{}
+	err = json.Unmarshal(resBody, &getAssetResponse1)
+	// Get asset 2
+	getAssetRequest2, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-id/%s", recipient.ID), bytes.NewBuffer([]byte("")))
+	getAssetRequest2.Header.Set("x-auth-token", authToken)
+	response2 := httptest.NewRecorder()
+	s.Router.ServeHTTP(response2, getAssetRequest2)
+	resBody, err = ioutil.ReadAll(response2.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetResponse2 := model.Asset{}
+	err = json.Unmarshal(resBody, &getAssetResponse2)
+
+	if response1.Code != http.StatusOK || response2.Code != http.StatusOK || getAssetResponse1.AvailableBalance != "150.21" || getAssetResponse2.AvailableBalance != "50.09" {
+		s.T().Errorf("Expected statusCode to be %d,  sender asset balance to be %s and the recipient asset balance to be %s. Got %d, %s and %s \n", http.StatusOK, "150.21", "50.09", response1.Code, getAssetResponse1.AvailableBalance, getAssetResponse2.AvailableBalance)
+	}
+}
+
+func (s *Suite) Test_OnchainCreditUserAsset() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17515","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", authToken)
+	creditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+
+	onchainCreditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 3.441122091,"transactionReference" : "ra29bv7y111p945e17516","memo" :"Test credit transaction","chainData": {"status": true,"transactionHash": "string","transactionFee": "string","blockHeight": 0}}`, createAssetResponse.Assets[0].ID))
+	onchainCreditAssetRequest, _ := http.NewRequest("POST", test.OnchainDepositEndpoint, bytes.NewBuffer(onchainCreditAssetInputData))
+	onchainCreditAssetRequest.Header.Set("x-auth-token", authToken)
+	onchainCreditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(onchainCreditAssetResponse, onchainCreditAssetRequest)
+
+	getAssetRequest, _ := http.NewRequest("GET", test.GetAssetEndpoint, bytes.NewBuffer([]byte("")))
+	getAssetRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAssetRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &getAssetResponse)
+	fmt.Printf("getAssetResponse >>> %+v", getAssetResponse)
+
+	if len(getAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("No assests returned"))
+	}
+
+	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "203.741122091" {
+		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %+v\n", http.StatusOK, "203.741122091", response.Code, createAssetResponse.Assets[0].AvailableBalance)
+	}
+}
+
+func (s *Suite) Test_ProcessTransfer() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", authToken)
+	creditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+	if creditAssetResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New("Expected credit asset to not error"))
+	}
+
+	debitAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 10.30,"transactionReference" : "ra29bv7y111p945e17515","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	debitAssetRequest, _ := http.NewRequest("POST", test.DebitAssetEndpoint, bytes.NewBuffer(debitAssetInputData))
+	debitAssetRequest.Header.Set("x-auth-token", authToken)
+	debitAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(debitAssetResponse, debitAssetRequest)
+	if debitAssetResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New("Expected debit asset to not error"))
+	}
+
+	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516"}`)
+	externalTransferRequest, _ := http.NewRequest("POST", test.TransferExternalEndpoint, bytes.NewBuffer(externalTransferInputData))
+	externalTransferRequest.Header.Set("x-auth-token", authToken)
+	externalTransferResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(externalTransferResponse, externalTransferRequest)
+	if externalTransferResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New(fmt.Sprintf("Expected external transfer asset to not error >> %+v", externalTransferResponse)))
+	}
+
+	processTransactionRequest, _ := http.NewRequest("GET", test.ProcessTransactionEndpoint, bytes.NewBuffer([]byte("")))
+	processTransactionRequest.Header.Set("x-auth-token", authToken)
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, processTransactionRequest)
+
+	if response.Code != http.StatusOK {
+		s.T().Errorf("Expected statusCode to be %d. Got %d \n", http.StatusOK, response.Code)
+	}
+}
+
+func (s *Suite) Test_GetTransactionByRef() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", authToken)
+	creditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+	if creditAssetResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New("Expected credit asset to not error"))
+	}
+
+	getAssetTransactionRequest, _ := http.NewRequest("GET", test.GetTransactionByRef+"ra29bv7y111p945e17514", bytes.NewBuffer([]byte("")))
+	getAssetTransactionRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAssetTransactionRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetTransactionResponse := model.TransactionResponse{}
+	err = json.Unmarshal(resBody, &getAssetTransactionResponse)
+
+	if response.Code != http.StatusOK || getAssetTransactionResponse.Value != "200.3" || getAssetTransactionResponse.TransactionStatus != "COMPLETED" {
+		s.T().Errorf("Expected statusCode to be %d and transaction value to be %s. Got %d and %s\n", http.StatusOK, "200.3", response.Code, getAssetTransactionResponse.Value)
+	}
+}
+func (s *Suite) Test_GetTransactionsByUserId() {
+	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+
+	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+	creditAssetRequest.Header.Set("x-auth-token", authToken)
+	creditAssetResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+	if creditAssetResponse.Code != http.StatusOK {
+		require.NoError(s.T(), errors.New("Expected credit asset to not error"))
+	}
+
+	getAssetTransactionsRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/transactions", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
+	getAssetTransactionsRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAssetTransactionsRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAssetTransactionsResponse := model.TransactionListResponse{}
+	err = json.Unmarshal(resBody, &getAssetTransactionsResponse)
+
+	if response.Code != http.StatusOK || len(getAssetTransactionsResponse.Transactions) < 1 {
+		s.T().Errorf("Expected statusCode to be %d and transaction length to be %d. Got %d and %d\n", http.StatusOK, 1, response.Code, len(getAssetTransactionsResponse.Transactions))
 	}
 }
