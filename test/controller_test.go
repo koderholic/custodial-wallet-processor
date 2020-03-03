@@ -638,8 +638,8 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 		require.NoError(s.T(), errors.New("No assests returned"))
 	}
 
-	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "203.741122091" {
-		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %+v\n", http.StatusOK, "203.741122091", response.Code, createAssetResponse.Assets[0].AvailableBalance)
+	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "203.74112" {
+		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %+v\n", http.StatusOK, "203.741122091", response.Code, getAssetResponse.Assets[0].AvailableBalance)
 	}
 }
 

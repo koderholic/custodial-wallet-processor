@@ -3,14 +3,14 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+
+	"github.com/jinzhu/gorm"
 
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
@@ -48,15 +48,14 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		}
 		balance, _ := decimal.NewFromString("0.00")
 		userAssetDTO := dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreate(dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
-		userAssetDTO.AssetSymbol = denomination.AssetSymbol
+		_ = controller.Repository.FindOrCreateAssets(dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
 
 		userAsset := model.Asset{}
 		userAsset.ID = userAssetDTO.ID
 		userAsset.UserID = userAssetDTO.UserID
 		userAsset.AssetSymbol = userAssetDTO.AssetSymbol
 		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
-		userAsset.Decimal = denomination.Decimal
+		userAsset.Decimal = userAssetDTO.Decimal
 
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
@@ -176,103 +175,6 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 }
 
-// DebitUserAsset ... debit a user asset abalance with the specified value
-func (controller UserAssetController) DebitUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
-
-	apiResponse := utility.NewResponse()
-	requestData := model.CreditUserAssetRequest{}
-	responseData := model.TransactionReceipt{}
-	paymentRef := utility.RandomString(16)
-
-	json.NewDecoder(requestReader.Body).Decode(&requestData)
-	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
-
-	// Validate request
-	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
-		return
-	}
-
-	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
-	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
-
-	// ensure asset exists and then fetch asset
-	assetDetails := dto.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
-	}
-
-	// // increment user account by volume
-	value := decimal.NewFromFloat(requestData.Value)
-	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
-	previousBalance := assetDetails.AvailableBalance
-	currentAvailableBalance := (availbal.Sub(value)).String()
-	if err != nil {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
-		return
-	}
-	if availbal.Sub(value).IsNegative() {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS), controller.Logger)
-		return
-	}
-	tx := controller.Repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Error; err != nil {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
-		return
-	}
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
-	}
-	// Create transaction record
-	transaction := dto.Transaction{
-
-		InitiatorID:          decodedToken.ServiceID, // serviceId
-		RecipientID:          assetDetails.ID,
-		TransactionReference: requestData.TransactionReference,
-		PaymentReference:     paymentRef,
-		Memo:                 requestData.Memo,
-		TransactionType:      dto.TransactionType.OFFCHAIN,
-		TransactionStatus:    dto.TransactionStatus.COMPLETED,
-		TransactionTag:       dto.TransactionTag.DEBIT,
-		Value:                value.String(),
-		PreviousBalance:      previousBalance,
-		AvailableBalance:     currentAvailableBalance,
-		ProcessingType:       dto.ProcessingType.SINGLE,
-		TransactionStartDate: time.Now(),
-		TransactionEndDate:   time.Now(),
-		AssetSymbol:          assetDetails.AssetSymbol,
-	}
-	if err := tx.Create(&transaction).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
-	}
-	if err := tx.Commit().Error; err != nil {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
-		return
-	}
-	responseData.AssetID = requestData.AssetID
-	responseData.Value = transaction.Value
-	responseData.TransactionReference = transaction.TransactionReference
-	responseData.PaymentReference = transaction.PaymentReference
-	responseData.TransactionStatus = transaction.TransactionStatus
-
-	controller.Logger.Info("Outgoing response to DebitUserAsset request %+v", responseData)
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(responseData)
-
-}
-
 // CreditUserAssets ... Credit a user asset abalance with the specified value
 func (controller UserAssetController) CreditUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
@@ -300,25 +202,9 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	// increment user account by volume
+	// increment user account by value
 	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
-	availBal, err := strconv.ParseFloat(assetDetails.AvailableBalance, 64)
-	if err != nil {
-		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
-		return
-	}
-	previousBalance := assetDetails.AvailableBalance
-	currentAvailableBalance := availBal*math.Pow10(assetDetails.Decimal) + requestData.Value*math.Pow10(assetDetails.Decimal)
-	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(assetDetails.Decimal), 'g', assetDetails.Decimal, 64)
-
-	// value := decimal.NewFromFloat(requestData.Value)
-	// availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
-	// previousBalance := assetDetails.AvailableBalance
-	// currentAvailableBalance := (availbal.Add(value)).String()
-	// if err != nil {
-	// 	ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
-	// 	return
-	// }
+	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	tx := controller.Repository.Db().Begin()
 	defer func() {
@@ -331,7 +217,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalanceString}).Error; err != nil {
+	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
@@ -349,8 +235,8 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		TransactionStatus:    dto.TransactionStatus.COMPLETED,
 		TransactionTag:       dto.TransactionTag.CREDIT,
 		Value:                value,
-		PreviousBalance:      previousBalance,
-		AvailableBalance:     currentAvailableBalanceString,
+		PreviousBalance:      assetDetails.AvailableBalance,
+		AvailableBalance:     currentAvailableBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
@@ -409,15 +295,9 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
-	// // increment user account by volume
-	value := decimal.NewFromFloat(requestData.Value)
-	availbal, err := decimal.NewFromString(assetDetails.AvailableBalance)
-	previousBalance := assetDetails.AvailableBalance
-	currentAvailableBalance := (availbal.Add(value)).String()
-	if err != nil {
-		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)), controller.Logger)
-		return
-	}
+	// // increment user account by value
+	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
+	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	tx := controller.Repository.Db().Begin()
 	defer func() {
@@ -467,8 +347,8 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		TransactionType:      dto.TransactionType.ONCHAIN,
 		TransactionStatus:    transactionStatus,
 		TransactionTag:       dto.TransactionTag.DEPOSIT,
-		Value:                value.String(),
-		PreviousBalance:      previousBalance,
+		Value:                value,
+		PreviousBalance:      assetDetails.AvailableBalance,
 		AvailableBalance:     currentAvailableBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		OnChainTxId:          chainTransaction.ID,
@@ -546,18 +426,14 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Increment user account by volume
-	value := decimal.NewFromFloat(requestData.Value)
-	availbal, err := decimal.NewFromString(initiatorAssetDetails.AvailableBalance)
-	previousBalance := initiatorAssetDetails.AvailableBalance
-	currentAvailableBalance := (availbal.Sub(value)).String()
-	if err != nil {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Transfer could not be completed :  %s", err)), controller.Logger)
-		return
-	}
+	// Increment initiator asset balance and decrement recipient asset balance
+	value := strconv.FormatFloat(requestData.Value, 'g', initiatorAssetDetails.Decimal, 64)
+	initiatorCurrentBalance := utility.Sub(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
+	recipientCurrentBalance := utility.Add(requestData.Value, recipientAssetDetails.AvailableBalance, recipientAssetDetails.Decimal)
 
-	if availbal.Sub(value).IsNegative() {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s", "User asset do not have sufficient balance for this operation")), controller.Logger)
+	// Checks if initiator has enough value to transfer
+	if !utility.IsGreater(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal) {
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("INPUT_ERR", utility.INSUFFICIENT_FUNDS), controller.Logger)
 		return
 	}
 
@@ -568,19 +444,19 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		}
 	}()
 	if err := tx.Error; err != nil {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("Transfer could not be completed :  %s", err)), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
 		return
 	}
 
 	// Debit Inititor
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: initiatorAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: initiatorAssetDetails.ID}}).Update(dto.UserAsset{AvailableBalance: initiatorCurrentBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	// Credit recipient
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance + ?", value)).Error; err != nil {
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update(dto.UserAsset{AvailableBalance: recipientCurrentBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
@@ -596,9 +472,9 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		TransactionType:      dto.TransactionType.OFFCHAIN,
 		TransactionStatus:    dto.TransactionStatus.COMPLETED,
 		TransactionTag:       dto.TransactionTag.TRANSFER,
-		Value:                value.String(),
-		PreviousBalance:      previousBalance,
-		AvailableBalance:     currentAvailableBalance,
+		Value:                value,
+		PreviousBalance:      initiatorAssetDetails.AvailableBalance,
+		AvailableBalance:     initiatorCurrentBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
@@ -623,6 +499,100 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	responseData.TransactionStatus = transaction.TransactionStatus
 
 	controller.Logger.Info("Outgoing response to InternalTransfer request %+v", responseData)
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
+// DebitUserAsset ... debit a user asset abalance with the specified value
+func (controller UserAssetController) DebitUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	apiResponse := utility.NewResponse()
+	requestData := model.CreditUserAssetRequest{}
+	responseData := model.TransactionReceipt{}
+	paymentRef := utility.RandomString(16)
+
+	json.NewDecoder(requestReader.Body).Decode(&requestData)
+	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)
+
+	// Validate request
+	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		return
+	}
+
+	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+	decodedToken := model.TokenClaims{}
+	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
+
+	// ensure asset exists and then fetch asset
+	assetDetails := dto.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		return
+	}
+
+	// // decrement user account by value
+	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
+	currentAvailableBalance := utility.Sub(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+
+	// Checks if user asset has enough value to for the transaction
+	if !utility.IsGreater(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal) {
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS), controller.Logger)
+		return
+	}
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
+		return
+	}
+	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
+		tx.Rollback()
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+		return
+	}
+	// Create transaction record
+	transaction := dto.Transaction{
+
+		InitiatorID:          decodedToken.ServiceID, // serviceId
+		RecipientID:          assetDetails.ID,
+		TransactionReference: requestData.TransactionReference,
+		PaymentReference:     paymentRef,
+		Memo:                 requestData.Memo,
+		TransactionType:      dto.TransactionType.OFFCHAIN,
+		TransactionStatus:    dto.TransactionStatus.COMPLETED,
+		TransactionTag:       dto.TransactionTag.DEBIT,
+		Value:                value,
+		PreviousBalance:      assetDetails.AvailableBalance,
+		AvailableBalance:     currentAvailableBalance,
+		ProcessingType:       dto.ProcessingType.SINGLE,
+		TransactionStartDate: time.Now(),
+		TransactionEndDate:   time.Now(),
+		AssetSymbol:          assetDetails.AssetSymbol,
+	}
+	if err := tx.Create(&transaction).Error; err != nil {
+		tx.Rollback()
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+		return
+	}
+	if err := tx.Commit().Error; err != nil {
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
+		return
+	}
+	responseData.AssetID = requestData.AssetID
+	responseData.Value = transaction.Value
+	responseData.TransactionReference = transaction.TransactionReference
+	responseData.PaymentReference = transaction.PaymentReference
+	responseData.TransactionStatus = transaction.TransactionStatus
+
+	controller.Logger.Info("Outgoing response to DebitUserAsset request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)

@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"strconv"
+
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -12,4 +14,9 @@ type UserAsset struct {
 	AvailableBalance string    `gorm:"type:decimal(64,18) CHECK(available_balance >= 0);not null;" json:"available_balance"`
 	AssetSymbol      string    `gorm:"-" json:"asset_symbol,omitempty"`
 	Decimal          int       `gorm:"-" json:"decimal,omitempty"`
+}
+
+func (userAsset *UserAsset) AfterFind() {
+	balance, _ := strconv.ParseFloat(userAsset.AvailableBalance, 64)
+	userAsset.AvailableBalance = strconv.FormatFloat(balance, 'g', userAsset.Decimal, 64)
 }

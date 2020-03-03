@@ -3,7 +3,9 @@ package utility
 import (
 	"encoding/json"
 	"io/ioutil"
+	"math"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -32,4 +34,26 @@ func UnmarshalJsonFile(fileLocation string, contentReciever interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func Add(value float64, availableBalance string, decimals int) string {
+	availBal, _ := strconv.ParseFloat(availableBalance, 64)
+	currentAvailableBalance := availBal*math.Pow10(decimals) + value*math.Pow10(decimals)
+	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(decimals), 'g', decimals, 64)
+	return currentAvailableBalanceString
+}
+
+func Sub(value float64, availableBalance string, decimals int) string {
+	availBal, _ := strconv.ParseFloat(availableBalance, 64)
+	currentAvailableBalance := availBal*math.Pow10(decimals) - value*math.Pow10(decimals)
+	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(decimals), 'g', decimals, 64)
+	return currentAvailableBalanceString
+}
+
+func IsGreater(value float64, availableBalance string, decimals int) bool {
+	availBal, _ := strconv.ParseFloat(availableBalance, 64)
+	if availBal*math.Pow10(decimals)-value*math.Pow10(decimals) < 0 {
+		return false
+	}
+	return true
 }
