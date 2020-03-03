@@ -68,6 +68,7 @@ type Transaction struct {
 	TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`
 	SweptStatus          bool         `gorm:"not null;default:false" json:"swept_status,omitempty`
 	Batch                BatchRequest `sql:"-" json:"omitempty"`
+	AssetSymbol          string       `gorm:"type:VARCHAR(36);not null;" json:"asset_symbol,omitempty"`
 }
 
 func (transaction Transaction) Map(tx *model.TransactionResponse) {

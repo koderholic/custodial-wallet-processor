@@ -83,3 +83,17 @@ func ValidateRequest(validator *validation.Validate, requestData interface{}, lo
 	}
 	return validationErr
 }
+func ReturnError(responseWriter http.ResponseWriter, executingMethod string, status int, err interface{}, response interface{}, logger *utility.Logger) {
+
+	switch err.(type) {
+	case error:
+		if err.(error).Error() == utility.SQL_404 {
+			status = http.StatusNotFound
+		}
+	}
+	logger.Error("Outgoing response to %s request %+v", executingMethod, err)
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(status)
+	json.NewEncoder(responseWriter).Encode(response)
+	return
+}

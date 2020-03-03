@@ -25,55 +25,36 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR))
+		ReturnError(responseWriter, "GetAssetAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
 
 	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAsset); err != nil {
-		controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	if err := controller.Repository.GetByFieldName(&dto.UserAddress{AssetID: assetID}, &userAddress); err != nil {
 		if err.Error() != utility.SQL_404 {
-			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 			return
 		}
 
 		// Calls key-management service to create an address for the user asset
 		address, errGenerateAddress := services.GenerateAddress(controller.Cache, controller.Logger, controller.Config, userAsset.UserID, userAsset.AssetSymbol, &externalServiceErr)
 		if errGenerateAddress != nil || address == "" {
-			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", errGenerateAddress)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusInternalServerError)
 			if externalServiceErr.Code != "" {
-				_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError(utility.SVCS_KEYMGT_ERR, externalServiceErr.Message))
+				ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError(utility.SVCS_KEYMGT_ERR, externalServiceErr.Message), controller.Logger)
 				return
 			}
-			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())))
+			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())), controller.Logger)
 			return
 		}
 		userAddress.AssetID = assetID
 		userAddress.Address = address
 		if createErr := controller.Repository.Create(&userAddress); createErr != nil {
-			controller.Logger.Error("Outgoing response to GetAssetAddress request %+v", err)
-			responseWriter.Header().Set("Content-Type", "application/json")
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(createErr)))
+			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 			return
 		}
 	}

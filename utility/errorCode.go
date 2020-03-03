@@ -20,6 +20,7 @@ var (
 	INVALID_DEBIT_AMOUNT      = "Value in debit reference does not match value provided."
 	DEBIT_PROCESSED_ERR       = "Debit reference has already been processed for external transfer"
 	TIMEOUT_ERR               = "Request timedout, taking longer than usual to process"
+	MINIMUM_SPENDABLE_ERR     = "Transfer amount is lower than the minimum allowed"
 	MINIMUM_SPENDABLE         = map[string]int64{
 		"BTC": 546,
 		"ETH": 15000000000000,

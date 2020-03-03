@@ -14,5 +14,5 @@ type TransactionQueue struct {
 	AssetSymbol       string    `gorm:"type:VARCHAR(36);not null;" json:"asset_symbol,omitempty"`
 	DebitReference    string    `gorm:"type:VARCHAR(150);not null;unique_index" json:"debit_reference,omitempty"`
 	TransactionId     uuid.UUID `gorm:"type:VARCHAR(36);not null;" json:"transaction_id,omitempty"`
-	TransactionStatus string    `gorm:"not null;default:'PENDING';index:transaction_status" json:"transaction_status,omitempty"`
+	TransactionStatus string    `gorm:"not null;default:'PENDING'" json:"transaction_status,omitempty"`
 }
