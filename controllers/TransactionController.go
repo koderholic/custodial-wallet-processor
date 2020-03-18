@@ -192,60 +192,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		AssetSymbol:          debitReferenceTransaction.AssetSymbol,
 	}
 
-	// If recipient address is on platform, do internal credit on recipient asset and create a complete transaction
-	recipientInternalAddress := dto.UserAddress{}
-	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: requestData.RecipientAddress}, &recipientInternalAddress); err == nil {
-		recipientAsset := dto.UserAsset{}
-		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientInternalAddress.AssetID}}, &recipientAsset); err != nil {
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-		recipientBalance, err := decimal.NewFromString(recipientAsset.AvailableBalance)
-		if err != nil {
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", err.Error()), controller.Logger)
-			return
-		}
-		recipientNewBalance := (recipientBalance.Add(value)).String()
-
-		dbTX := controller.Repository.Db().Begin()
-		defer func() {
-			if r := recover(); r != nil {
-				dbTX.Rollback()
-			}
-		}()
-		if err := dbTX.Error; err != nil {
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
-			return
-		}
-
-		if err := dbTX.Model(&recipientAsset).Updates(dto.UserAsset{AvailableBalance: recipientNewBalance}).Error; err != nil {
-			dbTX.Rollback()
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-		transaction.TransactionStatus = dto.TransactionStatus.COMPLETED
-		if err := dbTX.Create(&transaction).Error; err != nil {
-			dbTX.Rollback()
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-
-		if err := dbTX.Commit().Error; err != nil {
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
-			return
-		}
-
-		responseData.TransactionReference = transaction.TransactionReference
-		responseData.DebitReference = requestData.DebitReference
-		responseData.TransactionStatus = transaction.TransactionStatus
-
-		controller.Logger.Info("Outgoing response to ExternalTransfer request %+v", responseData)
-		responseWriter.Header().Set("Content-Type", "application/json")
-		responseWriter.WriteHeader(http.StatusOK)
-		json.NewEncoder(responseWriter).Encode(responseData)
-		return
-	}
-
 	tx := controller.Repository.Db().Begin()
 	defer func() {
 		if r := recover(); r != nil {
