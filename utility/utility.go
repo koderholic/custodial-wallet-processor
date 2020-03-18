@@ -36,17 +36,21 @@ func UnmarshalJsonFile(fileLocation string, contentReciever interface{}) error {
 	return nil
 }
 
+// The special precision -1 uses the smallest number of digits
+// necessary such that ParseFloat will return f exactly
+const DigPrecision = -1
+
 func Add(value float64, availableBalance string, decimals int) string {
 	availBal, _ := strconv.ParseFloat(availableBalance, 64)
 	currentAvailableBalance := availBal*math.Pow10(decimals) + value*math.Pow10(decimals)
-	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(decimals), 'g', decimals, 64)
+	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(decimals), 'g', DigPrecision, 64)
 	return currentAvailableBalanceString
 }
 
-func Sub(value float64, availableBalance string, decimals int) string {
+func Subtract(value float64, availableBalance string, decimals int) string {
 	availBal, _ := strconv.ParseFloat(availableBalance, 64)
 	currentAvailableBalance := availBal*math.Pow10(decimals) - value*math.Pow10(decimals)
-	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(decimals), 'g', decimals, 64)
+	currentAvailableBalanceString := strconv.FormatFloat(currentAvailableBalance/math.Pow10(decimals), 'g', DigPrecision, 64)
 	return currentAvailableBalanceString
 }
 

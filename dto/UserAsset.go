@@ -2,6 +2,7 @@ package dto
 
 import (
 	"strconv"
+	"wallet-adapter/utility"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -18,5 +19,5 @@ type UserAsset struct {
 
 func (userAsset *UserAsset) AfterFind() {
 	balance, _ := strconv.ParseFloat(userAsset.AvailableBalance, 64)
-	userAsset.AvailableBalance = strconv.FormatFloat(balance, 'g', userAsset.Decimal, 64)
+	userAsset.AvailableBalance = strconv.FormatFloat(balance, 'g', utility.DigPrecision, 64)
 }

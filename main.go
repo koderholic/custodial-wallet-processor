@@ -1,11 +1,12 @@
 package main
 
 import (
+	"github.com/getsentry/sentry-go"
 	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
-	"wallet-adapter/services"
 	"wallet-adapter/migration"
+	"wallet-adapter/services"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
@@ -51,6 +52,19 @@ func main() {
 	baseRepository := database.BaseRepository{Database: db}
 	tasks.ExecuteCronJob(authCache, logger, config, baseRepository)
 
+	err := sentry.Init(sentry.ClientOptions{
+		// Either set your DSN here or set the SENTRY_DSN environment variable.
+		Dsn: config.SentryDsn,
+		// Enable printing of SDK debug messages.
+		// Useful when getting started or trying to figure something out.
+		Debug: false,
+	})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+	// Flush buffered events before the program terminates.
+	// Set the timeout to the maximum duration the program can afford to wait.
+	defer sentry.Flush(2 * time.Second)
 	logger.Info("Server started and listening on port %s", config.AppPort)
 	log.Fatal(http.ListenAndServe(serviceAddress, router))
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
-	"github.com/shopspring/decimal"
+	"math"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -76,25 +76,12 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		var sum = int64(0)
 		var count = 0
 		for _, tx := range assetTransactions {
-			floatValue, err := strconv.ParseFloat(tx.Value, 64)
-			if err == nil {
-				//convert to native units
-				value := decimal.NewFromFloat(floatValue)
-				denominationDecimal := decimal.NewFromInt(int64(recipientAsset.Decimal))
-				baseExp := decimal.NewFromInt(10)
-				//use float as an example like this 3.441122091000000000 fails after multiplying by 10*8
-				transactionValue, err := strconv.ParseFloat(value.Mul(baseExp.Pow(denominationDecimal)).String(), 64)
-				if err != nil {
-					logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v and trying to convert to native units", err, recipientAsset.ID)
-					if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
-						logger.Error("Could not release lock", err)
-						return
-					}
-					return
-				}
-				sum = sum + int64(transactionValue)
-				count++
-			}
+			//convert to native units
+			balance, _ := strconv.ParseFloat(tx.Value, 64)
+			denominationDecimal := float64(recipientAsset.Decimal)
+			scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
+			sum = sum + scaledBalance
+			count++
 		}
 		if err := sweepPerAssetId(cache, logger, config, repository, serviceErr, assetTransactions, sum); err != nil {
 			continue
@@ -175,7 +162,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: recipientAddress.Address,
 		ToAddress:   floatAccount.Address,
-		Amount:      sum,
+		Amount:      0,
 		AssetSymbol: recipientAsset.AssetSymbol,
 		IsSweep:     true,
 	}

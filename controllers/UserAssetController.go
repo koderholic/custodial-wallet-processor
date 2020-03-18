@@ -203,7 +203,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	}
 
 	// increment user account by value
-	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
+	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
 	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	tx := controller.Repository.Db().Begin()
@@ -296,7 +296,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	}
 
 	// // increment user account by value
-	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
+	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
 	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	tx := controller.Repository.Db().Begin()
@@ -427,8 +427,8 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	// Increment initiator asset balance and decrement recipient asset balance
-	value := strconv.FormatFloat(requestData.Value, 'g', initiatorAssetDetails.Decimal, 64)
-	initiatorCurrentBalance := utility.Sub(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
+	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
+	initiatorCurrentBalance := utility.Subtract(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
 	recipientCurrentBalance := utility.Add(requestData.Value, recipientAssetDetails.AvailableBalance, recipientAssetDetails.Decimal)
 
 	// Checks if initiator has enough value to transfer
@@ -534,8 +534,8 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	}
 
 	// // decrement user account by value
-	value := strconv.FormatFloat(requestData.Value, 'g', assetDetails.Decimal, 64)
-	currentAvailableBalance := utility.Sub(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
+	currentAvailableBalance := utility.Subtract(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	// Checks if user asset has enough value to for the transaction
 	if !utility.IsGreater(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal) {

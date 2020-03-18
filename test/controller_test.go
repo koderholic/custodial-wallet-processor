@@ -99,7 +99,6 @@ func (s *Suite) SetupSuite() {
 
 	s.DB = db
 	require.NoError(s.T(), err)
-	s.DB.LogMode(true)
 
 	if err = os.Chmod(dir+"/walletAdapter.db", 0777); err != nil {
 		require.NoError(s.T(), err)
@@ -638,7 +637,7 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 		require.NoError(s.T(), errors.New("No assests returned"))
 	}
 
-	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "203.74112" {
+	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "203.741122091" {
 		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %+v\n", http.StatusOK, "203.741122091", response.Code, getAssetResponse.Assets[0].AvailableBalance)
 	}
 }
