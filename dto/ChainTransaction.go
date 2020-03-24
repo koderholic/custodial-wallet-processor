@@ -1,6 +1,9 @@
 package dto
 
-import uuid "github.com/satori/go.uuid"
+import (
+	uuid "github.com/satori/go.uuid"
+	"wallet-adapter/model"
+)
 
 // ChainTransaction ... DTO definition for on-chain transactions
 type ChainTransaction struct {
@@ -12,4 +15,11 @@ type ChainTransaction struct {
 	AssetSymbol     string    `json:"asset_symbol"`
 	BlockHeight     int64     `gorm:"type:BIGINT" json:"block_height"`
 	BatchRequest    `sql:"-"`
+}
+
+func (chainTransaction ChainTransaction) MaptoDto(chainData *model.ChainData) {
+	chainData.TransactionHash = chainTransaction.TransactionHash
+	chainData.Status = &chainTransaction.Status
+	chainData.BlockHeight = chainTransaction.BlockHeight
+	chainData.TransactionFee = chainTransaction.TransactionFee
 }

@@ -52,7 +52,7 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 	}
 
 	transaction.Map(&responseData)
-
+	controller.populateChainData(transaction, &responseData, apiResponse, responseWriter)
 	controller.Logger.Info("Outgoing response to GetTransaction request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
@@ -87,12 +87,14 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 		transaction := initiatorTransactions[i]
 		tx := model.TransactionResponse{}
 		transaction.Map(&tx)
+		controller.populateChainData(transaction, &tx, apiResponse, responseWriter)
 		responseData.Transactions = append(responseData.Transactions, tx)
 	}
 	for i := 0; i < len(recipientTransactions); i++ {
 		receipientTransaction := recipientTransactions[i]
 		txRecipient := model.TransactionResponse{}
 		receipientTransaction.Map(&txRecipient)
+		controller.populateChainData(receipientTransaction, &txRecipient, apiResponse, responseWriter)
 		responseData.Transactions = append(responseData.Transactions, txRecipient)
 	}
 
@@ -103,6 +105,25 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 	controller.Logger.Info("Outgoing response to GetTransactionsByAssetId request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
+func (controller BaseController) populateChainData(transaction dto.Transaction, txResponse *model.TransactionResponse, apiResponse utility.ResponseResultObj, responseWriter http.ResponseWriter) {
+	//get and populate chain transaction if exists, if this call fails, log error but proceed on
+	chainTransaction := dto.ChainTransaction{}
+	chainData := model.ChainData{}
+	if transaction.TransactionType == "ONCHAIN" && transaction.OnChainTxId != uuid.Nil {
+		err := controller.Repository.Get(&dto.ChainTransaction{BaseDTO: dto.BaseDTO{ID: transaction.OnChainTxId}}, &chainTransaction)
+		if err != nil {
+			ReturnError(responseWriter, "GetTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+			txResponse.ChainData = nil
+		} else {
+			chainTransaction.MaptoDto(&chainData)
+			txResponse.ChainData = &chainData
+		}
+	} else {
+		txResponse.ChainData = nil
+	}
 
 }
 
