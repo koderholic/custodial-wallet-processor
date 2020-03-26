@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
@@ -11,12 +12,35 @@ import (
 
 //Data : config data
 type Data struct {
-	LogFile            string `mapstructure:"logfile"  yaml:"logfile,omitempty"`
-	AppPort            string `mapstructure:"appPort"  yaml:"appPort,omitempty"`
-	LogFolder          string `mapstructure:"logFolder"  yaml:"logFolder,omitempty"`
-	AppName            string `mapstructure:"appName"  yaml:"appName,omitempty"`
-	DBConnectionString string `mapstructure:"dbConnectionString"  yaml:"dbConnectionString,omitempty"`
-	BasePath           string `mapstructure:"basePath"  yaml:"basePath,omitempty"`
+	AppPort                     string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
+	ServiceName                 string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
+	DBHost                      string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
+	DBUser                      string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
+	DBPassword                  string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
+	DBName                      string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
+	BasePath                    string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
+	ServiceID                   string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"AUTHENTICATION_SERVICE_SERVICE_ID,omitempty"`
+	ServiceKey                  string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"AUTHENTICATION_SERVICE_TOKEN,omitempty"`
+	AuthenticatorKey            string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
+	AuthenticationService       string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
+	KeyManagementService        string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
+	CryptoAdapterService        string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
+	LockerService               string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
+	LockerPrefix                string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
+	DepositWebhookURL           string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
+	BtcSlipValue                string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
+	BnbSlipValue                string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
+	EthSlipValue                string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
+	PurgeCacheInterval          time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
+	RequestTimeout              time.Duration `mapstructure:"requestTimeout"  yaml:"requestTimeout,omitempty"`
+	ExpireCacheDuration         time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
+	SweepFeePercentageThreshold int64         `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
+	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
+	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
+	ConnMaxLifetime             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
+	SweepCronInterval           string        `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
+	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
+	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 }
 
 //Init : initialize data
@@ -27,9 +51,15 @@ func (c *Data) Init(configDir string) {
 		log.Printf("Cannot set default input/output directory to the current working directory >> %s", dirErr)
 	}
 
-	viper.SetEnvPrefix("was") // wPrefix all env variable with WAS(Wallet adapter Service)
+	// viper.SetEnvPrefix("") // wPrefix all env variable with WAS(Wallet adapter Service) i.e WAS-APPPORT
 	viper.AutomaticEnv()
-	viper.BindEnv("appPort")
+	viper.BindEnv("AUTHENTICATION_SERVICE_SERVICE_ID")
+	viper.BindEnv("AUTHENTICATION_SERVICE_TOKEN")
+	viper.BindEnv("SECURITY_BUNDLE_PUBLICKEY")
+	viper.BindEnv("DB_HOST")
+	viper.BindEnv("DB_USER")
+	viper.BindEnv("DB_PASSWORD")
+	viper.BindEnv("DB_NAME")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")
@@ -59,4 +89,10 @@ func (c *Data) Init(configDir string) {
 
 	viper.Unmarshal(c)
 	log.Println("App configuration loaded successfully!")
+}
+
+var SupportedAssets = [...]string{
+	"BTC",
+	"BNB",
+	"ETH",
 }

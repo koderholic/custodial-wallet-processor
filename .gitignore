@@ -6,6 +6,7 @@
 *.dylib
 *.app
 *.DS_Store
+wallet-adapter
 
 # Test binary, build with `go test -c`
 *.test
@@ -20,3 +21,4 @@ config.yaml
 logs
 TODO
 .DS_Store
+__debug_bin

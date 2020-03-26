@@ -1,26 +1,22 @@
 package utility
 
-import (
-	"gopkg.in/go-playground/validator.v9"
-)
-
-// ResponseObj... Response object definition without additional data field
+// ResponseObj ... Response object definition without additional data field
 type ResponseObj struct {
-	Status  bool
-	Code    string
-	Message string
+	Success bool   `json:"success"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
-// ResponseResultObj... Response object definition with additional data field
+// ResponseResultObj ... Response object definition with additional data field
 type ResponseResultObj struct {
 	ResponseObj
-	Data interface{}
+	Data interface{} `json:"data"`
 }
 
-// ResponseResultObj... Validation error object
+// ResponseResultObj ... Validation error object
 type ResponseValidateObj struct {
 	ResponseObj
-	ValidationErrors validator.ValidationErrors
+	ValidationErrors []map[string]string
 }
 
 // NewResponse ... Initializes a response object.
@@ -32,7 +28,7 @@ func NewResponse() ResponseResultObj {
 func (res ResponseResultObj) PlainSuccess(code string, msg string) ResponseObj {
 
 	response := ResponseObj{}
-	response.Status = true
+	response.Success = true
 	response.Code = code
 	response.Message = msg
 
@@ -40,8 +36,12 @@ func (res ResponseResultObj) PlainSuccess(code string, msg string) ResponseObj {
 }
 
 // Success ... Returns successful response with additional data
-func (res ResponseResultObj) Success(code string, msg string, data interface{}) ResponseResultObj {
-	res.Status = true
+func (res ResponseResultObj) Successful(code string, msg string, data interface{}) ResponseResultObj {
+
+	response := ResponseObj{}
+	response.Success = true
+
+	res.Success = response.Success
 	res.Code = code
 	res.Message = msg
 	res.Data = data
@@ -51,7 +51,7 @@ func (res ResponseResultObj) Success(code string, msg string, data interface{}) 
 // PlainError ... Returns error response with no additional data
 func (res ResponseResultObj) PlainError(code string, err string) ResponseObj {
 	return ResponseObj{
-		Status:  false,
+		Success: false,
 		Code:    code,
 		Message: err,
 	}
@@ -59,17 +59,17 @@ func (res ResponseResultObj) PlainError(code string, err string) ResponseObj {
 
 // Error ... Returns error response with additional data
 func (res ResponseResultObj) Error(code string, err string, data interface{}) ResponseResultObj {
-	res.Status = true
+	// res.Success = false
 	res.Code = code
 	res.Message = err
 	res.Data = data
 	return res
 }
 
-// ValidateError... Returns error response with validation messages
-func (res ResponseResultObj) ValidateError(code string, err string, errors validator.ValidationErrors) ResponseValidateObj {
+// ValidateError ... Returns error response with validation messages
+func (res ResponseResultObj) ValidateError(code string, err string, errors []map[string]string) ResponseValidateObj {
 	response := ResponseValidateObj{}
-	response.Status = false
+	response.Success = false
 	response.Code = code
 	response.Message = err
 	response.ValidationErrors = errors

@@ -16,3 +16,20 @@ Run "go build" to compile into executable. You can also run any of the bash scri
 Double-click on executable, the golang web server will start and listen for connections on the configured PORT
 
 API Specifications can be viewed on swagger here => localhost:{PORT}/swagger/
+
+Developer Setup :
+
+- Create a config.yaml file from the config-default.yaml file and replace necessary fields i.e AUTHENTICATION_SERVICE_SERVICE_ID, AUTHENTICATION_SERVICE_TOKEN, SECURITY_BUNDLE_PUBLICKEY for authenticating request
+- Build the service by running "go build"
+- Run the built executable "./walletAdapter"
+
+## Dependency
+
+It needs a mysql db. Db name and db server location can be configured in the config.yml file, see sample in config-default.yaml
+
+## Running Tests
+
+The quickest way to run test is by using go run:
+`bash
+    $ go test -v ./tests
+`

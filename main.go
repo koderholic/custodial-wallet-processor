@@ -1,42 +1,70 @@
 package main
 
 import (
+	"github.com/getsentry/sentry-go"
 	"wallet-adapter/app"
-	"wallet-adapter/config"
+	Config "wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/migration"
+	"wallet-adapter/services"
+	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
-
-	"github.com/gorilla/handlers"
 
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
+	validation "gopkg.in/go-playground/validator.v9"
 )
 
 func main() {
-	APP := &app.App{}
+	config := Config.Data{}
+	config.Init("")
 
-	Config := config.Data{}
-	Config.Init("")
-	APP.Config = Config
-
-	APP.Logger = utility.NewLogger(Config.LogFile, Config.AppName, Config.LogFolder)
-	APP.Router = mux.NewRouter()
+	logger := utility.NewLogger()
+	router := mux.NewRouter()
+	validator := validation.New()
 
 	Database := &database.Database{
-		Logger: APP.Logger,
-		Config: APP.Config,
+		Logger: logger,
+		Config: config,
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
-	Database.RunDbMigrations()
+	migration.RunDbMigrations(logger, config)
+	Database.DBSeeder()
 
-	APP.DB = Database.DB
-	APP.RegisterRoutes()
+	purgeInterval := config.PurgeCacheInterval * time.Second
+	cacheDuration := config.ExpireCacheDuration * time.Second
+	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 
-	serviceAddress := ":" + Config.AppPort
+	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
+		logger.Error("Server started and listening on port %s", config.AppPort)
+	}
 
-	APP.Logger.Info("Server started and listening on port %s", Config.AppPort)
-	log.Fatal(http.ListenAndServe(serviceAddress, handlers.CompressHandler(APP.Router)))
+	app.RegisterRoutes(router, validator, config, logger, Database.DB, authCache)
+
+	serviceAddress := ":" + config.AppPort
+
+	// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
+	db := *Database
+	baseRepository := database.BaseRepository{Database: db}
+	tasks.ExecuteCronJob(authCache, logger, config, baseRepository)
+
+	err := sentry.Init(sentry.ClientOptions{
+		// Either set your DSN here or set the SENTRY_DSN environment variable.
+		Dsn: config.SentryDsn,
+		// Enable printing of SDK debug messages.
+		// Useful when getting started or trying to figure something out.
+		Debug: false,
+	})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+	// Flush buffered events before the program terminates.
+	// Set the timeout to the maximum duration the program can afford to wait.
+	defer sentry.Flush(2 * time.Second)
+	logger.Info("Server started and listening on port %s", config.AppPort)
+	log.Fatal(http.ListenAndServe(serviceAddress, router))
 }

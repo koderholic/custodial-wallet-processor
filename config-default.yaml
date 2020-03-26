@@ -1,5 +1,23 @@
-appPort: 8100
-appName : "wallet-adapterService"
-logFolder : "./logs"
-logfile: "log.json" 
-dbConnectionString: "user:password@(127.0.0.1:3306)/wallet-adapter"
+appPort: 8300
+serviceName : "crypto-wallet-adapter"
+basePath: ""
+AUTHENTICATION_SERVICE_SERVICE_ID: "4b0bde7a-9201-4cf9-859f-e61d976e376d"
+AUTHENTICATION_SERVICE_TOKEN: "32e1f6396de342e879ca07ec68d4d907"
+SECURITY_BUNDLE_PUBLICKEY : "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZU1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTUFEQ0JpQUtCZ0hYTkxxNzgzaGNHaE95bGlGSzlFTEFZS3YwcApxbWE4ZlBVWmVSOER2Vmc4TllpbVlaa0VoaTBjUDI0ZXA5ZCtRc1dNU1p2dThUdTh3SnlBZ0hWUW5ZREZSenlKClFDYXZ4bG5tQmhoL1RwS2c3anM5TTBlZnNHYW5DQTkrUGRqNnR4RHdPY0RnMTRyZzRwaXRhUnk4YVF5RFl5aEMKTDNDZTg3VitLeDBxYzJPL0FnTUJBQUU9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ=="
+authenticationServiceURL: "https://internal.dev.bundlewallet.com/authentication"
+keyManagementServiceURL: "https://internal.dev.bundlewallet.com/key-management"
+cryptoAdapterServiceURL: "https://internal.dev.bundlewallet.com/crypto-adapter"
+lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
+purgeCacheInterval: 60
+expireCacheDuration: 400
+requestTimeout: 60
+maxIdleConns : 25
+maxOpenConns : 50
+connMaxLifetime: 300
+lockerServicePrefix : "Wallet-Adapter-Lock-"
+dbMigrationPath : ./migration
+DB_HOST: "127.0.0.1:3306"
+DB_USER: ""
+DB_PASSWORD: ""
+DB_NAME: "walletAdapter"
+SENTRY_DSN: "https://52fb6b65fcdf4fd89143d81611f7a12c@sentry.io/3640925"
