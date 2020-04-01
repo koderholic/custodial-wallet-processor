@@ -247,7 +247,7 @@ func releaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 	return nil
 }
 
-func ExecuteCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
+func ExecuteSweepCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	c := cron.New()
 	c.AddFunc(config.SweepCronInterval, func() { SweepTransactions(cache, logger, config, repository) })
 	c.Start()
