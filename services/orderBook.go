@@ -36,7 +36,7 @@ func WithdrawToHotWallet(cache *utility.MemoryCache, logger *utility.Logger, con
 	return nil
 }
 
-// withdrawToHotWallet ... Calls order-book service to withdraw to specified hot wallet address
+// withdrawToHotWallet ... Calls order-book service to get asset details
 func GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, responseData *model.BinanceAssetBalances, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)

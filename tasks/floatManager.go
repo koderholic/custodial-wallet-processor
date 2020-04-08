@@ -87,7 +87,7 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 							responseData := model.WitdrawToHotWalletResponse{}
 							services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
 						} else {
-							//todo trigger cold wallet notifications
+							//todo trigger cold wallet notifications in next PR
 						}
 					}
 
@@ -96,7 +96,7 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
 				// using notification service to raise the float balance from it's deficit amount to
 				// or above the minimum amount (residual amount)
-				//todo trigger cold wallet notification
+				//todo trigger cold wallet notification in next PR
 			}
 		}
 		if floatOnChainBalance > maximum {
