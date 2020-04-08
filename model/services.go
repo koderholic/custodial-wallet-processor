@@ -117,3 +117,49 @@ type OnchainBalanceResponse struct {
 	AssetSymbol string `json:"assetSymbol"`
 	Decimals    int    `json:"decimals"`
 }
+
+type WitdrawToHotWalletRequest struct {
+	WithdrawOrderId    string `json:"withdrawOrderId"`
+	Network            string `json:"network"`
+	Address            string `json:"address"`
+	AddressTag         string `json:"addressTag"`
+	TransactionFeeFlag bool   `json:"transactionFeeFlag"`
+	Name               string `json:"name"`
+	Amount             Money  `json:"amount"`
+}
+
+type Money struct {
+	Value        string `json:"value"`
+	Denomination string `json:"denomination"`
+}
+
+type WitdrawToHotWalletResponse struct {
+	id     string `json:"id"`
+	Status string `json:"status"`
+}
+
+type BinanceAssetBalances struct {
+	CoinList []struct {
+		Coin        string `json:"coin"`
+		Balance     string `json:"balance"`
+		Name        string `json:"name"`
+		NetworkList []struct {
+			AddressRegex       string `json:"addressRegex"`
+			Coin               string `json:"coin"`
+			DepositDesc        string `json:"depositDesc"`
+			DepositEnable      bool   `json:"depositEnable"`
+			IsDefault          bool   `json:"isDefault"`
+			MemoRegex          string `json:"memoRegex"`
+			MinConfirm         int    `json:"minConfirm"`
+			Name               string `json:"name"`
+			Network            string `json:"network"`
+			ResetAddressStatus bool   `json:"resetAddressStatus"`
+			SpecialTips        string `json:"specialTips"`
+			UnLockConfirm      int    `json:"unLockConfirm"`
+			WithdrawDesc       string `json:"withdrawDesc"`
+			WithdrawEnable     bool   `json:"withdrawEnable"`
+			WithdrawFee        string `json:"withdrawFee"`
+			WithdrawMin        string `json:"withdrawMin"`
+		} `json:"networkList"`
+	} `json:"coinList"`
+}

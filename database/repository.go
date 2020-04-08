@@ -4,6 +4,7 @@ import (
 	"errors"
 	uuid "github.com/satori/go.uuid"
 	"strings"
+	"time"
 	"wallet-adapter/utility"
 )
 
@@ -64,6 +65,18 @@ func (repo *BaseRepository) GetByFieldName(field interface{}, model interface{})
 // FetchByFieldName ... Retrieves all records for the specified model from the database for a given field name
 func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{}) error {
 	if err := repo.DB.Where(field).Find(model).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// FetchByFieldName ... Retrieves all records for the specified model from the database for a given field name
+func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model interface{}, date time.Time) error {
+	if err := repo.DB.Where(field).Where("created_at > ?", date).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
