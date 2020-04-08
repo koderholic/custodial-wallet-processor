@@ -308,8 +308,7 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 	// Calls key-management to sign transaction
 	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
-		//todo critical get deposit address instead
-		ToAddress:   floatAccount.Address,
+		ToAddress:   destinationAddress,
 		Amount:      amount,
 		AssetSymbol: floatAccount.AssetSymbol,
 		IsSweep:     true,
