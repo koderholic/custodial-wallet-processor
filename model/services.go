@@ -170,3 +170,34 @@ type DepositAddressResponse struct {
 	Tag     string `json:"tag"`
 	URL     string `json:"url"`
 }
+
+type SendEmailRequest struct {
+	Subject   string        `json:"subject"`
+	Content   string        `json:"content"`
+	Template  EmailTemplate `json:"template"`
+	Sender    EmailUser     `json:"sender"`
+	Receivers []EmailUser   `json:"receivers"`
+	Cc        []EmailUser   `json:"cc"`
+	Bcc       []EmailUser   `json:"bcc"`
+}
+
+type EmailTemplate struct {
+	ID     string            `json:"id"`
+	Params map[string]string `json:"params"`
+}
+
+type EmailUser struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type SendEmailResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Error   struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+		} `json:"data"`
+	} `json:"error"`
+}

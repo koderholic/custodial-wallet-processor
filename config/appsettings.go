@@ -29,6 +29,9 @@ type Data struct {
 	LockerPrefix                string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
 	DepositWebhookURL           string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
 	WithdrawToHotWalletUrl      string        `mapstructure:"withdrawToHotWalletUrl"  yaml:"withdrawToHotWalletUrl,omitempty"`
+	NotificationServiceUrl      string        `mapstructure:"notificationServiceUrl"  yaml:"notificationServiceUrl,omitempty"`
+	ColdWalletEmail             string        `mapstructure:"coldWalletEmail"  yaml:"coldWalletEmail,omitempty"`
+	ColdWalletEmailTemplateId   string        `mapstructure:"coldWalletEmailTemplateId"  yaml:"coldWalletEmailTemplateId,omitempty"`
 	BtcSlipValue                string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
 	BnbSlipValue                string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
 	EthSlipValue                string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`

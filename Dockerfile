@@ -29,7 +29,10 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "lockerServiceURL: http://locker" >> config.yaml && \
     echo "lockerServicePrefix : Wallet-Adapter-Lock-" >> config.yaml && \
     echo "depositWebhookURL: http://crypto-adapter/incoming-deposit" >> config.yaml && \
-    echo "WithdrawToHotWalletUrl: http://order-book" >> config.yaml && \
+    echo "withdrawToHotWalletUrl: http://order-book" >> config.yaml && \
+    echo "notificationServiceUrl: http://notifications" >> config.yaml && \
+    echo "coldWalletEmail: yele@bundle.africa" >> config.yaml && \
+    echo "coldWalletEmailTemplateId: to-be-set" >> config.yaml && \
     echo "BTC_SLIP_VALUE: 0" >> config.yaml && \
     echo "BNB_SLIP_VALUE: 714" >> config.yaml && \
     echo "expireCacheDuration: 400" >> config.yaml && \

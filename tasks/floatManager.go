@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
 	"math"
@@ -63,19 +64,23 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				for _, coin := range binanceAssetBalances.CoinList {
 					if coin.Coin == floatAccount.AssetSymbol {
 						//check if balance is enough to fill deficit
-						balance, _ := strconv.ParseFloat(coin.Balance, 64)
+						binanceBalance, _ := strconv.ParseFloat(coin.Balance, 64)
 						denomination := dto.Denomination{}
 						if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 							logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 							break
 						}
 						denominationDecimal := float64(denomination.Decimal)
-						scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
+						scaledBinanceBalance := int64(binanceBalance * math.Pow(10, denominationDecimal))
+						deficit := maximum - floatOnChainBalance
+						//decimal units
+						deficitInDecimalUnits := float64(deficit) / math.Pow(10, denominationDecimal)
+						deficitInDecimalUnits = math.Round(deficitInDecimalUnits*1000) / 1000
 
-						if scaledBalance > (maximum - floatOnChainBalance) {
+						if scaledBinanceBalance > (maximum - floatOnChainBalance) {
 							//Go ahead and withdraw to hotwallet
 							money := model.Money{
-								Value:        strconv.FormatInt(scaledBalance-(maximum-floatOnChainBalance), 10),
+								Value:        strconv.FormatInt(scaledBinanceBalance-(maximum-floatOnChainBalance), 10),
 								Denomination: floatAccount.AssetSymbol,
 							}
 							requestData := model.WitdrawToHotWalletRequest{
@@ -87,7 +92,29 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 							responseData := model.WitdrawToHotWalletResponse{}
 							services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
 						} else {
-							//todo trigger cold wallet notifications in next PR
+							//not enough in binance balance so trigger alert to cold wallet user
+							params := make(map[string]string)
+							params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
+							coldWalletEmails := []model.EmailUser{}
+							coldWalletEmails[0] = model.EmailUser{
+								Name:  "Yele",
+								Email: config.ColdWalletEmail,
+							}
+							sendEmailRequest := model.SendEmailRequest{
+								Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
+								Content: "",
+								Template: model.EmailTemplate{
+									ID:     "",
+									Params: params,
+								},
+								Sender: model.EmailUser{
+									Name:  "Bundle",
+									Email: "info@bundle.africa",
+								},
+								Receivers: coldWalletEmails,
+							}
+							sendEmailResponse := model.SendEmailResponse{}
+							services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
 						}
 					}
 
@@ -96,7 +123,39 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
 				// using notification service to raise the float balance from it's deficit amount to
 				// or above the minimum amount (residual amount)
-				//todo trigger cold wallet notification in next PR
+				deficit := minimum - floatOnChainBalance
+				denomination := dto.Denomination{}
+				if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+					logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
+					break
+				}
+				denominationDecimal := float64(denomination.Decimal)
+				//decimal units
+				deficitInDecimalUnits := float64(deficit) / math.Pow(10, denominationDecimal)
+				deficitInDecimalUnits = math.Round(deficitInDecimalUnits*1000) / 1000
+				params := make(map[string]string)
+				params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
+				coldWalletEmails := []model.EmailUser{}
+				coldWalletEmails[0] = model.EmailUser{
+					Name:  "Yele",
+					Email: config.ColdWalletEmail,
+				}
+				sendEmailRequest := model.SendEmailRequest{
+					Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
+					Content: "",
+					Template: model.EmailTemplate{
+						ID:     "",
+						Params: params,
+					},
+					Sender: model.EmailUser{
+						Name:  "Bundle",
+						Email: "info@bundle.africa",
+					},
+					Receivers: coldWalletEmails,
+				}
+				sendEmailResponse := model.SendEmailResponse{}
+				services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+
 			}
 		}
 		if floatOnChainBalance > maximum {
