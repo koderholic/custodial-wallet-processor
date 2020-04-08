@@ -90,6 +90,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.WithdrawToHotWalletUrl,
 			Action:   "/brokerage-wallets/assets-balance",
 		}
+	case "getDepositAddress":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.WithdrawToHotWalletUrl,
+			Action:   "/brokerage-wallets/get-deposit-address",
+		}
 	default:
 		return MetaData{}
 	}

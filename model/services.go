@@ -163,3 +163,10 @@ type BinanceAssetBalances struct {
 		} `json:"networkList"`
 	} `json:"coinList"`
 }
+
+type DepositAddressResponse struct {
+	Address string `json:"address"`
+	Coin    string `json:"coin"`
+	Tag     string `json:"tag"`
+	URL     string `json:"url"`
+}

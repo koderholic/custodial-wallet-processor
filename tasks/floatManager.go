@@ -101,12 +101,11 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		}
 		if floatOnChainBalance > maximum {
 			//debit float address
-
-			signTxAndBroadcastToChain(cache, repository, (floatOnChainBalance - maximum), logger, config, floatAccount, serviceErr)
+			depositAddressResponse := model.DepositAddressResponse{}
+			services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
+			signTxAndBroadcastToChain(cache, repository, (floatOnChainBalance - maximum), depositAddressResponse.Address, logger, config, floatAccount, serviceErr)
 		}
-
 	}
-
 	if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 		logger.Error("Could not release lock", err)
 		return
@@ -305,7 +304,7 @@ func getDebitsForAsset(repository database.BaseRepository, assetSymbol string, l
 	return sum, nil
 }
 
-func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount int64, logger *utility.Logger, config Config.Data, floatAccount dto.HotWalletAsset, serviceErr model.ServicesRequestErr) {
+func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount int64, destinationAddress string, logger *utility.Logger, config Config.Data, floatAccount dto.HotWalletAsset, serviceErr model.ServicesRequestErr) {
 	// Calls key-management to sign transaction
 	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
