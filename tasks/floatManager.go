@@ -15,7 +15,7 @@ import (
 	"wallet-adapter/utility"
 )
 
-func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
+func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
 	logger.Info("Float manager process begins")
 	serviceErr := model.ServicesRequestErr{}
 	token, err := acquireLock(cache, logger, config, serviceErr)
@@ -37,7 +37,7 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		services.GetOnchainBalance(cache, logger, config, request, &floatOnChainBalanceResponse, serviceErr)
 
 		//get minimum amount
-		totalUserBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger)
+		totalUserBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
 		if err != nil {
 			break
 		}
@@ -173,28 +173,18 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 }
 
 //total liability at any given time
-func getTotalUserBalance(repository database.BaseRepository, assetSymbol string, logger *utility.Logger) (int64, error) {
-	depositSum, err := getDepositsSumForAsset(repository, assetSymbol, logger)
+func getTotalUserBalance(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, userAssetRepository database.UserAssetRepository) (int64, error) {
+	denomination := dto.Denomination{}
+	if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
+	}
+	sum, err := userAssetRepository.SumAmountField(dto.UserAsset{AssetSymbol: assetSymbol})
 	if err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to getTotalUserBalance", err)
 		return 0, err
 	}
-	withdrawalSum, err := getWithdrawalsSumForAsset(repository, assetSymbol, logger)
-	if err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to getTotalUserBalance", err)
-		return 0, err
-	}
-	creditSum, err := getCreditsForAsset(repository, assetSymbol, logger)
-	if err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to getTotalUserBalance", err)
-		return 0, err
-	}
-	debitSum, err := getDebitsForAsset(repository, assetSymbol, logger)
-	if err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to getTotalUserBalance", err)
-		return 0, err
-	}
-	return (depositSum - withdrawalSum + creditSum - debitSum), nil
+	denominationDecimal := float64(denomination.Decimal)
+	scaledTotalSum := int64(float64(sum) * math.Pow(10, denominationDecimal))
+	return scaledTotalSum, nil
 }
 
 func getFloatAccounts(repository database.BaseRepository, logger *utility.Logger) ([]dto.HotWalletAsset, error) {
@@ -386,8 +376,8 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 	}
 }
 
-func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
+func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
 	c := cron.New()
-	c.AddFunc(config.FloatCronInterval, func() { manageFloat(cache, logger, config, repository) })
+	c.AddFunc(config.FloatCronInterval, func() { manageFloat(cache, logger, config, repository, userAssetRepository) })
 	c.Start()
 }

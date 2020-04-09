@@ -1,9 +1,9 @@
 package database
 
 import (
+	"errors"
 	"strings"
 	"wallet-adapter/utility"
-	"errors"
 
 	"github.com/jinzhu/gorm"
 )
@@ -32,6 +32,22 @@ func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
 		}
 	}
 	return nil
+}
+
+// GetAssetsByID ...
+func (repo *UserAssetRepository) SumAmountField(model interface{}) (int, error) {
+	var sum int
+	//Note i am summing here using sql here so addition is in crypto decimal units which is what its saved in.
+	// This is fine for float management but dont use this method for transactional stuff. Floating point addition
+	// is a problem. rater convert to native units and then sum. :)
+	if err := repo.DB.Table("user_assets").Select("sum(available_balance)").Row().Scan(&sum); err != nil {
+		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
+		return 0, utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return sum, nil
 }
 
 // UpdateAssetByID ...
