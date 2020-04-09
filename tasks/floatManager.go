@@ -216,7 +216,7 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 	if err := repository.FetchByFieldNameFromDate(dto.Transaction{
 		TransactionTag: "DEPOSIT",
 		AssetSymbol:    assetSymbol,
-	}, deposits, hotWallet.LastDepositCreatedAt); err != nil {
+	}, deposits, *hotWallet.LastDepositCreatedAt); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to get deposits", err)
 		return 0, err
 	}
@@ -232,7 +232,7 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 		sum = sum + scaledBalance
 		lastCreatedAt = deposit.CreatedAt
 	}
-	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: lastCreatedAt}); err != nil {
+	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: &lastCreatedAt}); err != nil {
 		logger.Error("Error occured while updating hot wallet lastCreatedAt to On-going : %s", err)
 	}
 	return sum, nil
@@ -243,7 +243,7 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	if err := repository.FetchByFieldNameFromDate(dto.Transaction{
 		TransactionTag: "WITHDRAW",
 		AssetSymbol:    assetSymbol,
-	}, withdrawals, hotWallet.LastWithdrawalCreatedAt); err != nil {
+	}, withdrawals, *hotWallet.LastWithdrawalCreatedAt); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to get withdrawals", err)
 		return 0, err
 	}
@@ -259,7 +259,7 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 		sum = sum + scaledBalance
 		lastCreatedAt = withdrawal.CreatedAt
 	}
-	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: lastCreatedAt}); err != nil {
+	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: &lastCreatedAt}); err != nil {
 		logger.Error("Error occured while updating hot wallet lastCreatedAt to On-going : %s", err)
 	}
 	return sum, nil
