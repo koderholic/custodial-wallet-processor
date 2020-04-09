@@ -211,28 +211,6 @@ func Abs(x int64) int64 {
 	return x
 }
 
-func getDepositsSumForAsset(repository database.BaseRepository, assetSymbol string, logger *utility.Logger) (int64, error) {
-	deposits := []dto.Transaction{}
-	if err := repository.FetchByFieldName(dto.Transaction{
-		TransactionTag: "DEPOSIT",
-		AssetSymbol:    assetSymbol,
-	}, deposits); err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to get deposits", err)
-		return 0, err
-	}
-	sum := int64(0)
-	for _, deposit := range deposits {
-		recipientAsset := dto.UserAsset{}
-		getRecipientAsset(repository, deposit.RecipientID, &recipientAsset, logger)
-		//convert to native units
-		balance, _ := strconv.ParseFloat(deposit.Value, 64)
-		denominationDecimal := float64(recipientAsset.Decimal)
-		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
-		sum = sum + scaledBalance
-	}
-	return sum, nil
-}
-
 func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, hotWallet dto.HotWalletAsset) (int64, error) {
 	deposits := []dto.Transaction{}
 	if err := repository.FetchByFieldNameFromDate(dto.Transaction{
@@ -260,28 +238,6 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 	return sum, nil
 }
 
-func getWithdrawalsSumForAsset(repository database.BaseRepository, assetSymbol string, logger *utility.Logger) (int64, error) {
-	withdrawals := []dto.Transaction{}
-	if err := repository.FetchByFieldName(dto.Transaction{
-		TransactionTag: "WITHDRAW",
-		AssetSymbol:    assetSymbol,
-	}, withdrawals); err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to get withdrawals", err)
-		return 0, err
-	}
-	sum := int64(0)
-	for _, withdrawal := range withdrawals {
-		recipientAsset := dto.UserAsset{}
-		getRecipientAsset(repository, withdrawal.InitiatorID, &recipientAsset, logger)
-		//convert to native units
-		balance, _ := strconv.ParseFloat(withdrawal.Value, 64)
-		denominationDecimal := float64(recipientAsset.Decimal)
-		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
-		sum = sum + scaledBalance
-	}
-	return sum, nil
-}
-
 func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, hotWallet dto.HotWalletAsset) (int64, error) {
 	withdrawals := []dto.Transaction{}
 	if err := repository.FetchByFieldNameFromDate(dto.Transaction{
@@ -305,50 +261,6 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	}
 	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: lastCreatedAt}); err != nil {
 		logger.Error("Error occured while updating hot wallet lastCreatedAt to On-going : %s", err)
-	}
-	return sum, nil
-}
-
-func getCreditsForAsset(repository database.BaseRepository, assetSymbol string, logger *utility.Logger) (int64, error) {
-	credits := []dto.Transaction{}
-	if err := repository.FetchByFieldName(dto.Transaction{
-		TransactionTag: "CREDIT",
-		AssetSymbol:    assetSymbol,
-	}, credits); err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to get credits", err)
-		return 0, err
-	}
-	sum := int64(0)
-	for _, credit := range credits {
-		recipientAsset := dto.UserAsset{}
-		getRecipientAsset(repository, credit.RecipientID, &recipientAsset, logger)
-		//convert to native units
-		balance, _ := strconv.ParseFloat(credit.Value, 64)
-		denominationDecimal := float64(recipientAsset.Decimal)
-		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
-		sum = sum + scaledBalance
-	}
-	return sum, nil
-}
-
-func getDebitsForAsset(repository database.BaseRepository, assetSymbol string, logger *utility.Logger) (int64, error) {
-	debits := []dto.Transaction{}
-	if err := repository.FetchByFieldName(dto.Transaction{
-		TransactionTag: "DEBITS",
-		AssetSymbol:    assetSymbol,
-	}, debits); err != nil {
-		logger.Error("Error response from Float manager : %+v while trying to get debits", err)
-		return 0, err
-	}
-	sum := int64(0)
-	for _, debit := range debits {
-		recipientAsset := dto.UserAsset{}
-		getRecipientAsset(repository, debit.InitiatorID, &recipientAsset, logger)
-		//convert to native units
-		balance, _ := strconv.ParseFloat(debit.Value, 64)
-		denominationDecimal := float64(recipientAsset.Decimal)
-		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
-		sum = sum + scaledBalance
 	}
 	return sum, nil
 }
