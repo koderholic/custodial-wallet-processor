@@ -7,6 +7,11 @@ SECURITY_BUNDLE_PUBLICKEY : "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZU1BMEdDU3F
 authenticationServiceURL: "https://internal.dev.bundlewallet.com/authentication"
 keyManagementServiceURL: "https://internal.dev.bundlewallet.com/key-management"
 cryptoAdapterServiceURL: "https://internal.dev.bundlewallet.com/crypto-adapter"
+depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit"
+withdrawToHotWalletUrl: "http://internal.dev.bundlewallet.com/order-book"
+notificationServiceUrl: "http://internal.dev.bundlewallet.com/notifications"
+coldWalletEmail: "akinyemi@bundle.africa"
+coldWalletEmailTemplateId: "to-be-set"
 lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
 purgeCacheInterval: 60
 expireCacheDuration: 400
@@ -14,6 +19,7 @@ requestTimeout: 60
 maxIdleConns : 25
 maxOpenConns : 50
 connMaxLifetime: 300
+floatPercentage: 10
 lockerServicePrefix : "Wallet-Adapter-Lock-"
 dbMigrationPath : ./migration
 DB_HOST: "127.0.0.1:3306"
