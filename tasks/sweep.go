@@ -220,7 +220,7 @@ func acquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 	// It calls the lock service to obtain a lock for the transaction
 	lockerServiceRequest := model.LockerServiceRequest{
 		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
-		ExpiresAfter: 600000,
+		ExpiresAfter: 600,
 	}
 	lockerServiceResponse := model.LockerServiceResponse{}
 	if err := services.AcquireLock(cache, logger, config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
