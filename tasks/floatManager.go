@@ -15,7 +15,7 @@ import (
 	"wallet-adapter/utility"
 )
 
-func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
+func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
 	logger.Info("Float manager process begins")
 	serviceErr := model.ServicesRequestErr{}
 	token, err := acquireLock(cache, logger, config, serviceErr)
@@ -39,15 +39,15 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		//get minimum amount
 		totalUserBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
 		if err != nil {
-			break
+			continue
 		}
 		depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
-			break
+			continue
 		}
 		withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
-			break
+			continue
 		}
 		minimum := floatAccount.ReservedBalance + int64((float64(config.FloatPercentage)/100)*float64(totalUserBalance))
 		maximum := minimum + Abs(depositSumFromLastRun-withdrawalSumFromLastRun)
@@ -127,7 +127,7 @@ func manageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				denomination := dto.Denomination{}
 				if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 					logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
-					break
+					continue
 				}
 				denominationDecimal := float64(denomination.Decimal)
 				//decimal units
@@ -216,12 +216,12 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 	if err := repository.FetchByFieldNameFromDate(dto.Transaction{
 		TransactionTag: "DEPOSIT",
 		AssetSymbol:    assetSymbol,
-	}, deposits, *hotWallet.LastDepositCreatedAt); err != nil {
+	}, &deposits, hotWallet.LastDepositCreatedAt); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to get deposits", err)
 		return 0, err
 	}
 	sum := int64(0)
-	var lastCreatedAt time.Time
+	var lastCreatedAt *time.Time
 	for _, deposit := range deposits {
 		recipientAsset := dto.UserAsset{}
 		getRecipientAsset(repository, deposit.RecipientID, &recipientAsset, logger)
@@ -230,10 +230,12 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 		denominationDecimal := float64(recipientAsset.Decimal)
 		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
 		sum = sum + scaledBalance
-		lastCreatedAt = deposit.CreatedAt
+		lastCreatedAt = &deposit.CreatedAt
 	}
-	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: &lastCreatedAt}); err != nil {
-		logger.Error("Error occured while updating hot wallet lastCreatedAt to On-going : %s", err)
+	if lastCreatedAt != nil {
+		if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: lastCreatedAt}); err != nil {
+			logger.Error("Error occured while updating hot wallet LastDepositCreatedAt to On-going : %s", err)
+		}
 	}
 	return sum, nil
 }
@@ -243,11 +245,11 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	if err := repository.FetchByFieldNameFromDate(dto.Transaction{
 		TransactionTag: "WITHDRAW",
 		AssetSymbol:    assetSymbol,
-	}, withdrawals, *hotWallet.LastWithdrawalCreatedAt); err != nil {
+	}, &withdrawals, hotWallet.LastWithdrawalCreatedAt); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to get withdrawals", err)
 		return 0, err
 	}
-	var lastCreatedAt time.Time
+	var lastCreatedAt *time.Time
 	sum := int64(0)
 	for _, withdrawal := range withdrawals {
 		recipientAsset := dto.UserAsset{}
@@ -257,11 +259,14 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 		denominationDecimal := float64(recipientAsset.Decimal)
 		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
 		sum = sum + scaledBalance
-		lastCreatedAt = withdrawal.CreatedAt
+		lastCreatedAt = &withdrawal.CreatedAt
 	}
-	if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastDepositCreatedAt: &lastCreatedAt}); err != nil {
-		logger.Error("Error occured while updating hot wallet lastCreatedAt to On-going : %s", err)
+	if lastCreatedAt != nil {
+		if err := repository.Update(&hotWallet, &dto.HotWalletAsset{LastWithdrawalCreatedAt: lastCreatedAt}); err != nil {
+			logger.Error("Error occured while updating hot wallet LastWithdrawalCreatedAt to On-going : %s", err)
+		}
 	}
+
 	return sum, nil
 }
 
@@ -290,6 +295,6 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 
 func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
 	c := cron.New()
-	c.AddFunc(config.FloatCronInterval, func() { manageFloat(cache, logger, config, repository, userAssetRepository) })
+	c.AddFunc(config.FloatCronInterval, func() { ManageFloat(cache, logger, config, repository, userAssetRepository) })
 	c.Start()
 }

@@ -75,8 +75,20 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 }
 
 // FetchByFieldName ... Retrieves all records for the specified model from the database for a given field name from a specified date
-func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model interface{}, date time.Time) error {
-	if err := repo.DB.Where(field).Where("created_at > ?", date).Find(model).Error; err != nil {
+func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model interface{}, date *time.Time) error {
+	if date == nil {
+		allTransactionsMatching := repo.DB.Where(field)
+		if err := allTransactionsMatching.Where("created_at < CURRENT_TIMESTAMP").Find(model).Error; err != nil {
+			repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
+			return utility.AppError{
+				ErrType: "INPUT_ERR",
+				Err:     err,
+			}
+		}
+		return nil
+	}
+	allTransactionsMatching := repo.DB.Where(field)
+	if err := allTransactionsMatching.Where("created_at > ?", *date).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",

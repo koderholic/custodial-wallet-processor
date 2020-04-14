@@ -42,7 +42,7 @@ type Data struct {
 	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
 	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
 	ConnMaxLifetime             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
-	FloatPercentage             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
+	FloatPercentage             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
 	SweepCronInterval           string        `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
 	FloatCronInterval           string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
