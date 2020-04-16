@@ -18,7 +18,7 @@ import (
 func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	logger.Info("Sweep operation begins")
 	serviceErr := model.ServicesRequestErr{}
-	token, err := acquireLock(cache, logger, config, serviceErr)
+	token, err := acquireLock("sweep", cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -216,11 +216,11 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 	return nil, false
 }
 
-func acquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {
+func acquireLock(identifier string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {
 	// It calls the lock service to obtain a lock for the transaction
 	lockerServiceRequest := model.LockerServiceRequest{
-		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
-		ExpiresAfter: 600,
+		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, identifier),
+		ExpiresAfter: 600000,
 	}
 	lockerServiceResponse := model.LockerServiceResponse{}
 	if err := services.AcquireLock(cache, logger, config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {

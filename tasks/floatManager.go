@@ -18,7 +18,7 @@ import (
 func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
 	logger.Info("Float manager process begins")
 	serviceErr := model.ServicesRequestErr{}
-	token, err := acquireLock(cache, logger, config, serviceErr)
+	token, err := acquireLock("float", cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -75,12 +75,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 						deficit := maximum - floatOnChainBalance
 						//decimal units
 						deficitInDecimalUnits := float64(deficit) / math.Pow(10, denominationDecimal)
-						deficitInDecimalUnits = math.Round(deficitInDecimalUnits*1000) / 1000
 
 						if scaledBinanceBalance > (maximum - floatOnChainBalance) {
 							//Go ahead and withdraw to hotwallet
 							money := model.Money{
-								Value:        strconv.FormatInt(scaledBinanceBalance-(maximum-floatOnChainBalance), 10),
+								Value:        strconv.FormatInt(maximum-floatOnChainBalance, 10),
 								Denomination: floatAccount.AssetSymbol,
 							}
 							requestData := model.WitdrawToHotWalletRequest{
@@ -95,10 +94,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 							//not enough in binance balance so trigger alert to cold wallet user
 							params := make(map[string]string)
 							params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
-							coldWalletEmails := []model.EmailUser{}
-							coldWalletEmails[0] = model.EmailUser{
-								Name:  "Yele",
-								Email: config.ColdWalletEmail,
+							coldWalletEmails := []model.EmailUser{
+								model.EmailUser{
+									Name:  "Binance Cold wallet user",
+									Email: config.ColdWalletEmail,
+								},
 							}
 							sendEmailRequest := model.SendEmailRequest{
 								Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
@@ -132,14 +132,15 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				denominationDecimal := float64(denomination.Decimal)
 				//decimal units
 				deficitInDecimalUnits := float64(deficit) / math.Pow(10, denominationDecimal)
-				deficitInDecimalUnits = math.Round(deficitInDecimalUnits*1000) / 1000
 				params := make(map[string]string)
-				params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
-				coldWalletEmails := []model.EmailUser{}
-				coldWalletEmails[0] = model.EmailUser{
-					Name:  "Yele",
-					Email: config.ColdWalletEmail,
+				params["amount"] = strconv.FormatFloat(deficitInDecimalUnits, 'f', -1, 64)
+				coldWalletEmails := []model.EmailUser{
+					model.EmailUser{
+						Name:  "Binance Cold wallet user",
+						Email: config.ColdWalletEmail,
+					},
 				}
+
 				sendEmailRequest := model.SendEmailRequest{
 					Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 					Content: "",

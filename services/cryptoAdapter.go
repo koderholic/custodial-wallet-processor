@@ -108,6 +108,7 @@ func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, confi
 	})
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
+		logger.Error("An error occured when trying to get onChain Balance: ", err)
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
 			return err
 		}
