@@ -50,7 +50,7 @@ func main() {
 	// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
 	db := *Database
 	baseRepository := database.BaseRepository{Database: db}
-	//tasks.ExecuteSweepCronJob(authCache, logger, config, baseRepository)
+	tasks.ExecuteSweepCronJob(authCache, logger, config, baseRepository)
 	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 	tasks.ExecuteFloatManagerCronJob(authCache, logger, config, baseRepository, userAssetRepository)
 
