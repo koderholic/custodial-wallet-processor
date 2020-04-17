@@ -41,16 +41,21 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		if err != nil {
 			continue
 		}
+		logger.Info("totalUserBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, totalUserBalance)
 		depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
 			continue
 		}
+		logger.Info("depositSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, depositSumFromLastRun)
 		withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
 			continue
 		}
+		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
 		minimum := floatAccount.ReservedBalance + int64((float64(config.FloatPercentage)/100)*float64(totalUserBalance))
+		logger.Info("minimum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, minimum)
 		maximum := minimum + Abs(depositSumFromLastRun-withdrawalSumFromLastRun)
+		logger.Info("maximum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, maximum)
 		floatOnChainBalance, _ := strconv.ParseInt(floatOnChainBalanceResponse.Balance, 10, 64)
 		//it checks if the float balance is below the minimum balance or above the maximum balance
 		if floatOnChainBalance < minimum {
@@ -200,7 +205,7 @@ func getFloatAccounts(repository database.BaseRepository, logger *utility.Logger
 func getRecipientAsset(repository database.BaseRepository, assetId uuid.UUID, recipientAsset *dto.UserAsset, logger *utility.Logger) {
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	if err := userAssetRepository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetId}}, &recipientAsset); err != nil {
-		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+		logger.Error("Error response from Float Manager job : %+v while checking for asset with id %+v", err, recipientAsset.ID)
 		return
 	}
 }
@@ -278,7 +283,7 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		ToAddress:   destinationAddress,
 		Amount:      amount,
 		AssetSymbol: floatAccount.AssetSymbol,
-		IsSweep:     true,
+		IsSweep:     false,
 	}
 	signTransactionResponse := model.SignTransactionResponse{}
 	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
