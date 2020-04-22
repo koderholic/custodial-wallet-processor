@@ -192,6 +192,7 @@ func (s *Suite) DBSeeder() {
 
 	assets := []dto.Denomination{
 		dto.Denomination{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8},
+		dto.Denomination{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8},
 		dto.Denomination{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18},
 		dto.Denomination{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8},
 	}
