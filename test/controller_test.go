@@ -226,6 +226,26 @@ func (s *Suite) Test_CreateUserAsset() {
 	}
 }
 
+func (s *Suite) Test_CreateUserBUSDAsset() {
+
+	createAssetInputData := []byte(`{"assets" : ["BUSD"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, createAssetRequest)
+
+	resBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+
+	if response.Code != http.StatusCreated || len(createAssetResponse.Assets) != 1 {
+		s.T().Errorf("Expected response code to be %d and length of assets returned to be %d. Got responseCode of %d and assets length of %d\n", 201, 1, response.Code, len(createAssetResponse.Assets))
+	}
+}
 func (s *Suite) Test_GetUserAsset() {
 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
@@ -326,6 +346,51 @@ func (s *Suite) Test_GetUserAssetAddress() {
 		s.T().Errorf("Expected response code to be %d and asset address to not be empty and the two calls to get address to return same address. Got responseCode of %d and address of %s and the equality of both address to be %t\n", http.StatusOK, response.Code, getNewAssetAddressResponse["address"], getNewAssetAddressResponse["address"] == getOldAssetAddressResponse["address"])
 	}
 }
+
+func (s *Suite) Test_GetUserAssetAddrReturnsSameAddrForSameCoinType() {
+	createAssetInputData := []byte(`{"assets" : ["BNB","BUSD"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+	createAssetRequest.Header.Set("x-auth-token", authToken)
+	createResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(createResponse, createAssetRequest)
+	resBody, err := ioutil.ReadAll(createResponse.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	createAssetResponse := model.UserAssetResponse{}
+	err = json.Unmarshal(resBody, &createAssetResponse)
+	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+	}
+	// call to get address for asset 1
+	getAsset1AddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
+	getAsset1AddressRequest.Header.Set("x-auth-token", authToken)
+
+	response := httptest.NewRecorder()
+	s.Router.ServeHTTP(response, getAsset1AddressRequest)
+	resBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAsset1AddressResponse := map[string]string{}
+	err = json.Unmarshal(resBody, &getAsset1AddressResponse)
+	//  call to get address for asset 2
+	getAsset2AddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[1].ID), bytes.NewBuffer([]byte("")))
+	getAsset2AddressRequest.Header.Set("x-auth-token", authToken)
+	response2 := httptest.NewRecorder()
+	s.Router.ServeHTTP(response2, getAsset2AddressRequest)
+	resBody2, err := ioutil.ReadAll(response2.Body)
+	if err != nil {
+		require.NoError(s.T(), err)
+	}
+	getAsset2AddressResponse := map[string]string{}
+	err = json.Unmarshal(resBody2, &getAsset2AddressResponse)
+
+	if response.Code != http.StatusOK || response2.Code != http.StatusOK || getAsset1AddressResponse["address"] == "" || getAsset1AddressResponse["address"] != getAsset2AddressResponse["address"] {
+		s.T().Errorf("Expected response code to be %d and asset address to not be empty and the address of same coinType to be the same. Got responseCode of %d and address of %s and the equality of both address to be %t\n", http.StatusOK, response.Code, getAsset1AddressResponse["address"], getAsset1AddressResponse["address"] == getAsset2AddressResponse["address"])
+	}
+}
+
 func (s *Suite) Test_GetUserAssetByAddress() {
 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))

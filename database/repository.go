@@ -2,10 +2,11 @@ package database
 
 import (
 	"errors"
-	uuid "github.com/satori/go.uuid"
 	"strings"
 	"time"
 	"wallet-adapter/utility"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 // IRepository ... Interface definition for IRepository

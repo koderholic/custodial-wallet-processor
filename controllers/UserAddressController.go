@@ -41,16 +41,39 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 			return
 		}
 
-		// Calls key-management service to create an address for the user asset
-		address, errGenerateAddress := services.GenerateAddress(controller.Cache, controller.Logger, controller.Config, userAsset.UserID, userAsset.AssetSymbol, &externalServiceErr)
-		if errGenerateAddress != nil || address == "" {
-			if externalServiceErr.Code != "" {
-				ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError(utility.SVCS_KEYMGT_ERR, externalServiceErr.Message), controller.Logger)
-				return
-			}
-			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, errGenerateAddress.Error())), controller.Logger)
+		coinTypeToAddrMap := map[int64]string{}
+		var address string
+
+		// checks if an address has been created for one of it's user's assets with same coinType and use that instead
+		var userAssets []dto.UserAsset
+		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{UserID: userAsset.UserID}, &userAssets); err != nil {
+			ReturnError(responseWriter, "GetUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 			return
 		}
+
+		for _, asset := range userAssets {
+			assetAddress := dto.UserAddress{}
+			if err := controller.Repository.GetByFieldName(&dto.UserAddress{AssetID: asset.ID}, &assetAddress); err != nil {
+				continue
+			}
+			coinTypeToAddrMap[asset.CoinType] = assetAddress.Address
+		}
+
+		if coinTypeToAddrMap[userAsset.CoinType] != "" {
+			address = coinTypeToAddrMap[userAsset.CoinType]
+		} else {
+			// Calls key-management service to create an address for the user asset
+			address, err = services.GenerateAddress(controller.Cache, controller.Logger, controller.Config, userAsset.UserID, userAsset.AssetSymbol, &externalServiceErr)
+			if err != nil || address == "" {
+				if externalServiceErr.Code != "" {
+					ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError(utility.SVCS_KEYMGT_ERR, externalServiceErr.Message), controller.Logger)
+					return
+				}
+				ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())), controller.Logger)
+				return
+			}
+		}
+
 		userAddress.AssetID = assetID
 		userAddress.Address = address
 		if createErr := controller.Repository.Create(&userAddress); createErr != nil {
