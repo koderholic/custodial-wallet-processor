@@ -15,7 +15,7 @@ func (database *Database) DBSeeder() {
 	}
 
 	for _, asset := range assets {
-		if err := database.DB.FirstOrCreate(&asset, dto.Denomination{AssetSymbol: asset.AssetSymbol}).Error; err != nil {
+		if err := database.DB.Where(dto.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
 			database.Logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
 		}
 	}
