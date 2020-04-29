@@ -57,6 +57,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		maximum := minimum + Abs(depositSumFromLastRun-withdrawalSumFromLastRun)
 		logger.Info("maximum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, maximum)
 		floatOnChainBalance, _ := strconv.ParseInt(floatOnChainBalanceResponse.Balance, 10, 64)
+		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 		//it checks if the float balance is below the minimum balance or above the maximum balance
 		if floatOnChainBalance < minimum {
 			//if below the minimum balance, it then checks if deposit - withdrawal < 0,
@@ -70,6 +71,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 					if coin.Coin == floatAccount.AssetSymbol {
 						//check if balance is enough to fill deficit
 						binanceBalance, _ := strconv.ParseFloat(coin.Balance, 64)
+						logger.Info("binanceBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, binanceBalance)
 						denomination := dto.Denomination{}
 						if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 							logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
@@ -80,9 +82,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 						deficit := maximum - floatOnChainBalance
 						//decimal units
 						deficitInDecimalUnits := float64(deficit) / math.Pow(10, denominationDecimal)
+						logger.Info("deficitInDecimalUnits for this hot wallet %+v is %+v", floatAccount.AssetSymbol, deficitInDecimalUnits)
 
 						if scaledBinanceBalance > (maximum - floatOnChainBalance) {
 							//Go ahead and withdraw to hotwallet
+							logger.Info("Binance balance is higher than deficit for this hot wallet, so withdraawing %+v from binance broker acc %+v ", scaledBinanceBalance, floatAccount.AssetSymbol)
 							money := model.Money{
 								Value:        strconv.FormatInt(maximum-floatOnChainBalance, 10),
 								Denomination: floatAccount.AssetSymbol,
@@ -97,6 +101,8 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 							services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
 						} else {
 							//not enough in binance balance so trigger alert to cold wallet user
+							logger.Info("Not enough in this binance wallet %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
+
 							params := make(map[string]string)
 							params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
 							coldWalletEmails := []model.EmailUser{
@@ -137,6 +143,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				denominationDecimal := float64(denomination.Decimal)
 				//decimal units
 				deficitInDecimalUnits := float64(deficit) / math.Pow(10, denominationDecimal)
+				logger.Info("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 				params := make(map[string]string)
 				params["amount"] = strconv.FormatFloat(deficitInDecimalUnits, 'f', -1, 64)
 				coldWalletEmails := []model.EmailUser{
@@ -166,6 +173,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		}
 		if floatOnChainBalance > maximum {
 			//debit float address
+			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", floatOnChainBalance > maximum, floatAccount.AssetSymbol)
 			depositAddressResponse := model.DepositAddressResponse{}
 			services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
 			signTxAndBroadcastToChain(cache, repository, (floatOnChainBalance - maximum), depositAddressResponse.Address, logger, config, floatAccount, serviceErr)
