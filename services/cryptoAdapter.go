@@ -25,11 +25,13 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		status := serviceErr.(*model.ServicesRequestErr)
+		status.StatusCode = APIResponse.StatusCode
 		return err
 	}
 

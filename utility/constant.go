@@ -1,6 +1,6 @@
 package utility
 
-var (
+const (
 	SUCCESS                   = "Request Proccessed Successfully"
 	INPUT_ERR                 = "Invalid Input Supplied. See documentation"
 	SYSTEM_ERR                = "Request Could Not Be Proccessed. Server encountered an error"
@@ -21,14 +21,15 @@ var (
 	DEBIT_PROCESSED_ERR       = "Debit reference has already been processed for external transfer"
 	TIMEOUT_ERR               = "Request timedout, taking longer than usual to process"
 	MINIMUM_SPENDABLE_ERR     = "Transfer amount is lower than the minimum allowed"
-	MINIMUM_SPENDABLE         = map[string]int64{
+	SVCS_CRYPTOADAPTER_ERR    = "SVCS_CRYPTOADAPTER_ERR"
+	SVCS_KEYMGT_ERR           = "SVCS_KEYMGT_ERR"
+	NO_MEMO                   = "NO MEMO"
+)
+
+var (
+	MINIMUM_SPENDABLE = map[string]int64{
 		"BTC": 546,
 		"ETH": 15000000000000,
 		"BNB": 37500,
 	}
-)
-
-const (
-	SVCS_CRYPTOADAPTER_ERR = "SVCS_CRYPTOADAPTER_ERR"
-	SVCS_KEYMGT_ERR        = "SVCS_KEYMGT_ERR"
 )
