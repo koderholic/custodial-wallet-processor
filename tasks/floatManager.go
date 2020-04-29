@@ -192,7 +192,7 @@ func getTotalUserBalance(repository database.BaseRepository, assetSymbol string,
 	if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 	}
-	sum, err := userAssetRepository.SumAmountField(dto.UserAsset{AssetSymbol: assetSymbol})
+	sum, err := userAssetRepository.SumAmountField(&dto.UserAsset{AssetSymbol: assetSymbol})
 	if err != nil {
 		return 0, err
 	}
