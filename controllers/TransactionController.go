@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"wallet-adapter/config"
 	"wallet-adapter/database"
@@ -236,10 +237,13 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		Recipient:      requestData.RecipientAddress,
 		Value:          transactionValue,
 		DebitReference: requestData.DebitReference,
-		Memo:           debitReferenceTransaction.Memo,
 		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
 	}
+	if !strings.EqualFold(debitReferenceTransaction.Memo, utility.NO_MEMO) {
+		queue.Memo = debitReferenceTransaction.Memo
+	}
+
 	if err := tx.Create(&queue).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
@@ -480,6 +484,26 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
 	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, &serviceErr); err != nil {
+		if serviceErr.StatusCode == 400 {
+			tx := processor.Repository.Db().Begin()
+			defer func() {
+				if r := recover(); r != nil {
+					tx.Rollback()
+				}
+			}()
+			// Updates the transaction status to REJECTED
+			transactionDetails := dto.Transaction{}
+			_ = processor.Repository.Get(&dto.Transaction{BaseDTO: dto.BaseDTO{ID: transaction.TransactionId}}, &transactionDetails)
+			_ = tx.Model(&transactionDetails).Updates(&dto.Transaction{TransactionStatus: dto.TransactionStatus.REJECTED})
+			// Update transactionQueue to REJECTED
+			transactionQueueDetails := dto.TransactionQueue{}
+			_ = processor.Repository.Get(&dto.TransactionQueue{TransactionId: transaction.TransactionId}, &transactionQueueDetails)
+			_ = tx.Model(&transactionQueueDetails).Updates(&dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.REJECTED})
+			if err := tx.Commit().Error; err == nil {
+				return err
+			}
+		}
+
 		if serviceErr.Message != "" {
 			processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
