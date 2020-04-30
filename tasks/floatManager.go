@@ -114,7 +114,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 								TransactionFeeFlag: false,
 							}
 							responseData := model.WitdrawToHotWalletResponse{}
-							services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
+							err = services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
+							if err != nil {
+								logger.Info("An error occurred while trying to withdraw from Binance broker %+v", err.Error())
+							}
 						} else {
 							//not enough in binance balance so trigger alert to cold wallet user
 							logger.Info("Not enough in this binance wallet %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
@@ -142,7 +145,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 								Receivers: coldWalletEmails,
 							}
 							sendEmailResponse := model.SendEmailResponse{}
-							services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+							err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+							if err != nil {
+								logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
+							}
 						}
 					}
 

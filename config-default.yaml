@@ -11,7 +11,7 @@ depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming
 withdrawToHotWalletUrl: "http://internal.dev.bundlewallet.com/order-book"
 notificationServiceUrl: "http://internal.dev.bundlewallet.com/notifications"
 coldWalletEmail: "akinyemi@bundle.africa"
-coldWalletEmailTemplateId: "to-be-set"
+coldWalletEmailTemplateId: "d-c2c966c47fc3405598733a6a7178b28f"
 lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
 purgeCacheInterval: 60
 expireCacheDuration: 400
