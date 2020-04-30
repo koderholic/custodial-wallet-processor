@@ -27,8 +27,10 @@ func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, c
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 			return err
 		}
+		logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 		return err
 	}
 
