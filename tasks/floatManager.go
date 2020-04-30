@@ -132,7 +132,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 								Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 								Content: "",
 								Template: model.EmailTemplate{
-									ID:     "",
+									ID:     config.ColdWalletEmailTemplateId,
 									Params: params,
 								},
 								Sender: model.EmailUser{
@@ -179,7 +179,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 					Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 					Content: "",
 					Template: model.EmailTemplate{
-						ID:     "",
+						ID:     config.ColdWalletEmailTemplateId,
 						Params: params,
 					},
 					Sender: model.EmailUser{
@@ -189,8 +189,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 					Receivers: coldWalletEmails,
 				}
 				sendEmailResponse := model.SendEmailResponse{}
-				services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
-
+				err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+				if err != nil {
+					logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
+				}
 			}
 		}
 		if floatOnChainBalance.Cmp(maximum) > 0 {
