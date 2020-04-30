@@ -30,6 +30,7 @@ func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, c
 			logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 			return err
 		}
+		logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 		return err
 	}
 
