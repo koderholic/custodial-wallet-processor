@@ -78,7 +78,7 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model interface{}, date *time.Time) error {
 	if date == nil {
 		allTransactionsMatching := repo.DB.Where(field)
-		if err := allTransactionsMatching.Where("created_at < CURRENT_TIMESTAMP").Find(model).Error; err != nil {
+		if err := allTransactionsMatching.Where("created_at < CURRENT_TIMESTAMP").Find(model).Order("created_at", true).Error; err != nil {
 			repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
 			return utility.AppError{
 				ErrType: "INPUT_ERR",

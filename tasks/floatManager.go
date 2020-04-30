@@ -54,8 +54,12 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			continue
 		}
 		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
-		percentageOfUserBalance := big.NewFloat(float64(config.FloatPercentage / 100))
-		percentageOfUserBalance.Mul(percentageOfUserBalance, totalUserBalance)
+		floatPercentage := new(big.Float)
+		floatPercentage.Quo(big.NewFloat(float64(config.FloatPercentage)), big.NewFloat(float64(100)))
+		logger.Info("percentage of users balance used is %+v", floatPercentage)
+		percentageOfUserBalance := new(big.Float)
+		percentageOfUserBalance.Mul(floatPercentage, totalUserBalance)
+		logger.Info("percentage of users balance value is %+v", percentageOfUserBalance)
 		minimum := new(big.Float)
 		minimum.Add(percentageOfUserBalance, big.NewFloat(float64(floatAccount.ReservedBalance)))
 		logger.Info("minimum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, minimum)
