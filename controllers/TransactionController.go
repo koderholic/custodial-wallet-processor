@@ -480,11 +480,14 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
 		AssetSymbol: transaction.AssetSymbol,
+		Reference:   transaction.DebitReference,
+		ProcessType: utility.WITHDRAWALPROCESS,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 
 	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, &serviceErr); err != nil {
-		if serviceErr.StatusCode == 400 {
+		processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
+		if serviceErr.StatusCode == http.StatusBadRequest {
 			tx := processor.Repository.Db().Begin()
 			defer func() {
 				if r := recover(); r != nil {
@@ -499,13 +502,17 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 			transactionQueueDetails := dto.TransactionQueue{}
 			_ = processor.Repository.Get(&dto.TransactionQueue{TransactionId: transaction.TransactionId}, &transactionQueueDetails)
 			_ = tx.Model(&transactionQueueDetails).Updates(&dto.TransactionQueue{TransactionStatus: dto.TransactionStatus.REJECTED})
-			if err := tx.Commit().Error; err == nil {
-				return err
-			}
+			err := tx.Commit().Error
+			return err
+		}
+
+		// Checks status of the TXN broadcast to chain
+		isBroadcastedSuccessfully := services.GetBroadcastedTXNStatusByRef(transaction.DebitReference, processor.Cache, processor.Logger, processor.Config)
+		if isBroadcastedSuccessfully {
+			return nil
 		}
 
 		if serviceErr.Message != "" {
-			processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 			return errors.New(serviceErr.Message)
 		}
 		return err

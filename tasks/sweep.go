@@ -198,6 +198,7 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
 		AssetSymbol: symbol,
+		ProcessType: utility.SWEEPPROCESS,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {

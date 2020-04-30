@@ -121,6 +121,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 
 							params := make(map[string]string)
 							params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
+							params["assetType"] = floatAccount.AssetSymbol
 							coldWalletEmails := []model.EmailUser{
 								model.EmailUser{
 									Name:  "Binance Cold wallet user",
@@ -166,6 +167,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				deficit.Int(bigIntDeficit)
 				params := make(map[string]string)
 				params["amount"] = bigIntDeficit.String()
+				params["assetType"] = floatAccount.AssetSymbol
 				coldWalletEmails := []model.EmailUser{
 					model.EmailUser{
 						Name:  "Binance Cold wallet user",
@@ -324,9 +326,9 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		logger.Error("Error response from float manager : %+v while signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return
 	}
-	//need an empty array to be able to reuse the method broadcastAndCompleteSweepTx
+	//need an empty array to be able to reuse the method broadcastAndCompleteFloatTx
 	emptyArrayOfTransactions := []dto.Transaction{}
-	err, _ := broadcastAndCompleteSweepTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
+	err, _ := broadcastAndCompleteFloatTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
 	if err != nil {
 		logger.Error("Error response from float manager : %+v while broadcast transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return
@@ -337,4 +339,28 @@ func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logg
 	c := cron.New()
 	c.AddFunc(config.FloatCronInterval, func() { ManageFloat(cache, logger, config, repository, userAssetRepository) })
 	c.Start()
+}
+
+func broadcastAndCompleteFloatTx(signTransactionResponse model.SignTransactionResponse, config Config.Data, symbol string, cache *utility.MemoryCache, logger *utility.Logger, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, repository database.BaseRepository) (error, bool) {
+	// Send the signed data to crypto adapter to send to chain
+	broadcastToChainRequest := model.BroadcastToChainRequest{
+		SignedData:  signTransactionResponse.SignedData,
+		AssetSymbol: symbol,
+		ProcessType: utility.FLOATPROCESS,
+	}
+	broadcastToChainResponse := model.BroadcastToChainResponse{}
+	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
+		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		return err, true
+	}
+	//update all assetTransactions with new swept status
+	var assetIdList []uuid.UUID
+	for _, tx := range assetTransactions {
+		assetIdList = append(assetIdList, tx.ID)
+	}
+	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
+		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		return err, true
+	}
+	return nil, false
 }
