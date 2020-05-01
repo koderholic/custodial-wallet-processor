@@ -73,6 +73,18 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 	return nil
 }
 
+func (repo *BaseRepository) FetchSweepCandidates(model interface{}) error {
+	sweepCandidatesQuery := "SELECT * FROM walletAdapter.transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0)"
+	if err := repo.DB.Raw(sweepCandidatesQuery).Scan(model).Error; err != nil {
+		repo.Logger.Error("Error when fetching sweep status : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
 // Fetch ... Retrieves all records from the database for a given models
 func (repo *BaseRepository) Fetch(model interface{}) error {
 	if err := repo.DB.Find(model).Error; err != nil {

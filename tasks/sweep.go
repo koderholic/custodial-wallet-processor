@@ -25,8 +25,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 
 	var transactions []dto.Transaction
-	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
-		SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &transactions); err != nil {
+	if err := repository.FetchSweepCandidates(&transactions); err != nil {
 		logger.Error("Error response from Sweep job : could not fetch sweep candidates %+v", err)
 		if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 			logger.Error("Could not release lock", err)
