@@ -1,11 +1,11 @@
 package tasks
 
 import (
-	"fmt"
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
 	"math"
 	"math/big"
+	"sort"
 	"strconv"
 	"time"
 	Config "wallet-adapter/config"
@@ -114,13 +114,17 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 								TransactionFeeFlag: false,
 							}
 							responseData := model.WitdrawToHotWalletResponse{}
-							services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
+							err = services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
+							if err != nil {
+								logger.Info("An error occurred while trying to withdraw from Binance broker %+v", err.Error())
+							}
 						} else {
 							//not enough in binance balance so trigger alert to cold wallet user
 							logger.Info("Not enough in this binance wallet %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 
 							params := make(map[string]string)
-							params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
+							params["amount"] = deficitInDecimalUnits.String()
+							params["assetType"] = floatAccount.AssetSymbol
 							coldWalletEmails := []model.EmailUser{
 								model.EmailUser{
 									Name:  "Binance Cold wallet user",
@@ -131,7 +135,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 								Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 								Content: "",
 								Template: model.EmailTemplate{
-									ID:     "",
+									ID:     config.ColdWalletEmailTemplateId,
 									Params: params,
 								},
 								Sender: model.EmailUser{
@@ -141,7 +145,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 								Receivers: coldWalletEmails,
 							}
 							sendEmailResponse := model.SendEmailResponse{}
-							services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+							err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+							if err != nil {
+								logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
+							}
 						}
 					}
 
@@ -162,10 +169,9 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				deficitInDecimalUnits := new(big.Float)
 				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 				logger.Info("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
-				var bigIntDeficit *big.Int
-				deficit.Int(bigIntDeficit)
 				params := make(map[string]string)
-				params["amount"] = bigIntDeficit.String()
+				params["amount"] = deficitInDecimalUnits.String()
+				params["assetType"] = floatAccount.AssetSymbol
 				coldWalletEmails := []model.EmailUser{
 					model.EmailUser{
 						Name:  "Binance Cold wallet user",
@@ -177,7 +183,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 					Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 					Content: "",
 					Template: model.EmailTemplate{
-						ID:     "",
+						ID:     config.ColdWalletEmailTemplateId,
 						Params: params,
 					},
 					Sender: model.EmailUser{
@@ -187,8 +193,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 					Receivers: coldWalletEmails,
 				}
 				sendEmailResponse := model.SendEmailResponse{}
-				services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
-
+				err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+				if err != nil {
+					logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
+				}
 			}
 		}
 		if floatOnChainBalance.Cmp(maximum) > 0 {
@@ -261,6 +269,10 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 	sum := new(big.Float)
 	sum.SetFloat64(0)
 	var lastCreatedAt *time.Time
+	//sort deposits by creation date asc
+	sort.Slice(deposits, func(i, j int) bool {
+		return deposits[i].BaseDTO.CreatedAt.Before(deposits[j].BaseDTO.CreatedAt)
+	})
 	for _, deposit := range deposits {
 		recipientAsset := dto.UserAsset{}
 		getRecipientAsset(repository, deposit.RecipientID, &recipientAsset, logger)
@@ -291,6 +303,10 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	var lastCreatedAt *time.Time
 	sum := new(big.Float)
 	sum.SetFloat64(0)
+	//sort withdrawals by creation date asc
+	sort.Slice(withdrawals, func(i, j int) bool {
+		return withdrawals[i].BaseDTO.CreatedAt.Before(withdrawals[j].BaseDTO.CreatedAt)
+	})
 	for _, withdrawal := range withdrawals {
 		recipientAsset := dto.UserAsset{}
 		getRecipientAsset(repository, withdrawal.InitiatorID, &recipientAsset, logger)
@@ -324,9 +340,9 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		logger.Error("Error response from float manager : %+v while signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return
 	}
-	//need an empty array to be able to reuse the method broadcastAndCompleteSweepTx
+	//need an empty array to be able to reuse the method broadcastAndCompleteFloatTx
 	emptyArrayOfTransactions := []dto.Transaction{}
-	err, _ := broadcastAndCompleteSweepTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
+	err, _ := broadcastAndCompleteFloatTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
 	if err != nil {
 		logger.Error("Error response from float manager : %+v while broadcast transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return
@@ -337,4 +353,28 @@ func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logg
 	c := cron.New()
 	c.AddFunc(config.FloatCronInterval, func() { ManageFloat(cache, logger, config, repository, userAssetRepository) })
 	c.Start()
+}
+
+func broadcastAndCompleteFloatTx(signTransactionResponse model.SignTransactionResponse, config Config.Data, symbol string, cache *utility.MemoryCache, logger *utility.Logger, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, repository database.BaseRepository) (error, bool) {
+	// Send the signed data to crypto adapter to send to chain
+	broadcastToChainRequest := model.BroadcastToChainRequest{
+		SignedData:  signTransactionResponse.SignedData,
+		AssetSymbol: symbol,
+		ProcessType: utility.FLOATPROCESS,
+	}
+	broadcastToChainResponse := model.BroadcastToChainResponse{}
+	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
+		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		return err, true
+	}
+	//update all assetTransactions with new swept status
+	var assetIdList []uuid.UUID
+	for _, tx := range assetTransactions {
+		assetIdList = append(assetIdList, tx.ID)
+	}
+	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
+		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		return err, true
+	}
+	return nil, false
 }
