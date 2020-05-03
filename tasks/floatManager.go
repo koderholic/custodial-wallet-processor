@@ -1,11 +1,11 @@
 package tasks
 
 import (
-	"fmt"
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
 	"math"
 	"math/big"
+	"sort"
 	"strconv"
 	"time"
 	Config "wallet-adapter/config"
@@ -123,7 +123,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 							logger.Info("Not enough in this binance wallet %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 
 							params := make(map[string]string)
-							params["amount"] = fmt.Sprintf("%f", deficitInDecimalUnits)
+							params["amount"] = deficitInDecimalUnits.String()
 							params["assetType"] = floatAccount.AssetSymbol
 							coldWalletEmails := []model.EmailUser{
 								model.EmailUser{
@@ -169,10 +169,8 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				deficitInDecimalUnits := new(big.Float)
 				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 				logger.Info("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
-				var bigIntDeficit *big.Int
-				deficit.Int(bigIntDeficit)
 				params := make(map[string]string)
-				params["amount"] = bigIntDeficit.String()
+				params["amount"] = deficitInDecimalUnits.String()
 				params["assetType"] = floatAccount.AssetSymbol
 				coldWalletEmails := []model.EmailUser{
 					model.EmailUser{
@@ -271,6 +269,10 @@ func getDepositsSumForAssetFromDate(repository database.BaseRepository, assetSym
 	sum := new(big.Float)
 	sum.SetFloat64(0)
 	var lastCreatedAt *time.Time
+	//sort deposits by creation date asc
+	sort.Slice(deposits, func(i, j int) bool {
+		return deposits[i].BaseDTO.CreatedAt.Before(deposits[j].BaseDTO.CreatedAt)
+	})
 	for _, deposit := range deposits {
 		recipientAsset := dto.UserAsset{}
 		getRecipientAsset(repository, deposit.RecipientID, &recipientAsset, logger)
@@ -301,6 +303,10 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	var lastCreatedAt *time.Time
 	sum := new(big.Float)
 	sum.SetFloat64(0)
+	//sort withdrawals by creation date asc
+	sort.Slice(withdrawals, func(i, j int) bool {
+		return withdrawals[i].BaseDTO.CreatedAt.Before(withdrawals[j].BaseDTO.CreatedAt)
+	})
 	for _, withdrawal := range withdrawals {
 		recipientAsset := dto.UserAsset{}
 		getRecipientAsset(repository, withdrawal.InitiatorID, &recipientAsset, logger)
