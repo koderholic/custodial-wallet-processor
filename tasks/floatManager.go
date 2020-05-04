@@ -72,7 +72,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 		//it checks if the float balance is below the minimum balance or above the maximum balance
-		if floatOnChainBalance.Cmp(minimum) < 0 {
+		if floatOnChainBalance.Cmp(minimum) > 0 {
 			//if below the minimum balance, it then checks if deposit - withdrawal < 0,
 			// then we call binance broker api to fund hot wallet and raise the float balance from
 			// it's deficit amount to the maximum amount (residual + % of total user
@@ -100,11 +100,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 						logger.Info("deficitInDecimalUnits for this hot wallet %+v is %+v", floatAccount.AssetSymbol, deficitInDecimalUnits)
 						var bigIntDeficit *big.Int
 						deficit.Int(bigIntDeficit)
-						if scaledBinanceBalance.Cmp(deficit) > 0 {
+						if scaledBinanceBalance.Cmp(deficit) < 0 {
 							//Go ahead and withdraw to hotwallet
 							logger.Info("Binance balance is higher than deficit for this hot wallet, so withdraawing %+v from binance broker acc %+v ", scaledBinanceBalance, floatAccount.AssetSymbol)
 							money := model.Money{
-								Value:        "50000000", //bigIntDeficit.String(),
+								Value:        "5000000", //bigIntDeficit.String(),
 								Denomination: floatAccount.AssetSymbol,
 							}
 							requestData := model.WitdrawToHotWalletRequest{
