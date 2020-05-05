@@ -100,11 +100,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 						logger.Info("deficitInDecimalUnits for this hot wallet %+v is %+v", floatAccount.AssetSymbol, deficitInDecimalUnits)
 						var bigIntDeficit *big.Int
 						deficit.Int(bigIntDeficit)
-						if scaledBinanceBalance.Cmp(deficit) <= 0 && floatAccount.AssetSymbol == "BNB" {
+						if scaledBinanceBalance.Cmp(deficit) > 0 {
 							//Go ahead and withdraw to hotwallet
 							logger.Info("Binance balance is higher than deficit for this hot wallet, so withdraawing %+v from binance broker acc %+v ", scaledBinanceBalance, floatAccount.AssetSymbol)
 							money := model.Money{
-								Value:        "5000000", //bigIntDeficit.String(),
+								Value:        bigIntDeficit.String(),
 								Denomination: floatAccount.AssetSymbol,
 							}
 							requestData := model.WitdrawToHotWalletRequest{
