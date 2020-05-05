@@ -212,7 +212,7 @@ func fundSweepFee(floatAccount dto.HotWalletAsset, denomination dto.Denomination
 			Amount:      denomination.SweepFee,
 			AssetSymbol: denomination.MainCoinAssetSymbol,
 			//this currently only supports coins that supports Memo, ETH will not be ignored
-			Memo: utility.SWEEPPROCESS,
+			Memo: utility.SWEEPMEMOBNB,
 		}
 		signTransactionResponse := model.SignTransactionResponse{}
 		if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {

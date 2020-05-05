@@ -27,6 +27,7 @@ const (
 	WITHDRAWALPROCESS         = "WITHDRAW"
 	FLOATPROCESS              = "FLOAT"
 	SWEEPPROCESS              = "SWEEP"
+	SWEEPMEMOBNB              = "ADCXADF1829038FGX"
 )
 
 var (
