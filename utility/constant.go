@@ -28,6 +28,7 @@ const (
 	FLOATPROCESS              = "FLOAT"
 	SWEEPPROCESS              = "SWEEP"
 	SWEEPMEMOBNB              = "ADCXADF1829038FGX"
+	BNBTOKENSLIP              = 714
 )
 
 var (

@@ -161,7 +161,8 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		logger.Error("Error response from sweep process : %+v while trying to denomination of float asset", err)
 		return err
 	}
-	if denomination.CoinType == 714 {
+	//Do this only for BEp-2 tokens and not for BNB itself
+	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != "BNB" {
 		//send sweep fee to main address
 		err, done := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
 		if done {
