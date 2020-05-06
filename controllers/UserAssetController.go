@@ -308,6 +308,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	// // increment user account by value
 	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
+	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	tx := controller.Repository.Db().Begin()
@@ -359,7 +360,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		TransactionStatus:    transactionStatus,
 		TransactionTag:       dto.TransactionTag.DEPOSIT,
 		Value:                value,
-		PreviousBalance:      assetDetails.AvailableBalance,
+		PreviousBalance:      previousBalance,
 		AvailableBalance:     currentAvailableBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		OnChainTxId:          chainTransaction.ID,
