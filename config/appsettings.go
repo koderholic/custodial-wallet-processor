@@ -28,6 +28,10 @@ type Data struct {
 	LockerService               string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
 	LockerPrefix                string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
 	DepositWebhookURL           string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
+	WithdrawToHotWalletUrl      string        `mapstructure:"withdrawToHotWalletUrl"  yaml:"withdrawToHotWalletUrl,omitempty"`
+	NotificationServiceUrl      string        `mapstructure:"notificationServiceUrl"  yaml:"notificationServiceUrl,omitempty"`
+	ColdWalletEmail             string        `mapstructure:"coldWalletEmail"  yaml:"coldWalletEmail,omitempty"`
+	ColdWalletEmailTemplateId   string        `mapstructure:"coldWalletEmailTemplateId"  yaml:"coldWalletEmailTemplateId,omitempty"`
 	BtcSlipValue                string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
 	BnbSlipValue                string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
 	EthSlipValue                string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
@@ -37,8 +41,10 @@ type Data struct {
 	SweepFeePercentageThreshold int64         `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
 	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
 	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
-	ConnMaxLifetime             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
+	ConnMaxLifetime             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
+	FloatPercentage             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
 	SweepCronInterval           string        `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
+	FloatCronInterval           string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 }

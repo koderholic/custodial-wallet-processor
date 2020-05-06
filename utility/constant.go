@@ -24,6 +24,11 @@ const (
 	SVCS_CRYPTOADAPTER_ERR    = "SVCS_CRYPTOADAPTER_ERR"
 	SVCS_KEYMGT_ERR           = "SVCS_KEYMGT_ERR"
 	NO_MEMO                   = "NO MEMO"
+	WITHDRAWALPROCESS         = "WITHDRAW"
+	FLOATPROCESS              = "FLOAT"
+	SWEEPPROCESS              = "SWEEP"
+	SWEEPMEMOBNB              = "ADCXADF1829038FGX"
+	BNBTOKENSLIP              = 714
 )
 
 var (

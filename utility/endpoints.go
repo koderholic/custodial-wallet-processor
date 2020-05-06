@@ -78,6 +78,30 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.LockerService,
 			Action:   "/locks/release",
 		}
+	case "withdrawToHotWallet":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.WithdrawToHotWalletUrl,
+			Action:   "/brokerage-wallets/withdrawal",
+		}
+	case "getAssetBalances":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.WithdrawToHotWalletUrl,
+			Action:   "/brokerage-wallets/assets-balance",
+		}
+	case "getDepositAddress":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.WithdrawToHotWalletUrl,
+			Action:   "/brokerage-wallets/get-deposit-address",
+		}
+	case "sendEmail":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.NotificationServiceUrl,
+			Action:   "/emails/send",
+		}
 	default:
 		return MetaData{}
 	}

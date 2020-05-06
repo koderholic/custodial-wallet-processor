@@ -36,6 +36,8 @@ type SignTransactionResponse struct {
 type BroadcastToChainRequest struct {
 	SignedData  string `json:"signedData"`
 	AssetSymbol string `json:"assetSymbol"`
+	Reference   string `json:"reference"`
+	ProcessType string `json:"processType"`
 }
 
 // BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
@@ -75,6 +77,7 @@ type ServicesRequestSuccess struct {
 type TransactionStatusRequest struct {
 	TransactionHash string `json:"transactionHash"`
 	AssetSymbol     string `json:"assetSymbol"`
+	Reference       string `json:"reference"`
 }
 
 // TransactionStatusResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
@@ -117,4 +120,88 @@ type OnchainBalanceResponse struct {
 	Balance     string `json:"balance"`
 	AssetSymbol string `json:"assetSymbol"`
 	Decimals    int    `json:"decimals"`
+}
+
+type WitdrawToHotWalletRequest struct {
+	WithdrawOrderId    string `json:"withdrawOrderId"`
+	Network            string `json:"network"`
+	Address            string `json:"address"`
+	AddressTag         string `json:"addressTag"`
+	TransactionFeeFlag bool   `json:"transactionFeeFlag"`
+	Name               string `json:"name"`
+	Amount             Money  `json:"amount"`
+}
+
+type Money struct {
+	Value        string `json:"value"`
+	Denomination string `json:"denomination"`
+}
+
+type WitdrawToHotWalletResponse struct {
+	id     string `json:"id"`
+	Status string `json:"status"`
+}
+
+type BinanceAssetBalances struct {
+	CoinList []struct {
+		Coin        string `json:"coin"`
+		Balance     string `json:"balance"`
+		Name        string `json:"name"`
+		NetworkList []struct {
+			AddressRegex       string `json:"addressRegex"`
+			Coin               string `json:"coin"`
+			DepositDesc        string `json:"depositDesc"`
+			DepositEnable      bool   `json:"depositEnable"`
+			IsDefault          bool   `json:"isDefault"`
+			MemoRegex          string `json:"memoRegex"`
+			MinConfirm         int    `json:"minConfirm"`
+			Name               string `json:"name"`
+			Network            string `json:"network"`
+			ResetAddressStatus bool   `json:"resetAddressStatus"`
+			SpecialTips        string `json:"specialTips"`
+			UnLockConfirm      int    `json:"unLockConfirm"`
+			WithdrawDesc       string `json:"withdrawDesc"`
+			WithdrawEnable     bool   `json:"withdrawEnable"`
+			WithdrawFee        string `json:"withdrawFee"`
+			WithdrawMin        string `json:"withdrawMin"`
+		} `json:"networkList"`
+	} `json:"coinList"`
+}
+
+type DepositAddressResponse struct {
+	Address string `json:"address"`
+	Coin    string `json:"coin"`
+	Tag     string `json:"tag"`
+	URL     string `json:"url"`
+}
+
+type SendEmailRequest struct {
+	Subject   string        `json:"subject"`
+	Content   string        `json:"content"`
+	Template  EmailTemplate `json:"template"`
+	Sender    EmailUser     `json:"sender"`
+	Receivers []EmailUser   `json:"receivers"`
+	Cc        []EmailUser   `json:"cc"`
+	Bcc       []EmailUser   `json:"bcc"`
+}
+
+type EmailTemplate struct {
+	ID     string            `json:"id"`
+	Params map[string]string `json:"params"`
+}
+
+type EmailUser struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type SendEmailResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Error   struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+		} `json:"data"`
+	} `json:"error"`
 }

@@ -2,9 +2,11 @@ package database
 
 import (
 	"errors"
-	uuid "github.com/satori/go.uuid"
 	"strings"
+	"time"
 	"wallet-adapter/utility"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 // IRepository ... Interface definition for IRepository
@@ -17,7 +19,6 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	Delete(model interface{}) error
-	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -74,9 +75,33 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 }
 
 func (repo *BaseRepository) FetchSweepCandidates(model interface{}) error {
-	sweepCandidatesQuery := "SELECT * FROM transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0)"
+	sweepCandidatesQuery := "SELECT * FROM walletAdapter.transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0)"
 	if err := repo.DB.Raw(sweepCandidatesQuery).Scan(model).Error; err != nil {
 		repo.Logger.Error("Error when fetching sweep status : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// FetchByFieldName ... Retrieves all records for the specified model from the database for a given field name from a specified date
+func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model interface{}, date *time.Time) error {
+	if date == nil {
+		allTransactionsMatching := repo.DB.Where(field)
+		if err := allTransactionsMatching.Where("created_at < CURRENT_TIMESTAMP").Find(model).Order("created_at", true).Error; err != nil {
+			repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
+			return utility.AppError{
+				ErrType: "INPUT_ERR",
+				Err:     err,
+			}
+		}
+		return nil
+	}
+	allTransactionsMatching := repo.DB.Where(field)
+	if err := allTransactionsMatching.Where("created_at > ?", *date).Find(model).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,

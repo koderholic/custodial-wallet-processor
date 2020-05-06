@@ -144,22 +144,33 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var userAssets dto.UserAsset
-	var userAddress dto.UserAddress
+	var userAddresses []dto.UserAddress
 	responseData := model.Asset{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
 	address := routeParams["address"]
+	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
 
 	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
 
-	if err := controller.Repository.GetByFieldName(&dto.UserAddress{Address: address}, &userAddress); err != nil {
+	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: address}, &userAddresses); err != nil {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
+	for _, userAddress := range userAddresses {
+		assets := []dto.UserAsset{}
+		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &assets); err != nil {
+			continue
+		}
+		userAssets = assets[0]
+		if assetSymbol != "" && userAssets.AssetSymbol == assetSymbol {
+			break
+		}
+	}
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &userAssets); err != nil {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+	if userAssets.AssetSymbol == "" {
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, utility.SQL_404, apiResponse.PlainError("INPUT_ERR", utility.SQL_404), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAssets)
@@ -297,6 +308,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	// // increment user account by value
 	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
+	previousBalance := assetDetails.AvailableBalance
 	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
 	tx := controller.Repository.Db().Begin()
@@ -348,7 +360,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		TransactionStatus:    transactionStatus,
 		TransactionTag:       dto.TransactionTag.DEPOSIT,
 		Value:                value,
-		PreviousBalance:      assetDetails.AvailableBalance,
+		PreviousBalance:      previousBalance,
 		AvailableBalance:     currentAvailableBalance,
 		ProcessingType:       dto.ProcessingType.SINGLE,
 		OnChainTxId:          chainTransaction.ID,
