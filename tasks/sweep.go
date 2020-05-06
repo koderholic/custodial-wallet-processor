@@ -129,9 +129,11 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		logger.Error("Error response from Sweep job : %+v while sweeping batch transactions for BTC", err)
 		return err
 	}
-	e, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, "BTC", cache, logger, serviceErr, btcAssetTransactionsToSweep, repository)
-	if done {
-		return e
+	if err := broadcastSweepTx(signTransactionResponse, config, "BTC", cache, logger, serviceErr, btcAssetTransactionsToSweep, repository); err != nil {
+		return err
+	}
+	if err := updateSweptStatus(btcAssetTransactionsToSweep, repository, logger); err != nil {
+		return err
 	}
 	return nil
 
@@ -163,6 +165,11 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != "BNB" {
+		//Check that fee is below X% of the total value.
+		err = feeThresholdCheck(denomination.SweepFee, sum, config, logger, recipientAsset)
+		if err != nil {
+			return err
+		}
 		//send sweep fee to main address
 		err, done := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
 		if done {
@@ -184,13 +191,22 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 	//Check that fee is below X% of the total value.
-	if (((signTransactionResponse.Fee) / sum) * 100) > config.SweepFeePercentageThreshold {
-		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold))
-	}
-
-	err, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.AssetSymbol, cache, logger, serviceErr, assetTransactions, repository)
-	if done {
+	if err := feeThresholdCheck(signTransactionResponse.Fee, sum, config, logger, recipientAsset); err != nil {
 		return err
+	}
+	if err := broadcastSweepTx(signTransactionResponse, config, recipientAsset.AssetSymbol, cache, logger, serviceErr, assetTransactions, repository); err != nil {
+		return err
+	}
+	if err := updateSweptStatus(assetTransactions, repository, logger); err != nil {
+		return err
+	}
+	return nil
+}
+
+func feeThresholdCheck(fee int64, sum int64, config Config.Data, logger *utility.Logger, recipientAsset dto.UserAsset) error {
+	if (((fee) / sum) * 100) > config.SweepFeePercentageThreshold {
+		logger.Error("Skipping asset, %+v ratio of fee to sum for this asset with asset symbol %+v is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %+v", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold)
+		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold))
 	}
 	return nil
 }
@@ -220,8 +236,7 @@ func fundSweepFee(floatAccount dto.HotWalletAsset, denomination dto.Denomination
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 			return err, true
 		}
-		err, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.AssetSymbol, cache, logger, serviceErr, assetTransactions, repository)
-		if done {
+		if err := broadcastSweepTx(signTransactionResponse, config, recipientAsset.AssetSymbol, cache, logger, serviceErr, assetTransactions, repository); err != nil {
 			return err, true
 		}
 		//return immediately after broadcasting sweep fee, this allows for confirmation, next time sweep runs,
@@ -243,7 +258,7 @@ func getFloatDetails(repository database.BaseRepository, symbol string, logger *
 	return floatAccount, nil
 }
 
-func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionResponse, config Config.Data, symbol string, cache *utility.MemoryCache, logger *utility.Logger, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, repository database.BaseRepository) (error, bool) {
+func broadcastSweepTx(signTransactionResponse model.SignTransactionResponse, config Config.Data, symbol string, cache *utility.MemoryCache, logger *utility.Logger, serviceErr model.ServicesRequestErr, assetTransactions []dto.Transaction, repository database.BaseRepository) error {
 	// Send the signed data to crypto adapter to send to chain
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
@@ -253,8 +268,12 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
 		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
-		return err, true
+		return err
 	}
+	return nil
+}
+
+func updateSweptStatus(assetTransactions []dto.Transaction, repository database.BaseRepository, logger *utility.Logger) error {
 	//update all assetTransactions with new swept status
 	var assetIdList []uuid.UUID
 	for _, tx := range assetTransactions {
@@ -262,9 +281,9 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 	}
 	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
 		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
-		return err, true
+		return err
 	}
-	return nil, false
+	return nil
 }
 
 func acquireLock(identifier string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr) (string, error) {
