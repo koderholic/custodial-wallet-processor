@@ -25,8 +25,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 
 	var transactions []dto.Transaction
-	if err := repository.FetchByFieldName(&dto.Transaction{TransactionTag: dto.TransactionTag.DEPOSIT,
-		SweptStatus: false, TransactionStatus: dto.TransactionStatus.COMPLETED}, &transactions); err != nil {
+	if err := repository.FetchSweepCandidates(&transactions); err != nil {
 		logger.Error("Error response from Sweep job : could not fetch sweep candidates %+v", err)
 		if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 			logger.Error("Could not release lock", err)
@@ -157,6 +156,19 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	if err != nil {
 		return err
 	}
+	denomination := dto.Denomination{}
+	if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+		logger.Error("Error response from sweep process : %+v while trying to denomination of float asset", err)
+		return err
+	}
+	//Do this only for BEp-2 tokens and not for BNB itself
+	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != "BNB" {
+		//send sweep fee to main address
+		err, done := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
+		if done {
+			return err
+		}
+	}
 
 	// Calls key-management to sign transaction
 	signTransactionRequest := model.SignTransactionRequest{
@@ -183,6 +195,44 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
+func fundSweepFee(floatAccount dto.HotWalletAsset, denomination dto.Denomination, recipientAddress dto.UserAddress, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr model.ServicesRequestErr, recipientAsset dto.UserAsset, assetTransactions []dto.Transaction, repository database.BaseRepository) (error, bool) {
+
+	request := model.OnchainBalanceRequest{
+		AssetSymbol: denomination.MainCoinAssetSymbol,
+		Address:     recipientAddress.Address,
+	}
+	mainCoinOnChainBalanceResponse := model.OnchainBalanceResponse{}
+	services.GetOnchainBalance(cache, logger, config, request, &mainCoinOnChainBalanceResponse, serviceErr)
+	mainCoinOnChainBalance, _ := strconv.ParseUint(mainCoinOnChainBalanceResponse.Balance, 10, 64)
+	//check if onchain balance in main coin asset is less than floatAccount.SweepFee
+	if int64(mainCoinOnChainBalance) < denomination.SweepFee {
+		// Calls key-management to sign sweep fee transaction
+		signTransactionRequest := model.SignTransactionRequest{
+			FromAddress: floatAccount.Address,
+			ToAddress:   recipientAddress.Address,
+			Amount:      denomination.SweepFee,
+			AssetSymbol: denomination.MainCoinAssetSymbol,
+			//this currently only supports coins that supports Memo, ETH will not be ignored
+			Memo: utility.SWEEPMEMOBNB,
+		}
+		signTransactionResponse := model.SignTransactionResponse{}
+		if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+			return err, true
+		}
+		err, done := broadcastAndCompleteSweepTx(signTransactionResponse, config, recipientAsset.AssetSymbol, cache, logger, serviceErr, assetTransactions, repository)
+		if done {
+			return err, true
+		}
+		//return immediately after broadcasting sweep fee, this allows for confirmation, next time sweep runs,
+		// int64(mainCoinOnChainBalance) will be > floatAccount.SweepFee, and so this if block will be skipped
+		//i.e sweep fee will not be resent to user address
+		return nil, true
+	}
+	// else? i.e. if mainCoinOnChainBalance > floatAccount.SweepFee, then we want to proceed like the general case for non token sweep
+	return nil, false
+}
+
 func getFloatDetails(repository database.BaseRepository, symbol string, logger *utility.Logger) (dto.HotWalletAsset, error) {
 	//Get the float address
 	var floatAccount dto.HotWalletAsset
@@ -198,6 +248,7 @@ func broadcastAndCompleteSweepTx(signTransactionResponse model.SignTransactionRe
 	broadcastToChainRequest := model.BroadcastToChainRequest{
 		SignedData:  signTransactionResponse.SignedData,
 		AssetSymbol: symbol,
+		ProcessType: utility.SWEEPPROCESS,
 	}
 	broadcastToChainResponse := model.BroadcastToChainResponse{}
 	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {

@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	Config "wallet-adapter/config"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -25,11 +26,13 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		status := serviceErr.(*model.ServicesRequestErr)
+		status.StatusCode = APIResponse.StatusCode
 		return err
 	}
 
@@ -78,11 +81,13 @@ func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, confi
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse , err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		status := serviceErr.(*model.ServicesRequestErr)
+		status.StatusCode = APIResponse.StatusCode
 		return err
 	}
 
@@ -116,4 +121,22 @@ func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 
 	return nil
+}
+
+// GetBroadcastedTXNStatusByRef ...
+func GetBroadcastedTXNStatusByRef(transactionRef string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) bool {
+	serviceErr := model.ServicesRequestErr{}
+
+	transactionStatusRequest := model.TransactionStatusRequest{
+		Reference: transactionRef,
+	}
+	transactionStatusResponse := model.TransactionStatusResponse{}
+	if err := TransactionStatus(cache, logger, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
+		logger.Error("Error getting broadcasted transaction status : %+v", err)
+		if serviceErr.StatusCode != http.StatusNotFound {
+			return true
+		}
+		return false
+	}
+	return true
 }

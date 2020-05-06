@@ -11,7 +11,7 @@ depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming
 withdrawToHotWalletUrl: "http://internal.dev.bundlewallet.com/order-book"
 notificationServiceUrl: "http://internal.dev.bundlewallet.com/notifications"
 coldWalletEmail: "akinyemi@bundle.africa"
-coldWalletEmailTemplateId: "to-be-set"
+coldWalletEmailTemplateId: "d-c2c966c47fc3405598733a6a7178b28f"
 lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
 purgeCacheInterval: 60
 expireCacheDuration: 400
@@ -29,3 +29,4 @@ DB_NAME: "walletAdapter"
 SENTRY_DSN: "https://52fb6b65fcdf4fd89143d81611f7a12c@sentry.io/3640925"
 sweepCronInterval: "1/5 * * * *"
 floatCronInterval: "1/10 * * * *"
+

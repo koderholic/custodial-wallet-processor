@@ -24,7 +24,7 @@ type UserAssetRepository struct {
 
 // GetAssetsByID ...
 func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,denominations.coin_type,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
@@ -46,7 +46,7 @@ func (repo *UserAssetRepository) SumAmountField(model interface{}) (float64, err
 	}
 
 	var n NResult
-	repo.DB.Table("user_assets").Select("sum(available_balance) as n").Scan(&n)
+	repo.DB.Table("user_assets").Select("sum(available_balance) as n").Where(model).Scan(&n)
 	return n.N, nil
 
 	/*if err := repo.DB.Table("user_assets").Select("sum(available_balance)").Row().Scan(&sum); err != nil {

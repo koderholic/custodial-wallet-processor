@@ -32,6 +32,9 @@ resources:
       - svcs.order-book.deposit
       - svcs.order-book.assets-balance
       - svcs.order-book.withdraw-external
+      - svcs.notifications.send-sms
+      - svcs.notifications.send-email
+      - svcs.notifications.send-push
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID

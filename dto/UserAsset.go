@@ -15,6 +15,7 @@ type UserAsset struct {
 	AvailableBalance string    `gorm:"type:decimal(64,18) CHECK(available_balance >= 0);not null;" json:"available_balance"`
 	AssetSymbol      string    `gorm:"-" json:"asset_symbol,omitempty"`
 	Decimal          int       `gorm:"-" json:"decimal,omitempty"`
+	CoinType         int64     `gorm:"-" json:"coinType,omitempty"`
 }
 
 func (userAsset *UserAsset) AfterFind() {

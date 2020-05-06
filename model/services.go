@@ -36,6 +36,8 @@ type SignTransactionResponse struct {
 type BroadcastToChainRequest struct {
 	SignedData  string `json:"signedData"`
 	AssetSymbol string `json:"assetSymbol"`
+	Reference   string `json:"reference"`
+	ProcessType string `json:"processType"`
 }
 
 // BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
@@ -57,10 +59,11 @@ type SubscriptionResponse struct {
 
 // ServicesRequestErr ... Model definition for external services request made with error response
 type ServicesRequestErr struct {
-	Success bool              `json:"success"`
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Data    map[string]string `json:"data"`
+	Success    bool              `json:"success"`
+	Code       string            `json:"code"`
+	Message    string            `json:"message"`
+	StatusCode int               `json:"_"`
+	Data       map[string]string `json:"data"`
 }
 
 // ServicesRequestSuccess ... Model definition for external services request made with successful response but no data
@@ -74,6 +77,7 @@ type ServicesRequestSuccess struct {
 type TransactionStatusRequest struct {
 	TransactionHash string `json:"transactionHash"`
 	AssetSymbol     string `json:"assetSymbol"`
+	Reference       string `json:"reference"`
 }
 
 // TransactionStatusResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
