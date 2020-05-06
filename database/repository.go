@@ -109,7 +109,6 @@ func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model in
 	}
 	return nil
 }
-
 // Fetch ... Retrieves all records from the database for a given models
 func (repo *BaseRepository) Fetch(model interface{}) error {
 	if err := repo.DB.Find(model).Error; err != nil {
