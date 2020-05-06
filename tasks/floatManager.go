@@ -77,82 +77,24 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			// then we call binance broker api to fund hot wallet and raise the float balance from
 			// it's deficit amount to the maximum amount (residual + % of total user
 			// balance + delta(total_deposit - total_withdrawal) since its last run).
-			if true {
-				binanceAssetBalances := model.BinanceAssetBalances{}
-				services.GetOnChainBinanceAssetBalances(cache, logger, config, &binanceAssetBalances, serviceErr)
-				for _, coin := range binanceAssetBalances.CoinList {
-					if coin.Coin == floatAccount.AssetSymbol {
-						//check if balance is enough to fill deficit
-						binanceBalance, _ := strconv.ParseFloat(coin.Balance, 64)
-						logger.Info("binanceBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, binanceBalance)
-						denomination := dto.Denomination{}
-						if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-							logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
-							break
-						}
-						denominationDecimal := float64(denomination.Decimal)
-						scaledBinanceBalance := big.NewFloat(binanceBalance * math.Pow(10, denominationDecimal))
-						deficit := new(big.Float)
-						deficit.Sub(maximum, floatOnChainBalance)
-						//decimal units
-						deficitInDecimalUnits := new(big.Float)
-						deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
-						logger.Info("deficitInDecimalUnits for this hot wallet %+v is %+v", floatAccount.AssetSymbol, deficitInDecimalUnits)
-						var bigIntDeficit *big.Int
-						deficit.Int(bigIntDeficit)
-						if scaledBinanceBalance.Cmp(deficit) <= 0 && floatAccount.AssetSymbol == "BNB" {
-							//Go ahead and withdraw to hotwallet
-							logger.Info("Binance balance is higher than deficit for this hot wallet, so withdraawing %+v from binance broker acc %+v ", scaledBinanceBalance, floatAccount.AssetSymbol)
-							money := model.Money{
-								Value:        "5000000", //bigIntDeficit.String(),
-								Denomination: floatAccount.AssetSymbol,
-							}
-							requestData := model.WitdrawToHotWalletRequest{
-								Address:            floatAccount.Address,
-								Name:               floatAccount.AssetSymbol + " Bundle Hot wallet",
-								Amount:             money,
-								TransactionFeeFlag: false,
-							}
-							responseData := model.WitdrawToHotWalletResponse{}
-							err = services.WithdrawToHotWallet(cache, logger, config, requestData, &responseData, serviceErr)
-							if err != nil {
-								logger.Info("An error occurred while trying to withdraw from Binance broker %+v", err.Error())
-							}
-						} else {
-							//not enough in binance balance so trigger alert to cold wallet user
-							logger.Info("Not enough in this binance wallet %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
-
-							params := make(map[string]string)
-							params["amount"] = deficitInDecimalUnits.String()
-							params["assetType"] = floatAccount.AssetSymbol
-							coldWalletEmails := []model.EmailUser{
-								model.EmailUser{
-									Name:  "Binance Cold wallet user",
-									Email: config.ColdWalletEmail,
-								},
-							}
-							sendEmailRequest := model.SendEmailRequest{
-								Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
-								Content: "",
-								Template: model.EmailTemplate{
-									ID:     config.ColdWalletEmailTemplateId,
-									Params: params,
-								},
-								Sender: model.EmailUser{
-									Name:  "Bundle",
-									Email: "info@bundle.africa",
-								},
-								Receivers: coldWalletEmails,
-							}
-							sendEmailResponse := model.SendEmailResponse{}
-							err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
-							if err != nil {
-								logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
-							}
-						}
-					}
-
+			if depositSumFromLastRun.Cmp(withdrawalSumFromLastRun) < 0 {
+				denomination := dto.Denomination{}
+				if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+					logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
+					break
 				}
+				denominationDecimal := float64(denomination.Decimal)
+				deficit := new(big.Float)
+				deficit.Sub(maximum, floatOnChainBalance)
+				//decimal units
+				deficitInDecimalUnits := new(big.Float)
+				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
+				logger.Info("deficitInDecimalUnits for this hot wallet %+v is %+v", floatAccount.AssetSymbol, deficitInDecimalUnits)
+				var bigIntDeficit *big.Int
+				deficit.Int(bigIntDeficit)
+				//trigger alert to cold wallet user
+				logger.Info("sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
+				err = notifyColdWalletUsers(deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
 			} else {
 				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
 				// using notification service to raise the float balance from it's deficit amount to
@@ -169,34 +111,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				deficitInDecimalUnits := new(big.Float)
 				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 				logger.Info("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
-				params := make(map[string]string)
-				params["amount"] = deficitInDecimalUnits.String()
-				params["assetType"] = floatAccount.AssetSymbol
-				coldWalletEmails := []model.EmailUser{
-					model.EmailUser{
-						Name:  "Binance Cold wallet user",
-						Email: config.ColdWalletEmail,
-					},
-				}
-
-				sendEmailRequest := model.SendEmailRequest{
-					Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
-					Content: "",
-					Template: model.EmailTemplate{
-						ID:     config.ColdWalletEmailTemplateId,
-						Params: params,
-					},
-					Sender: model.EmailUser{
-						Name:  "Bundle",
-						Email: "info@bundle.africa",
-					},
-					Receivers: coldWalletEmails,
-				}
-				sendEmailResponse := model.SendEmailResponse{}
-				err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
-				if err != nil {
-					logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
-				}
+				err = notifyColdWalletUsers(deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
 			}
 		}
 		if floatOnChainBalance.Cmp(maximum) > 0 {
@@ -215,6 +130,37 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		return
 	}
 	logger.Info("Float manager process ends successfully, lock released")
+}
+
+func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount dto.HotWalletAsset, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr model.ServicesRequestErr) error {
+	params := make(map[string]string)
+	params["amount"] = deficitInDecimalUnits.String()
+	params["assetSymbol"] = floatAccount.AssetSymbol
+	coldWalletEmails := []model.EmailUser{
+		model.EmailUser{
+			Name:  "Binance Cold wallet user",
+			Email: config.ColdWalletEmail,
+		},
+	}
+	sendEmailRequest := model.SendEmailRequest{
+		Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
+		Content: "",
+		Template: model.EmailTemplate{
+			ID:     config.ColdWalletEmailTemplateId,
+			Params: params,
+		},
+		Sender: model.EmailUser{
+			Name:  "Bundle",
+			Email: "info@bundle.africa",
+		},
+		Receivers: coldWalletEmails,
+	}
+	sendEmailResponse := model.SendEmailResponse{}
+	err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
+	if err != nil {
+		logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
+	}
+	return err
 }
 
 //total liability at any given time
