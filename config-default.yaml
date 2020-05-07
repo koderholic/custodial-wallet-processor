@@ -27,6 +27,5 @@ DB_USER: ""
 DB_PASSWORD: ""
 DB_NAME: "walletAdapter"
 SENTRY_DSN: "https://52fb6b65fcdf4fd89143d81611f7a12c@sentry.io/3640925"
-sweepCronInterval: "1/5 * * * *"
-floatCronInterval: "1/10 * * * *"
+sweepCronInterval: "1/30 * * * *"
 
