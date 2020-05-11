@@ -33,7 +33,6 @@ func main() {
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
 	migration.RunDbMigrations(logger, config)
-	Database.DBSeeder()
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
@@ -42,6 +41,7 @@ func main() {
 	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
 		logger.Error("Server started and listening on port %s", config.AppPort)
 	}
+	services.SeedSupportedAssets(Database.DB, logger)
 
 	app.RegisterRoutes(router, validator, config, logger, Database.DB, authCache)
 
@@ -51,8 +51,10 @@ func main() {
 	db := *Database
 	baseRepository := database.BaseRepository{Database: db}
 	tasks.ExecuteSweepCronJob(authCache, logger, config, baseRepository)
-	// userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-	// tasks.ExecuteFloatManagerCronJob(authCache, logger, config, baseRepository, userAssetRepository)
+	if config.EnableFloatManager {
+		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+		tasks.ExecuteFloatManagerCronJob(authCache, logger, config, baseRepository, userAssetRepository)
+	}
 
 	err := sentry.Init(sentry.ClientOptions{
 		// Either set your DSN here or set the SENTRY_DSN environment variable.

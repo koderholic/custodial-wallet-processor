@@ -7,6 +7,7 @@
 *.app
 *.DS_Store
 wallet-adapter
+.vscode/launch.json
 
 # Test binary, build with `go test -c`
 *.test

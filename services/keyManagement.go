@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 
 	uuid "github.com/satori/go.uuid"
@@ -18,8 +18,8 @@ func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	if err != nil {
 		return "", err
 	}
-	requestData := model.GenerateAddressRequest{}
-	responseData := model.GenerateAddressResponse{}
+	requestData := dto.GenerateAddressRequest{}
+	responseData := dto.GenerateAddressResponse{}
 	metaData := utility.GetRequestMetaData("createAddress", config)
 
 	requestData.UserID = userID
@@ -41,7 +41,7 @@ func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return "", err
 	}
 	//call subscribe
-	subscriptionRequestData := model.SubscriptionRequest{}
+	subscriptionRequestData := dto.SubscriptionRequest{}
 	subscriptionRequestData.Subscriptions = make(map[string][]string)
 	addressArray := []string{responseData.Address}
 	switch symbol {
@@ -57,7 +57,7 @@ func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 	subscriptionRequestData.Webhook = config.DepositWebhookURL
 
-	subscriptionResponseData := model.SubscriptionResponse{}
+	subscriptionResponseData := dto.SubscriptionResponse{}
 
 	if err := SubscribeAddress(cache, logger, config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
 		logger.Error("Failing to subscribe to address %s with err %s\n", responseData.Address, err)
@@ -69,7 +69,7 @@ func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 }
 
 // SignTransaction ... Calls key-management service with a transaction object to sign
-func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.SignTransactionRequest, responseData *model.SignTransactionResponse, serviceErr interface{}) error {
+func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SignTransactionRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -96,7 +96,7 @@ func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
-func SignBatchBTCTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.BatchBTCRequest, responseData *model.SignTransactionResponse, serviceErr interface{}) error {
+func SignBatchBTCTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err

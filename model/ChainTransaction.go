@@ -1,13 +1,14 @@
-package dto
+package model
 
 import (
+	"wallet-adapter/dto"
+
 	uuid "github.com/satori/go.uuid"
-	"wallet-adapter/model"
 )
 
 // ChainTransaction ... DTO definition for on-chain transactions
 type ChainTransaction struct {
-	BaseDTO
+	BaseModel
 	Status          bool      `gorm:"index;not null;default:false" json:"status"`
 	BatchID         uuid.UUID `gorm:"type:VARCHAR(36);index:batch_id" json:"batch_id"`
 	TransactionHash string    `json:"transaction_hash"`
@@ -17,7 +18,7 @@ type ChainTransaction struct {
 	BatchRequest    `sql:"-"`
 }
 
-func (chainTransaction ChainTransaction) MaptoDto(chainData *model.ChainData) {
+func (chainTransaction ChainTransaction) MaptoDto(chainData *dto.ChainData) {
 	chainData.TransactionHash = chainTransaction.TransactionHash
 	chainData.Status = &chainTransaction.Status
 	chainData.BlockHeight = chainTransaction.BlockHeight

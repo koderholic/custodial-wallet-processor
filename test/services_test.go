@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 	"wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
 )
@@ -35,14 +35,14 @@ func TestSignTransactionImplementation(t *testing.T) {
 		KeyManagementService:  "https://internal.dev.bundlewallet.com/key-management",
 	}
 
-	requestData := model.SignTransactionRequest{
+	requestData := dto.SignTransactionRequest{
 		FromAddress: "0xcDb4D4dbe1a5154E5046b4fBa2efA2FA5E6a64Ec",
 		ToAddress:   "0x6CB3F3b958287fD63FA39ED8a392414115c089b3",
 		Amount:      1510000000000000,
 		AssetSymbol:    "ETH",
 	}
-	responseData := model.SignTransactionResponse{}
-	serviceErr := model.ServicesRequestErr{}
+	responseData := dto.SignTransactionResponse{}
+	serviceErr := dto.ServicesRequestErr{}
 
 	purgeInterval := Config.PurgeCacheInterval * time.Second
 	cacheDuration := Config.ExpireCacheDuration * time.Second
@@ -81,10 +81,10 @@ func TestSignTransactionImplementation(t *testing.T) {
 // 	defer teardown()
 
 // 	// Calls key-management to batch sign transaction
-// 	recipientData := []model.BatchRecipients{}
+// 	recipientData := []dto.BatchRecipients{}
 // 	//get float
 
-// 	floatRecipient := model.BatchRecipients{
+// 	floatRecipient := dto.BatchRecipients{
 // 		Address: "bc1qcg8gqlq84veds0gxe20masexr22f2atjn6g6yj",
 // 		Value:   0,
 // 	}
@@ -92,15 +92,15 @@ func TestSignTransactionImplementation(t *testing.T) {
 // 	var btcAssets []string
 // 	btcAssets = append(btcAssets, "bc1qs5gu88wflpnnx5ve9wgay79rn9ajr8masy7akj")
 
-// 	signTransactionRequest := model.BatchBTCRequest{
+// 	signTransactionRequest := dto.BatchBTCRequest{
 // 		AssetSymbol:   "BTC",
 // 		ChangeAddress: "bc1qcg8gqlq84veds0gxe20masexr22f2atjn6g6yj",
 // 		IsSweep:       true,
 // 		Origins:       btcAssets,
 // 		Recipients:    recipientData,
 // 	}
-// 	signTransactionResponse := model.SignTransactionResponse{}
-// 	serviceErr := model.ServicesRequestErr{}
+// 	signTransactionResponse := dto.SignTransactionResponse{}
+// 	serviceErr := dto.ServicesRequestErr{}
 
 // 	purgeInterval := Config.PurgeCacheInterval * time.Second
 // 	cacheDuration := Config.ExpireCacheDuration * time.Second
@@ -127,12 +127,12 @@ func TestBroadcastTransactionImplementation(t *testing.T) {
 		CryptoAdapterService:  "https://internal.dev.bundlewallet.com/crypto-adapter",
 	}
 
-	requestData := model.BroadcastToChainRequest{
+	requestData := dto.BroadcastToChainRequest{
 		SignedData:  "f86a808447868c0082520894c6c55ce8e861119a9013c35e5b93de56b36ee6c0871ff973cafa80008026a09883e0019f6383d22a35aa9ce611717af670cadd5abe44eb2fe8fd2db46cacaca04f2c44b4319ee988e4b78636ec14425b44e945c2d2f583c744f9bf92faadd90c",
 		AssetSymbol: "ETH",
 	}
-	responseData := model.BroadcastToChainResponse{}
-	serviceErr := model.ServicesRequestErr{}
+	responseData := dto.BroadcastToChainResponse{}
+	serviceErr := dto.ServicesRequestErr{}
 
 	purgeInterval := Config.PurgeCacheInterval * time.Second
 	cacheDuration := Config.ExpireCacheDuration * time.Second

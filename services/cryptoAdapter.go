@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
 // broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.BroadcastToChainRequest, responseData *model.BroadcastToChainResponse, serviceErr interface{}) error {
+func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BroadcastToChainRequest, responseData *dto.BroadcastToChainResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -31,7 +31,7 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
 			return err
 		}
-		status := serviceErr.(*model.ServicesRequestErr)
+		status := serviceErr.(*dto.ServicesRequestErr)
 		status.StatusCode = APIResponse.StatusCode
 		return err
 	}
@@ -39,7 +39,7 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 	return nil
 }
 
-func SubscribeAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.SubscriptionRequest, responseData *model.SubscriptionResponse, serviceErr interface{}) error {
+func SubscribeAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SubscriptionRequest, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
 	metaData := utility.GetRequestMetaData("subscribeAddress", config)
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -65,7 +65,7 @@ func SubscribeAddress(cache *utility.MemoryCache, logger *utility.Logger, config
 }
 
 // TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
-func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.TransactionStatusRequest, responseData *model.TransactionStatusResponse, serviceErr interface{}) error {
+func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.TransactionStatusRequest, responseData *dto.TransactionStatusResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -81,12 +81,12 @@ func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, confi
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse , err := APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
 			return err
 		}
-		status := serviceErr.(*model.ServicesRequestErr)
+		status := serviceErr.(*dto.ServicesRequestErr)
 		status.StatusCode = APIResponse.StatusCode
 		return err
 	}
@@ -95,7 +95,7 @@ func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, confi
 }
 
 // GetOnchainBalance ... Calls crypto adapter with asset symbol and address to return balance of asset on-chain
-func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.OnchainBalanceRequest, responseData *model.OnchainBalanceResponse, serviceErr interface{}) error {
+func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.OnchainBalanceRequest, responseData *dto.OnchainBalanceResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -125,12 +125,12 @@ func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, confi
 
 // GetBroadcastedTXNStatusByRef ...
 func GetBroadcastedTXNStatusByRef(transactionRef string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) bool {
-	serviceErr := model.ServicesRequestErr{}
+	serviceErr := dto.ServicesRequestErr{}
 
-	transactionStatusRequest := model.TransactionStatusRequest{
+	transactionStatusRequest := dto.TransactionStatusRequest{
 		Reference: transactionRef,
 	}
-	transactionStatusResponse := model.TransactionStatusResponse{}
+	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := TransactionStatus(cache, logger, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
 		if serviceErr.StatusCode != http.StatusNotFound {

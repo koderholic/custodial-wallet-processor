@@ -19,6 +19,7 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	Delete(model interface{}) error
+	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
