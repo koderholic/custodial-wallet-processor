@@ -28,13 +28,9 @@ func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, confi
 }
 
 func GenerateV2AddressWithMemo(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset, addressWithMemo *dto.AddressWithMemo) error {
-	var externalServiceErr dto.ServicesRequestErr
-	v2Address, err := GenerateAddress(cache, logger, config, userAsset.UserID, userAsset.AssetSymbol, &externalServiceErr)
+	v2Address, err := GetSharedAddressFor(cache, repository.Db(), logger, config, userAsset.AssetSymbol)
 	if err != nil || v2Address == "" {
-		logger.Error("Error response from userAddress service, could not generate user address : %v => %s ", externalServiceErr, err)
-		if externalServiceErr.Code != "" {
-			return errors.New(externalServiceErr.Message)
-		}
+		logger.Error("Error response from shared address service : %s ", err)
 		return errors.New(utility.SYSTEM_ERR)
 	}
 	addressWithMemo.Address = v2Address

@@ -38,10 +38,13 @@ func main() {
 	cacheDuration := config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 
-	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
-		logger.Error("Server started and listening on port %s", config.AppPort)
-	}
 	services.SeedSupportedAssets(Database.DB, logger)
+	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
+		logger.Error("Error with InitHotWallet %s", err)
+	}
+	if err := services.InitSharedAddress(authCache, Database.DB, logger, config); err != nil {
+		logger.Error("Error with InitSharedAddress %s", err)
+	}
 
 	app.RegisterRoutes(router, validator, config, logger, Database.DB, authCache)
 
