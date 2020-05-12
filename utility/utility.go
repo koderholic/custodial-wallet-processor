@@ -9,8 +9,12 @@ import (
 	"time"
 )
 
-//GenerateReferenceID ....
+func RandNo(min, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min) + min
+}
 
+//GenerateReferenceID ....
 func RandomString(strlen int) string {
 	rand.Seed(time.Now().UTC().UnixNano())
 	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

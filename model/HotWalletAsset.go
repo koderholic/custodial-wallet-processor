@@ -1,9 +1,9 @@
-package dto
+package model
 
 import "time"
 
 type HotWalletAsset struct {
-	BaseDTO
+	BaseModel
 	Address                 string     `gorm:"VARCHAR(100);not null" json:"address"`
 	AssetSymbol             string     `gorm:"VARCHAR(30);not null" json:"asset_symbol"`
 	Balance                 int64      `json:"balance"`

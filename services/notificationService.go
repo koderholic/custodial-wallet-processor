@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
-func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.SendEmailRequest, responseData *model.SendEmailResponse, serviceErr interface{}) error {
+func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SendEmailRequest, responseData *dto.SendEmailResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
