@@ -143,7 +143,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAssets dto.UserAsset
+	var userAsset dto.UserAsset
 	var userAddresses []dto.UserAddress
 	responseData := model.Asset{}
 	apiResponse := utility.NewResponse()
@@ -154,6 +154,23 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
 
+	// Ensure assetSymbol is not empty
+	if assetSymbol == "" {
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, "AssetSymbol cannot be empty", apiResponse.PlainError("INPUT_ERR", "AssetSymbol cannot be empty"), controller.Logger)
+		return
+	}
+
+	// Check if asset is supported
+	denomination := dto.Denomination{}
+	if err := controller.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		if err.Error() == utility.SQL_404 {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)), controller.Logger)
+			return
+		}
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+		return
+	}
+
 	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: address}, &userAddresses); err != nil {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
@@ -163,23 +180,23 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &assets); err != nil {
 			continue
 		}
-		userAssets = assets[0]
-		if assetSymbol != "" && userAssets.AssetSymbol == assetSymbol {
+		if assets[0].AssetSymbol == assetSymbol {
+			userAsset = assets[0]
 			break
 		}
 	}
 
-	if userAssets.AssetSymbol == "" {
+	if userAsset.AssetSymbol == "" {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, utility.SQL_404, apiResponse.PlainError("INPUT_ERR", utility.SQL_404), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAssets)
+	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAsset)
 
-	responseData.ID = userAssets.ID
-	responseData.UserID = userAssets.UserID
-	responseData.AssetSymbol = userAssets.AssetSymbol
-	responseData.AvailableBalance = userAssets.AvailableBalance
-	responseData.Decimal = userAssets.Decimal
+	responseData.ID = userAsset.ID
+	responseData.UserID = userAsset.UserID
+	responseData.AssetSymbol = userAsset.AssetSymbol
+	responseData.AvailableBalance = userAsset.AvailableBalance
+	responseData.Decimal = userAsset.Decimal
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
