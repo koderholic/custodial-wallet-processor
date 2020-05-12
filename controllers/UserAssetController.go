@@ -143,9 +143,9 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAsset dto.UserAsset
-	var userAddresses []dto.UserAddress
-	responseData := model.Asset{}
+	var userAsset model.UserAsset
+	var userAddresses []model.UserAddress
+	responseData := dto.Asset{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -161,8 +161,8 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	}
 
 	// Check if asset is supported
-	denomination := dto.Denomination{}
-	if err := controller.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+	denomination := model.Denomination{}
+	if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		if err.Error() == utility.SQL_404 {
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)), controller.Logger)
 			return
@@ -171,7 +171,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
-	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: address}, &userAddresses); err != nil {
+	if err := controller.Repository.FetchByFieldName(&model.UserAddress{Address: address}, &userAddresses); err != nil {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
