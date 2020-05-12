@@ -143,15 +143,9 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-<<<<<<< HEAD
 	var userAsset dto.UserAsset
 	var userAddresses []dto.UserAddress
 	responseData := model.Asset{}
-=======
-	var userAssets model.UserAsset
-	var userAddresses []model.UserAddress
-	responseData := dto.Asset{}
->>>>>>> development
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -160,7 +154,6 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
 
-<<<<<<< HEAD
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, "AssetSymbol cannot be empty", apiResponse.PlainError("INPUT_ERR", "AssetSymbol cannot be empty"), controller.Logger)
@@ -179,9 +172,6 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	}
 
 	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: address}, &userAddresses); err != nil {
-=======
-	if err := controller.Repository.FetchByFieldName(&model.UserAddress{Address: address}, &userAddresses); err != nil {
->>>>>>> development
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
