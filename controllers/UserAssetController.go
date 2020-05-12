@@ -176,12 +176,12 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 	for _, userAddress := range userAddresses {
-		assets := []model.UserAsset{}
-		if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &assets); err != nil {
+		asset := model.UserAsset{}
+		if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &asset); err != nil {
 			continue
 		}
-		if assets[0].AssetSymbol == assetSymbol {
-			userAsset = assets[0]
+		if asset.AssetSymbol == assetSymbol {
+			userAsset = asset
 			break
 		}
 	}
