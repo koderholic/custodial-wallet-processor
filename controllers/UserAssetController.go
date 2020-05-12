@@ -21,8 +21,8 @@ import (
 func (controller UserAssetController) CreateUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
-	requestData := model.CreateUserAssetRequest{}
-	responseData := model.UserAssetResponse{}
+	requestData := dto.CreateUserAssetRequest{}
+	responseData := dto.UserAssetResponse{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreateUserAssets : %+v", requestData)
@@ -36,9 +36,9 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	// Create user asset record for each given denomination
 	for i := 0; i < len(requestData.Assets); i++ {
 		denominationSymbol := requestData.Assets[i]
-		denomination := dto.Denomination{}
+		denomination := model.Denomination{}
 
-		if err := controller.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
+		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
 			if err.Error() == utility.SQL_404 {
 				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
 				return
@@ -47,15 +47,15 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 			return
 		}
 		balance, _ := decimal.NewFromString("0.00")
-		userAssetDTO := dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreateAssets(dto.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetDTO)
+		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
+		_ = controller.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetmodel)
 
-		userAsset := model.Asset{}
-		userAsset.ID = userAssetDTO.ID
-		userAsset.UserID = userAssetDTO.UserID
-		userAsset.AssetSymbol = userAssetDTO.AssetSymbol
-		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
-		userAsset.Decimal = userAssetDTO.Decimal
+		userAsset := dto.Asset{}
+		userAsset.ID = userAssetmodel.ID
+		userAsset.UserID = userAssetmodel.UserID
+		userAsset.AssetSymbol = userAssetmodel.AssetSymbol
+		userAsset.AvailableBalance = userAssetmodel.AvailableBalance
+		userAsset.Decimal = userAssetmodel.Decimal
 
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
@@ -70,8 +70,8 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 // GetUserAssets ... Get all user asset balance
 func (controller UserAssetController) GetUserAssets(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAssets []dto.UserAsset
-	responseData := model.UserAssetResponse{}
+	var userAssets []model.UserAsset
+	responseData := dto.UserAssetResponse{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -82,26 +82,26 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{UserID: userID}, &userAssets); err != nil {
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{UserID: userID}, &userAssets); err != nil {
 		ReturnError(responseWriter, "GetUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", userAssets)
 
 	for i := 0; i < len(userAssets); i++ {
-		userAsset := model.Asset{}
-		userAssetDTO := userAssets[i]
+		userAsset := dto.Asset{}
+		userAssetmodel := userAssets[i]
 
-		userAsset.ID = userAssetDTO.ID
-		userAsset.UserID = userAssetDTO.UserID
-		userAsset.AssetSymbol = userAssetDTO.AssetSymbol
-		userAsset.AvailableBalance = userAssetDTO.AvailableBalance
-		userAsset.Decimal = userAssetDTO.Decimal
+		userAsset.ID = userAssetmodel.ID
+		userAsset.UserID = userAssetmodel.UserID
+		userAsset.AssetSymbol = userAssetmodel.AssetSymbol
+		userAsset.AvailableBalance = userAssetmodel.AvailableBalance
+		userAsset.Decimal = userAssetmodel.Decimal
 
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
 	if len(responseData.Assets) <= 0 {
-		responseData.Assets = []model.Asset{}
+		responseData.Assets = []dto.Asset{}
 	}
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
@@ -111,8 +111,8 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 // GetUserAssetById... Get user asset balance by id
 func (controller UserAssetController) GetUserAssetById(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAssets dto.UserAsset
-	responseData := model.Asset{}
+	var userAssets model.UserAsset
+	responseData := dto.Asset{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -123,7 +123,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssetById : assetID : %+v", assetID)
 
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetID}}, &userAssets); err != nil {
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetID}}, &userAssets); err != nil {
 		ReturnError(responseWriter, "GetUserAssetById", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
@@ -143,9 +143,15 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
+<<<<<<< HEAD
 	var userAsset dto.UserAsset
 	var userAddresses []dto.UserAddress
 	responseData := model.Asset{}
+=======
+	var userAssets model.UserAsset
+	var userAddresses []model.UserAddress
+	responseData := dto.Asset{}
+>>>>>>> development
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
@@ -154,6 +160,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
 
+<<<<<<< HEAD
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, "AssetSymbol cannot be empty", apiResponse.PlainError("INPUT_ERR", "AssetSymbol cannot be empty"), controller.Logger)
@@ -172,12 +179,15 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	}
 
 	if err := controller.Repository.FetchByFieldName(&dto.UserAddress{Address: address}, &userAddresses); err != nil {
+=======
+	if err := controller.Repository.FetchByFieldName(&model.UserAddress{Address: address}, &userAddresses); err != nil {
+>>>>>>> development
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
 	for _, userAddress := range userAddresses {
-		assets := []dto.UserAsset{}
-		if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: userAddress.AssetID}}, &assets); err != nil {
+		assets := []model.UserAsset{}
+		if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &assets); err != nil {
 			continue
 		}
 		if assets[0].AssetSymbol == assetSymbol {
@@ -207,8 +217,8 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 func (controller UserAssetController) CreditUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
-	requestData := model.CreditUserAssetRequest{}
-	responseData := model.TransactionReceipt{}
+	requestData := dto.CreditUserAssetRequest{}
+	responseData := dto.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
@@ -220,12 +230,12 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
+	decodedToken := dto.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and fetc asset
-	assetDetails := dto.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+	assetDetails := model.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
@@ -245,27 +255,27 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
-	if err := tx.Model(assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(assetDetails).Updates(model.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	// Create transaction record
-	transaction := dto.Transaction{
+	transaction := model.Transaction{
 
 		InitiatorID:          decodedToken.ServiceID, // serviceId
 		RecipientID:          assetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
 		Memo:                 requestData.Memo,
-		TransactionType:      dto.TransactionType.OFFCHAIN,
-		TransactionStatus:    dto.TransactionStatus.COMPLETED,
-		TransactionTag:       dto.TransactionTag.CREDIT,
+		TransactionType:      model.TransactionType.OFFCHAIN,
+		TransactionStatus:    model.TransactionStatus.COMPLETED,
+		TransactionTag:       model.TransactionTag.CREDIT,
 		Value:                value,
 		PreviousBalance:      assetDetails.AvailableBalance,
 		AvailableBalance:     currentAvailableBalance,
-		ProcessingType:       dto.ProcessingType.SINGLE,
+		ProcessingType:       model.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          assetDetails.AssetSymbol,
@@ -299,8 +309,8 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
-	requestData := model.OnChainCreditUserAssetRequest{}
-	responseData := model.TransactionReceipt{}
+	requestData := dto.OnChainCreditUserAssetRequest{}
+	responseData := dto.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
@@ -313,12 +323,12 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	}
 
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
+	decodedToken := dto.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and fetc asset
-	assetDetails := dto.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+	assetDetails := model.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
@@ -339,14 +349,14 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
-	if err := tx.Model(&assetDetails).Updates(dto.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
+	if err := tx.Model(&assetDetails).Updates(model.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	//save chain tx model first, get id and use that in Transaction model
-	chainTransaction := dto.ChainTransaction{
+	chainTransaction := model.ChainTransaction{
 		Status:          *requestData.ChainData.Status,
 		TransactionHash: requestData.ChainData.TransactionHash,
 		TransactionFee:  requestData.ChainData.TransactionFee,
@@ -359,27 +369,27 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
-	transactionStatus := dto.TransactionStatus.PENDING
+	transactionStatus := model.TransactionStatus.PENDING
 	if chainTransaction.Status == true {
-		transactionStatus = dto.TransactionStatus.COMPLETED
+		transactionStatus = model.TransactionStatus.COMPLETED
 	} else {
-		transactionStatus = dto.TransactionStatus.REJECTED
+		transactionStatus = model.TransactionStatus.REJECTED
 	}
 	// Create transaction record
-	transaction := dto.Transaction{
+	transaction := model.Transaction{
 
 		InitiatorID:          decodedToken.ServiceID, // serviceId
 		RecipientID:          assetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
 		Memo:                 requestData.Memo,
-		TransactionType:      dto.TransactionType.ONCHAIN,
+		TransactionType:      model.TransactionType.ONCHAIN,
 		TransactionStatus:    transactionStatus,
-		TransactionTag:       dto.TransactionTag.DEPOSIT,
+		TransactionTag:       model.TransactionTag.DEPOSIT,
 		Value:                value,
 		PreviousBalance:      previousBalance,
 		AvailableBalance:     currentAvailableBalance,
-		ProcessingType:       dto.ProcessingType.SINGLE,
+		ProcessingType:       model.ProcessingType.SINGLE,
 		OnChainTxId:          chainTransaction.ID,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
@@ -414,8 +424,8 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 func (controller UserAssetController) InternalTransfer(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
-	requestData := model.InternalTransferRequest{}
-	responseData := model.TransactionReceipt{}
+	requestData := dto.InternalTransferRequest{}
+	responseData := dto.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
@@ -428,17 +438,17 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
+	decodedToken := dto.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and then fetch asset
-	initiatorAssetDetails := dto.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
+	initiatorAssetDetails := model.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
 		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
-	recipientAssetDetails := dto.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
+	recipientAssetDetails := model.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
 		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
@@ -478,33 +488,33 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	}
 
 	// Debit Inititor
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: initiatorAssetDetails.ID}}).Update(dto.UserAsset{AvailableBalance: initiatorCurrentBalance}).Error; err != nil {
+	if err := tx.Model(&model.UserAsset{BaseModel: model.BaseModel{ID: initiatorAssetDetails.ID}}).Update(model.UserAsset{AvailableBalance: initiatorCurrentBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	// Credit recipient
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: recipientAssetDetails.ID}}).Update(dto.UserAsset{AvailableBalance: recipientCurrentBalance}).Error; err != nil {
+	if err := tx.Model(&model.UserAsset{BaseModel: model.BaseModel{ID: recipientAssetDetails.ID}}).Update(model.UserAsset{AvailableBalance: recipientCurrentBalance}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
 	// Create transaction record
-	transaction := dto.Transaction{
+	transaction := model.Transaction{
 		InitiatorID:          initiatorAssetDetails.ID,
 		RecipientID:          recipientAssetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
 		Memo:                 requestData.Memo,
-		TransactionType:      dto.TransactionType.OFFCHAIN,
-		TransactionStatus:    dto.TransactionStatus.COMPLETED,
-		TransactionTag:       dto.TransactionTag.TRANSFER,
+		TransactionType:      model.TransactionType.OFFCHAIN,
+		TransactionStatus:    model.TransactionStatus.COMPLETED,
+		TransactionTag:       model.TransactionTag.TRANSFER,
 		Value:                value,
 		PreviousBalance:      initiatorAssetDetails.AvailableBalance,
 		AvailableBalance:     initiatorCurrentBalance,
-		ProcessingType:       dto.ProcessingType.SINGLE,
+		ProcessingType:       model.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          initiatorAssetDetails.AssetSymbol,
@@ -538,8 +548,8 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 func (controller UserAssetController) DebitUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
-	requestData := model.CreditUserAssetRequest{}
-	responseData := model.TransactionReceipt{}
+	requestData := dto.CreditUserAssetRequest{}
+	responseData := dto.TransactionReceipt{}
 	paymentRef := utility.RandomString(16)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
@@ -552,12 +562,12 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	}
 
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-	decodedToken := model.TokenClaims{}
+	decodedToken := dto.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
 	// ensure asset exists and then fetch asset
-	assetDetails := dto.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: requestData.AssetID}}, &assetDetails); err != nil {
+	assetDetails := model.UserAsset{}
+	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
 		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
@@ -582,26 +592,26 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestData.AssetID, err)), controller.Logger)
 		return
 	}
-	if err := tx.Model(&dto.UserAsset{BaseDTO: dto.BaseDTO{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
+	if err := tx.Model(&model.UserAsset{BaseModel: model.BaseModel{ID: assetDetails.ID}}).Update("available_balance", gorm.Expr("available_balance - ?", value)).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "DebitUserAsset", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 	// Create transaction record
-	transaction := dto.Transaction{
+	transaction := model.Transaction{
 
 		InitiatorID:          decodedToken.ServiceID, // serviceId
 		RecipientID:          assetDetails.ID,
 		TransactionReference: requestData.TransactionReference,
 		PaymentReference:     paymentRef,
 		Memo:                 requestData.Memo,
-		TransactionType:      dto.TransactionType.OFFCHAIN,
-		TransactionStatus:    dto.TransactionStatus.COMPLETED,
-		TransactionTag:       dto.TransactionTag.DEBIT,
+		TransactionType:      model.TransactionType.OFFCHAIN,
+		TransactionStatus:    model.TransactionStatus.COMPLETED,
+		TransactionTag:       model.TransactionTag.DEBIT,
 		Value:                value,
 		PreviousBalance:      assetDetails.AvailableBalance,
 		AvailableBalance:     currentAvailableBalance,
-		ProcessingType:       dto.ProcessingType.SINGLE,
+		ProcessingType:       model.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          assetDetails.AssetSymbol,

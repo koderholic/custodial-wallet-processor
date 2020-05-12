@@ -19,6 +19,7 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	Delete(model interface{}) error
+	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -75,7 +76,7 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 }
 
 func (repo *BaseRepository) FetchSweepCandidates(model interface{}) error {
-	sweepCandidatesQuery := "SELECT * FROM transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0)"
+	sweepCandidatesQuery := "SELECT * FROM walletAdapter.transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0)"
 	if err := repo.DB.Raw(sweepCandidatesQuery).Scan(model).Error; err != nil {
 		repo.Logger.Error("Error when fetching sweep status : %s", err)
 		return utility.AppError{

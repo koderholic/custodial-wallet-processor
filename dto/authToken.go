@@ -1,4 +1,4 @@
-package model
+package dto
 
 // AuthTokenRequestBody ...
 type AuthTokenRequestBody struct {

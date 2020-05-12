@@ -1,11 +1,12 @@
-package dto
+package model
 
 // Denomination ... DTO definition for supported crypto assets on the system
 type Denomination struct {
-	BaseDTO
+	BaseModel
 	Name                string         `json:"name,omitempty"`
 	AssetSymbol         string         `gorm:"unique_index;not null" json:"asset_symbol,omitempty"`
 	CoinType            int64          `json:"coin_type,omitempty"`
+	RequiresMemo        bool           `gorm:"requires_memo" json:"requiresMemo,omitempty"`
 	Decimal             int            `json:"decimal,omitempty"`
 	IsEnabled           bool           `gorm:"default:1;index:isEnabled" json:"is_enabled,omitempty"`
 	Transactions        []Transaction  `json:"transactions,omitempty"`

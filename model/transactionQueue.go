@@ -1,4 +1,4 @@
-package dto
+package model
 
 import (
 	uuid "github.com/satori/go.uuid"
@@ -6,7 +6,7 @@ import (
 
 //TransactionQueue ... This is the transaction DTO for all queued transactions for processing
 type TransactionQueue struct {
-	BaseDTO
+	BaseModel
 	Sender            string    `json:"sender,omitempty"`
 	Recipient         string    `gorm:"not null" json:"recipient,omitempty"`
 	Value             int64     `gorm:"type:bigint;not null" json:"value,omitempty"`
