@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
 // AcquireLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
+func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -37,7 +37,7 @@ func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 }
 
 // RenewLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.LockerServiceRequest, responseData *model.LockerServiceResponse, serviceErr interface{}) error {
+func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -65,7 +65,7 @@ func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config
 }
 
 // ReleaseLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func ReleaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.LockReleaseRequest, responseData *model.ServicesRequestSuccess, serviceErr interface{}) error {
+func ReleaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.LockReleaseRequest, responseData *dto.ServicesRequestSuccess, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {

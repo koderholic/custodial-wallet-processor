@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
 // withdrawToHotWallet ... Calls order-book service to withdraw to specified hot wallet address
-func WithdrawToHotWallet(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData model.WitdrawToHotWalletRequest, responseData *model.WitdrawToHotWalletResponse, serviceErr interface{}) error {
+func WithdrawToHotWallet(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.WitdrawToHotWalletRequest, responseData *dto.WitdrawToHotWalletResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -37,7 +37,7 @@ func WithdrawToHotWallet(cache *utility.MemoryCache, logger *utility.Logger, con
 }
 
 // withdrawToHotWallet ... Calls order-book service to get asset details
-func GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, responseData *model.BinanceAssetBalances, serviceErr interface{}) error {
+func GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, responseData *dto.BinanceAssetBalances, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -65,7 +65,7 @@ func GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, logger *utility.
 }
 
 // withdrawToHotWallet ... Calls order-book service to get asset details
-func GetDepositAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, coin string, network string, responseData *model.DepositAddressResponse, serviceErr interface{}) error {
+func GetDepositAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, coin string, network string, responseData *dto.DepositAddressResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {

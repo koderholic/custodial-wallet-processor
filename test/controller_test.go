@@ -18,6 +18,7 @@ import (
 	"wallet-adapter/dto"
 	"wallet-adapter/middlewares"
 	"wallet-adapter/model"
+	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
 	"github.com/stretchr/testify/require"
@@ -146,7 +147,7 @@ func (s *Suite) SetupTest() {
 }
 
 func (s *Suite) TearDownTest() {
-	s.DB.DropTableIfExists(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserAsset{}, &dto.HotWalletAsset{}, &dto.TransactionQueue{})
+	s.DB.DropTableIfExists(&model.Denomination{}, &model.BatchRequest{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{})
 }
 
 // RegisterRoutes ...
@@ -184,21 +185,21 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 
 // RunDbMigrations ... This creates corresponding tables for dtos on the db for testing
 func (s *Suite) RunMigration() {
-	s.DB.AutoMigrate(&dto.Denomination{}, &dto.BatchRequest{}, &dto.ChainTransaction{}, &dto.Transaction{}, &dto.UserAddress{}, &dto.UserAsset{}, &dto.HotWalletAsset{}, &dto.TransactionQueue{})
+	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{})
 }
 
 // DBSeeder .. This seeds supported assets into the database for testing
 func (s *Suite) DBSeeder() {
 
-	assets := []dto.Denomination{
-		dto.Denomination{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8},
-		dto.Denomination{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8},
-		dto.Denomination{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18},
-		dto.Denomination{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8},
+	assets := []model.Denomination{
+		model.Denomination{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8},
+		model.Denomination{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8},
+		model.Denomination{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18},
+		model.Denomination{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8},
 	}
 
 	for _, asset := range assets {
-		if err := s.DB.FirstOrCreate(&asset, dto.Denomination{AssetSymbol: asset.AssetSymbol}).Error; err != nil {
+		if err := s.DB.FirstOrCreate(&asset, model.Denomination{AssetSymbol: asset.AssetSymbol}).Error; err != nil {
 			s.Logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
 		}
 	}
@@ -218,7 +219,7 @@ func (s *Suite) Test_CreateUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 
 	if response.Code != http.StatusCreated || len(createAssetResponse.Assets) != 3 {
@@ -239,7 +240,7 @@ func (s *Suite) Test_CreateUserBUSDAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 
 	if response.Code != http.StatusCreated || len(createAssetResponse.Assets) != 1 {
@@ -262,7 +263,7 @@ func (s *Suite) Test_GetUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse := model.UserAssetResponse{}
+	getAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 
 	if response.Code != http.StatusOK || len(getAssetResponse.Assets) != 3 {
@@ -279,7 +280,7 @@ func (s *Suite) Test_GetUserAssetById() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -294,7 +295,7 @@ func (s *Suite) Test_GetUserAssetById() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse := model.Asset{}
+	getAssetResponse := dto.Asset{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 
 	fmt.Printf("getAssetResponse >> %+v", getAssetResponse.UserID.String())
@@ -313,7 +314,7 @@ func (s *Suite) Test_GetUserAssetAddress() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -348,6 +349,10 @@ func (s *Suite) Test_GetUserAssetAddress() {
 }
 
 func (s *Suite) Test_GetUserAssetAddrReturnsSameAddrForSameCoinType() {
+	if err := services.InitHotWallet(authCache, s.DB, s.Logger, s.Config); err != nil {
+		require.NoError(s.T(), err)
+	}
+
 	createAssetInputData := []byte(`{"assets" : ["BNB","BUSD"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
 	createAssetRequest.Header.Set("x-auth-token", authToken)
@@ -357,7 +362,7 @@ func (s *Suite) Test_GetUserAssetAddrReturnsSameAddrForSameCoinType() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -374,6 +379,7 @@ func (s *Suite) Test_GetUserAssetAddrReturnsSameAddrForSameCoinType() {
 	}
 	getAsset1AddressResponse := map[string]string{}
 	err = json.Unmarshal(resBody, &getAsset1AddressResponse)
+	fmt.Printf("getAsset1AddressResponse >> %+v", getAsset1AddressResponse)
 	//  call to get address for asset 2
 	getAsset2AddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[1].ID), bytes.NewBuffer([]byte("")))
 	getAsset2AddressRequest.Header.Set("x-auth-token", authToken)
@@ -385,6 +391,7 @@ func (s *Suite) Test_GetUserAssetAddrReturnsSameAddrForSameCoinType() {
 	}
 	getAsset2AddressResponse := map[string]string{}
 	err = json.Unmarshal(resBody2, &getAsset2AddressResponse)
+	fmt.Printf("getAsset2AddressResponse >> %+v", getAsset2AddressResponse)
 
 	if response.Code != http.StatusOK || response2.Code != http.StatusOK || getAsset1AddressResponse["address"] == "" || getAsset1AddressResponse["address"] != getAsset2AddressResponse["address"] {
 		s.T().Errorf("Expected response code to be %d and asset address to not be empty and the address of same coinType to be the same. Got responseCode of %d and address of %s and the equality of both address to be %t\n", http.StatusOK, response.Code, getAsset1AddressResponse["address"], getAsset1AddressResponse["address"] == getAsset2AddressResponse["address"])
@@ -401,7 +408,7 @@ func (s *Suite) Test_GetUserAssetByAddress() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -426,7 +433,7 @@ func (s *Suite) Test_GetUserAssetByAddress() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse := model.Asset{}
+	getAssetResponse := dto.Asset{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 
 	if response.Code != http.StatusBadRequest {
@@ -443,7 +450,7 @@ func (s *Suite) Test_CreditUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -464,7 +471,7 @@ func (s *Suite) Test_CreditUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse := model.UserAssetResponse{}
+	getAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 	if len(getAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("No assests returned"))
@@ -485,7 +492,7 @@ func (s *Suite) Test_DebitUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -512,7 +519,7 @@ func (s *Suite) Test_DebitUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse := model.UserAssetResponse{}
+	getAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 	if len(getAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("No assests returned"))
@@ -532,7 +539,7 @@ func (s *Suite) Test_ExternalTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -573,10 +580,10 @@ func (s *Suite) Test_ExternalTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetTransactionResponse := model.TransactionResponse{}
+	getAssetTransactionResponse := dto.TransactionResponse{}
 	err = json.Unmarshal(resBody, &getAssetTransactionResponse)
 
-	queuedTransaction := dto.TransactionQueue{}
+	queuedTransaction := model.TransactionQueue{}
 	s.DB.Raw("SELECT * from transaction_queues where transaction_id = ?", getAssetTransactionResponse.ID).Scan(&queuedTransaction)
 
 	if response.Code != http.StatusOK || getAssetTransactionResponse.RecipientID.String() != createAssetResponse.Assets[0].ID.String() || queuedTransaction.Recipient != "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda" {
@@ -594,7 +601,7 @@ func (s *Suite) Test_InternalAssetTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse1 := model.UserAssetResponse{}
+	createAssetResponse1 := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse1)
 	if createResponse1.Code != http.StatusCreated || len(createAssetResponse1.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -609,7 +616,7 @@ func (s *Suite) Test_InternalAssetTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse2 := model.UserAssetResponse{}
+	createAssetResponse2 := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse2)
 	if createResponse1.Code != http.StatusCreated || len(createAssetResponse2.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -639,7 +646,7 @@ func (s *Suite) Test_InternalAssetTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse1 := model.Asset{}
+	getAssetResponse1 := dto.Asset{}
 	err = json.Unmarshal(resBody, &getAssetResponse1)
 	// Get asset 2
 	getAssetRequest2, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-id/%s", recipient.ID), bytes.NewBuffer([]byte("")))
@@ -650,7 +657,7 @@ func (s *Suite) Test_InternalAssetTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse2 := model.Asset{}
+	getAssetResponse2 := dto.Asset{}
 	err = json.Unmarshal(resBody, &getAssetResponse2)
 
 	if response1.Code != http.StatusOK || response2.Code != http.StatusOK || getAssetResponse1.AvailableBalance != "150.21" || getAssetResponse2.AvailableBalance != "50.09" {
@@ -668,7 +675,7 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -695,7 +702,7 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetResponse := model.UserAssetResponse{}
+	getAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 	fmt.Printf("getAssetResponse >>> %+v", getAssetResponse)
 
@@ -718,7 +725,7 @@ func (s *Suite) Test_ProcessTransfer() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -771,7 +778,7 @@ func (s *Suite) Test_GetTransactionByRef() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -795,7 +802,7 @@ func (s *Suite) Test_GetTransactionByRef() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetTransactionResponse := model.TransactionResponse{}
+	getAssetTransactionResponse := dto.TransactionResponse{}
 	err = json.Unmarshal(resBody, &getAssetTransactionResponse)
 
 	if response.Code != http.StatusOK || getAssetTransactionResponse.Value != "200.3" || getAssetTransactionResponse.TransactionStatus != "COMPLETED" {
@@ -812,7 +819,7 @@ func (s *Suite) Test_GetTransactionsByUserId() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	createAssetResponse := model.UserAssetResponse{}
+	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
@@ -836,7 +843,7 @@ func (s *Suite) Test_GetTransactionsByUserId() {
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
-	getAssetTransactionsResponse := model.TransactionListResponse{}
+	getAssetTransactionsResponse := dto.TransactionListResponse{}
 	err = json.Unmarshal(resBody, &getAssetTransactionsResponse)
 
 	if response.Code != http.StatusOK || len(getAssetTransactionsResponse.Transactions) < 1 {

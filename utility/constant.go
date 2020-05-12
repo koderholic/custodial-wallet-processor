@@ -29,6 +29,8 @@ const (
 	SWEEPPROCESS              = "SWEEP"
 	SWEEPMEMOBNB              = "ADCXADF1829038FGX"
 	BNBTOKENSLIP              = 714
+	ADDRESS_VERSION_V1        = "VERSION_1"
+	ADDRESS_VERSION_V2        = "VERSION_2"
 )
 
 var (

@@ -1,14 +1,14 @@
 package middlewares
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 	"net/http"
 	"strings"
-	"context"
+	"time"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
@@ -40,7 +40,6 @@ func (m *Middleware) LogAPIRequests() *Middleware {
 
 	return &Middleware{logger: m.logger, config: m.config, next: nextHandler}
 }
-
 
 // Timeout cancels a slow request after a given duration
 func (m *Middleware) Timeout(duration time.Duration) *Middleware {
@@ -86,7 +85,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 		}
 
 		authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
-		tokenClaims := model.TokenClaims{}
+		tokenClaims := dto.TokenClaims{}
 
 		if authToken == "" {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error %s", utility.EMPTY_AUTH_KEY))
@@ -104,7 +103,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			return
 		}
 
-		if tokenClaims.TokenType != model.JWT_TOKEN_TYPE.SERVICE {
+		if tokenClaims.TokenType != dto.JWT_TOKEN_TYPE.SERVICE {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Resource not accessible by non-service token type"))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
@@ -112,7 +111,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			return
 		}
 
-		if tokenClaims.ISS != model.JWT_ISSUER {
+		if tokenClaims.ISS != dto.JWT_ISSUER {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Unknown Token Issuer"))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
