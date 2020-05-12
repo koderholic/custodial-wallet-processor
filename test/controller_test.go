@@ -436,8 +436,8 @@ func (s *Suite) Test_GetUserAssetByAddress() {
 	getAssetResponse := dto.Asset{}
 	err = json.Unmarshal(resBody, &getAssetResponse)
 
-	if response.Code != http.StatusOK || getAssetResponse.ID != createAssetResponse.Assets[0].ID {
-		s.T().Errorf("Expected response code to be %d and asset ID to be %s. Got responseCode of %d and %s\n", http.StatusOK, createAssetResponse.Assets[0].ID.String(), response.Code, getAssetResponse.ID.String())
+	if response.Code != http.StatusBadRequest {
+		s.T().Errorf("Expected response code to be %d. Got responseCode of %d\n", http.StatusBadRequest, response.Code)
 	}
 }
 func (s *Suite) Test_CreditUserAsset() {
