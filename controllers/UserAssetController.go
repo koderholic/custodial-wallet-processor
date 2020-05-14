@@ -8,6 +8,7 @@ import (
 	"time"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
+	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
 	"github.com/jinzhu/gorm"
@@ -144,13 +145,13 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var userAsset model.UserAsset
-	var userAddresses []model.UserAddress
 	responseData := dto.Asset{}
 	apiResponse := utility.NewResponse()
 
 	routeParams := mux.Vars(requestReader)
 	address := routeParams["address"]
 	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
+	userAssetMemo := requestReader.URL.Query().Get("userAssetMemo")
 
 	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
 
@@ -171,19 +172,21 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
-	if err := controller.Repository.FetchByFieldName(&model.UserAddress{Address: address}, &userAddresses); err != nil {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+	// Ensure Memos are provided for v2_addresses
+	IsV2Address, err := services.CheckV2Address(controller.Repository, address)
+	if err != nil {
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
 		return
 	}
-	for _, userAddress := range userAddresses {
-		asset := model.UserAsset{}
-		if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &asset); err != nil {
-			continue
+
+	if IsV2Address {
+		if userAssetMemo == "" {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.EMPTY_MEMO_ERR), controller.Logger)
+			return
 		}
-		if asset.AssetSymbol == assetSymbol {
-			userAsset = asset
-			break
-		}
+		userAsset, err = services.GetAssetForV2Address(controller.Repository, address, assetSymbol, userAssetMemo)
+	} else {
+		userAsset, err = services.GetAssetForV1Address(controller.Repository, address, assetSymbol)
 	}
 
 	if userAsset.AssetSymbol == "" {

@@ -32,6 +32,7 @@ const (
 	ADDRESS_VERSION_V1        = "VERSION_1"
 	ADDRESS_VERSION_V2        = "VERSION_2"
 	SHARED_ADDRESS_ID         = "56234b22-6f1b-4e47-b9bf-feaa68c0ae99"
+	EMPTY_MEMO_ERR            = "Memo is required"
 )
 
 var (

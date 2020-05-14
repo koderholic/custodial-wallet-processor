@@ -141,3 +141,59 @@ func GenerateMemo(repository database.IUserAssetRepository, userId uuid.UUID) (s
 	// Generates a 9 digit memo
 	return userMemo.Memo, nil
 }
+
+func CheckV2Address(repository database.IUserAssetRepository, address string) (bool, error) {
+	sharedAddress := model.SharedAddress{}
+
+	if err := repository.GetByFieldName(&model.SharedAddress{Address: address}, &sharedAddress); err != nil {
+		if err.Error() == utility.SQL_404 {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+
+}
+
+func GetAssetForV1Address(repository database.IUserAssetRepository, address string, assetSymbol string) (model.UserAsset, error) {
+	var userAsset model.UserAsset
+	var userAddresses []model.UserAddress
+
+	if err := repository.FetchByFieldName(&model.UserAddress{Address: address}, &userAddresses); err != nil {
+		return model.UserAsset{}, err
+	}
+
+	userAsset = findMatchingAsset(repository, userAddresses, assetSymbol)
+
+	return userAsset, nil
+}
+
+func GetAssetForV2Address(repository database.IUserAssetRepository, address string, assetSymbol string, memo string) (model.UserAsset, error) {
+	var userAsset model.UserAsset
+	var userAddresses []model.UserAddress
+
+	if err := repository.FetchByFieldName(&model.UserAddress{V2Address: address, Memo: memo}, &userAddresses); err != nil {
+		return model.UserAsset{}, err
+	}
+
+	userAsset = findMatchingAsset(repository, userAddresses, assetSymbol)
+
+	return userAsset, nil
+}
+
+func findMatchingAsset(repository database.IUserAssetRepository, userAddresses []model.UserAddress, assetSymbol string) model.UserAsset {
+	userAsset := model.UserAsset{}
+	for _, userAddress := range userAddresses {
+		asset := model.UserAsset{}
+		if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &asset); err != nil {
+			continue
+		}
+		if asset.AssetSymbol == assetSymbol {
+			userAsset = asset
+			break
+		}
+	}
+
+	return userAsset
+}

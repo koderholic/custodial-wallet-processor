@@ -1,9 +1,10 @@
 package services
 
 import (
-	"github.com/jinzhu/gorm"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+
+	"github.com/jinzhu/gorm"
 )
 
 func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger) {
