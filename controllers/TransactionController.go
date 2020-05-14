@@ -48,7 +48,7 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 		} else {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 		}
-		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)))
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transaction with transactionReference = %s", utility.GetSQLErr(err), transactionRef)))
 		return
 	}
 
@@ -177,7 +177,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// Get asset associated with the debit reference
 	debitReferenceAsset := model.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: debitReferenceTransaction.RecipientID}}, &debitReferenceAsset); err != nil {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get debitReferenceAsset with id = %s", utility.GetSQLErr(err), debitReferenceTransaction.RecipientID)), controller.Logger)
 		return
 	}
 
@@ -289,17 +289,17 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	transactionQueueDetails := model.TransactionQueue{}
 	err := controller.Repository.Get(&model.ChainTransaction{TransactionHash: requestData.TransactionHash}, &chainTransaction)
 	if err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get chainTransaction with transactionHash = %s", utility.GetSQLErr(err), requestData.TransactionHash)), controller.Logger)
 		return
 	}
 	err = controller.Repository.Get(&model.Transaction{OnChainTxId: chainTransaction.ID}, &transactionDetails)
 	if err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transactionDetails with onChainTxId = %s", utility.GetSQLErr(err), chainTransaction.ID)), controller.Logger)
 		return
 	}
 	err = controller.Repository.GetByFieldName(&model.TransactionQueue{TransactionId: transactionDetails.ID}, &transactionQueueDetails)
 	if err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transactionQueueDetails with transactionId = %s", utility.GetSQLErr(err), transactionDetails.ID)), controller.Logger)
 		return
 	}
 

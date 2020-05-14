@@ -91,7 +91,7 @@ func ReturnError(responseWriter http.ResponseWriter, executingMethod string, sta
 			status = http.StatusNotFound
 		}
 	}
-	logger.Error("Outgoing response to %s request %+v", executingMethod, err)
+	logger.Error("Outgoing response to %s : %+v. Additional context : %s", executingMethod, response, err)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(status)
 	json.NewEncoder(responseWriter).Encode(response)

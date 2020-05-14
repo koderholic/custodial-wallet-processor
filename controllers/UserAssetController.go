@@ -84,7 +84,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
 
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{UserID: userID}, &userAssets); err != nil {
-		ReturnError(responseWriter, "GetUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAssets with userId = %s", utility.GetSQLErr(err.(utility.AppError)), userID)), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", userAssets)
@@ -168,7 +168,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)), controller.Logger)
 			return
 		}
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s, for get denomination with assetSymbol = %s", utility.GetSQLErr(err.(utility.AppError)), assetSymbol)), controller.Logger)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	// ensure asset exists and fetc asset
 	assetDetails := model.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetDetails with id = %s", utility.GetSQLErr(err), requestData.AssetID)), controller.Logger)
 		return
 	}
 
@@ -322,7 +322,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	// ensure asset exists and fetc asset
 	assetDetails := model.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetDetails with id = %s", utility.GetSQLErr(err), requestData.AssetID)), controller.Logger)
 		return
 	}
 
@@ -437,12 +437,12 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	// ensure asset exists and then fetch asset
 	initiatorAssetDetails := model.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.InitiatorAssetId}}, &initiatorAssetDetails); err != nil {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get initiatorAssetDetails with id = %s", utility.GetSQLErr(err), requestData.InitiatorAssetId)), controller.Logger)
 		return
 	}
 	recipientAssetDetails := model.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.RecipientAssetId}}, &recipientAssetDetails); err != nil {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get initiatorAssetDetails with id = %s", utility.GetSQLErr(err), requestData.RecipientAssetId)), controller.Logger)
 		return
 	}
 
@@ -561,7 +561,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	// ensure asset exists and then fetch asset
 	assetDetails := model.UserAsset{}
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetDetails with id = %s", utility.GetSQLErr(err), requestData.AssetID)), controller.Logger)
 		return
 	}
 
