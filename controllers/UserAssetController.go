@@ -190,7 +190,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	}
 
 	if userAsset.AssetSymbol == "" {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, utility.SQL_404, apiResponse.PlainError("INPUT_ERR", utility.SQL_404), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, utility.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAsset)
