@@ -80,21 +80,21 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 		if err != nil {
 			return "", err
 		}
+		userAddress.AssetID = userAsset.ID
 		userAddress.Address = assetAddress.Address
 		if !isExist {
 			address, err := GenerateV1Address(logger, cache, config, userAsset)
 			if err != nil {
 				return "", err
 			}
-			userAddress.AssetID = userAsset.ID
 			userAddress.Address = address
-
-			if createErr := repository.Create(&userAddress); createErr != nil {
-				logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-				return "", errors.New(utility.GetSQLErr(err))
-			}
-
 		}
+
+		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: userAddress.AssetID}, &userAddress, model.UserAddress{Address: userAddress.Address}); err != nil {
+			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
+			return "", errors.New(utility.GetSQLErr(err))
+		}
+
 	} else if err != nil {
 		return "", err
 	}
@@ -115,9 +115,9 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 		userAddress.V2Address = assetAddress.Address
 		userAddress.Memo = assetAddress.Memo
 
-		if createErr := repository.Create(&userAddress); createErr != nil {
+		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo}); createErr != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-			return assetAddress, errors.New(utility.GetSQLErr(err))
+			return dto.AddressWithMemo{}, errors.New(utility.GetSQLErr(err))
 		}
 		userAddress.V2Address = assetAddress.Address
 		userAddress.Memo = assetAddress.Memo

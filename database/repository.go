@@ -20,6 +20,7 @@ type IRepository interface {
 	Update(id interface{}, model interface{}) error
 	Delete(model interface{}) error
 	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
+	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -165,6 +166,18 @@ func (repo *BaseRepository) Delete(model interface{}) error {
 func (repo *BaseRepository) FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error {
 	if err := repo.DB.FirstOrCreate(model, checkExistOrUpdate).Error; err != nil {
 		repo.Logger.Error("Error with repository FindOrCreateUserAsset : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// UpdateOrCreate ...
+func (repo *BaseRepository) UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error {
+	if err := repo.DB.Where(checkExistOrUpdate).Assign(update).FirstOrCreate(model).Error; err != nil {
+		repo.Logger.Error("Error with repository UpdateOrCreate : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
