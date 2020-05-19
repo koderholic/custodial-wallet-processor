@@ -350,10 +350,11 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	//save chain tx model first, get id and use that in Transaction model
 	chainTransaction := model.ChainTransaction{
-		Status:          *requestData.ChainData.Status,
-		TransactionHash: requestData.ChainData.TransactionHash,
-		TransactionFee:  requestData.ChainData.TransactionFee,
-		BlockHeight:     requestData.ChainData.BlockHeight,
+		Status:           *requestData.ChainData.Status,
+		TransactionHash:  requestData.ChainData.TransactionHash,
+		TransactionFee:   requestData.ChainData.TransactionFee,
+		BlockHeight:      requestData.ChainData.BlockHeight,
+		RecipientAddress: requestData.ChainData.RecipientAddress,
 	}
 
 	if err := tx.Create(&chainTransaction).Error; err != nil {

@@ -521,6 +521,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
 		TransactionHash: broadcastToChainResponse.TransactionHash,
+		RecipientAddress : transaction.Recipient,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		return err

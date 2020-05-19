@@ -687,8 +687,8 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 	creditAssetRequest.Header.Set("x-auth-token", authToken)
 	creditAssetResponse := httptest.NewRecorder()
 	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
-
-	onchainCreditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 3.441122091,"transactionReference" : "ra29bv7y111p945e17516","memo" :"Test credit transaction","chainData": {"status": true,"transactionHash": "string","transactionFee": "string","blockHeight": 0}}`, createAssetResponse.Assets[0].ID))
+	
+	onchainCreditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 3.441122091,"transactionReference" : "ra29bv7y111p945e17516","memo" :"Test credit transaction","chainData": {"status": true,"transactionHash": "string","transactionFee": "string","blockHeight": 0, "recipientAddress": "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2"}}`, createAssetResponse.Assets[0].ID))
 	onchainCreditAssetRequest, _ := http.NewRequest("POST", test.OnchainDepositEndpoint, bytes.NewBuffer(onchainCreditAssetInputData))
 	onchainCreditAssetRequest.Header.Set("x-auth-token", authToken)
 	onchainCreditAssetResponse := httptest.NewRecorder()
