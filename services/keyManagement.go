@@ -51,6 +51,8 @@ func GenerateAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	case "ETH":
 		subscriptionRequestData.Subscriptions[config.EthSlipValue] = addressArray
 		break
+	case "BUSD":
+		fallthrough
 	case "BNB":
 		subscriptionRequestData.Subscriptions[config.BnbSlipValue] = addressArray
 		break
