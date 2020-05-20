@@ -55,35 +55,28 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			}
 			return
 		}
-		if recipientAsset.AssetSymbol == "BTC" {
-			//get recipient address
-			recipientAddress := model.UserAddress{}
-			if err := repository.Get(model.UserAddress{AssetID: assetId}, &recipientAddress); err != nil {
-				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-				if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
-					logger.Error("Could not release lock", err)
-					return
-				}
+		if recipientAsset.AssetSymbol == utility.BTC {
+			//get recipient address for each transaction
+			transactionsPerRecipientAddress, err := groupTxByAddress(assetTransactions, repository, logger, recipientAsset)
+			if err != nil {
 				return
 			}
-			btcAssets = append(btcAssets, recipientAddress.Address)
+			for address, _ := range transactionsPerRecipientAddress {
+				btcAssets = append(btcAssets, address)
+			}
 			btcAssetTransactionsToSweep = append(btcAssetTransactionsToSweep, assetTransactions...)
 			//skip futher processing for this asset, will be included a part of batch btc processing
 			continue
 		}
-		//Get total sum to be swept for this assetId
-		var sum = int64(0)
-		var count = 0
-		for _, tx := range assetTransactions {
-			//convert to native units
-			balance, _ := strconv.ParseFloat(tx.Value, 64)
-			denominationDecimal := float64(recipientAsset.Decimal)
-			scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
-			sum = sum + scaledBalance
-			count++
+		transactionsPerRecipientAddress, err := groupTxByAddress(assetTransactions, repository, logger, recipientAsset)
+		if err != nil {
+			return
 		}
-		if err := sweepPerAssetId(cache, logger, config, repository, serviceErr, assetTransactions, sum); err != nil {
-			continue
+		for address, addressTransactions := range transactionsPerRecipientAddress {
+			sum := calculateSum(addressTransactions, recipientAsset)
+			if err := sweepPerAssetIdPerAddress(cache, logger, config, repository, serviceErr, assetTransactions, sum, address); err != nil {
+				continue
+			}
 		}
 	}
 	//batch process btc
@@ -102,6 +95,19 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		return
 	}
 	logger.Info("Sweep operation ends successfully, lock released")
+}
+
+func calculateSum(addressTransactions []model.Transaction, recipientAsset model.UserAsset) int64 {
+	//Get total sum to be swept for this assetId address
+	var sum = int64(0)
+	for _, tx := range addressTransactions {
+		//convert to native units
+		balance, _ := strconv.ParseFloat(tx.Value, 64)
+		denominationDecimal := float64(recipientAsset.Decimal)
+		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
+		sum = sum + scaledBalance
+	}
+	return sum
 }
 
 func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, btcAssets []string, btcAssetTransactionsToSweep []model.Transaction) error {
@@ -139,18 +145,12 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 }
 
-func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, sum int64) error {
+func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, sum int64, recipientAddress string) error {
 	//need recipient Asset to get recipient address
 	recipientAsset := model.UserAsset{}
 	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
-		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return err
-	}
-	//get recipient address
-	recipientAddress := model.UserAddress{}
-	if err := repository.Get(model.UserAddress{AssetID: assetTransactions[0].RecipientID}, &recipientAddress); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return err
 	}
@@ -163,6 +163,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 		logger.Error("Error response from sweep process : %+v while trying to denomination of float asset", err)
 		return err
 	}
+
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != "BNB" {
 		//Check that fee is below X% of the total value.
@@ -179,7 +180,7 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 
 	// Calls key-management to sign transaction
 	signTransactionRequest := dto.SignTransactionRequest{
-		FromAddress: recipientAddress.Address,
+		FromAddress: recipientAddress,
 		ToAddress:   floatAccount.Address,
 		Amount:      0,
 		AssetSymbol: recipientAsset.AssetSymbol,
@@ -203,6 +204,37 @@ func sweepPerAssetId(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
+func groupTxByAddress(assetTransactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger, recipientAsset model.UserAsset) (map[string][]model.Transaction, error) {
+	//loop over assetTransactions, get the chainTx and group by address
+	//group transactions by addresses
+	transactionsPerRecipientAddress := make(map[string][]model.Transaction)
+	for _, tx := range assetTransactions {
+		chainTransaction := model.ChainTransaction{}
+		err := repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: tx.OnChainTxId}}, &chainTransaction)
+		if err != nil {
+			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v cant fetch chainTransaction for depsoit tx",
+				err, recipientAsset.ID)
+			return nil, err
+		}
+		if chainTransaction.RecipientAddress != "" {
+			transactionsPerRecipientAddress[chainTransaction.RecipientAddress] = append(transactionsPerRecipientAddress[chainTransaction.RecipientAddress], tx)
+		} else {
+			//Case when the chainTransaction.RecipientAddress is not set and we need to try to sweep all available address types
+			//get allrecipient address
+			recipientAddresses := []model.UserAddress{}
+			if err := repository.Get(model.UserAddress{AssetID: recipientAsset.ID}, &recipientAddresses); err != nil {
+				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+				return nil, err
+			}
+			for _, address := range recipientAddresses {
+				transactionsPerRecipientAddress[address.Address] = append(transactionsPerRecipientAddress[address.Address], tx)
+			}
+		}
+
+	}
+	return transactionsPerRecipientAddress, nil
+}
+
 func feeThresholdCheck(fee int64, sum int64, config Config.Data, logger *utility.Logger, recipientAsset model.UserAsset) error {
 	if (((fee) / sum) * 100) > config.SweepFeePercentageThreshold {
 		logger.Error("Skipping asset, %+v ratio of fee to sum for this asset with asset symbol %+v is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %+v", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold)
@@ -211,11 +243,11 @@ func feeThresholdCheck(fee int64, sum int64, config Config.Data, logger *utility
 	return nil
 }
 
-func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress model.UserAddress, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, recipientAsset model.UserAsset, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
+func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, recipientAsset model.UserAsset, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
 
 	request := dto.OnchainBalanceRequest{
 		AssetSymbol: denomination.MainCoinAssetSymbol,
-		Address:     recipientAddress.Address,
+		Address:     recipientAddress,
 	}
 	mainCoinOnChainBalanceResponse := dto.OnchainBalanceResponse{}
 	services.GetOnchainBalance(cache, logger, config, request, &mainCoinOnChainBalanceResponse, serviceErr)
@@ -225,7 +257,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 		// Calls key-management to sign sweep fee transaction
 		signTransactionRequest := dto.SignTransactionRequest{
 			FromAddress: floatAccount.Address,
-			ToAddress:   recipientAddress.Address,
+			ToAddress:   recipientAddress,
 			Amount:      denomination.SweepFee,
 			AssetSymbol: denomination.MainCoinAssetSymbol,
 			//this currently only supports coins that supports Memo, ETH will not be ignored
