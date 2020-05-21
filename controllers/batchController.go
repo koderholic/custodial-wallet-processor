@@ -53,8 +53,8 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 
 		// Prepare batched transactions for signing
 		batchedRecipients := []dto.BatchRecipients{}
-		batchedTransactionsId := []uuid.UUID{}
-		queuedBatchedTransactionsId := []uuid.UUID{}
+		batchedTransactionsIds := []uuid.UUID{}
+		queuedBatchedTransactionsIds := []uuid.UUID{}
 		floatAccount, err := services.GetHotWalletAddressFor(controller.Cache, controller.Repository.Db(), controller.Logger, controller.Config, utility.BTC)
 		if err != nil {
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
