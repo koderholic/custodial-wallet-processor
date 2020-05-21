@@ -12,6 +12,7 @@ type BTHStatus struct {
 var (
 	// BatchStatus ...
 	BatchStatus = BTHStatus{
+		WAIT_MODE: "AWAITING_TRANSACTIONS"
 		PENDING:    "PENDING",
 		PROCESSING: "PROCESSING",
 		COMPLETED:  "COMPLETED",
@@ -23,9 +24,9 @@ var (
 type BatchRequest struct {
 	BaseModel
 	AssetSymbol   string     		`json:"asset_symbol"`
-	Status           string        `gorm:"index:status;not null;default:'PENDING'" json:"status"`
+	Status           string        `gorm:"index:status;not null;default:'AWAITING_TRANSACTIONS'" json:"status"`
 	DateOfprocessing time.Time     `json:"date_of_processing"`
 	DateCompleted    time.Time     `json:"date_completed"`
-	Records          int           `json:"no_of_records"`
+	NoOfRecords          int           `json:"no_of_records"`
 	Transactions     []Transaction `json:"transaction_requests,omitempty"`
 }

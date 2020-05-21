@@ -34,8 +34,8 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 		}
 
 		// Fetches all PENDING transactions from the transaction queue table for the given BatchID
-		var transactionQueue []model.TransactionQueue
-		if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batchId, AssetSymbol: utility.BTC}, &transactionQueue); err != nil {
+		var queuedBatchedTransactions []model.TransactionQueue
+		if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batchId, AssetSymbol: utility.BTC}, &queuedBatchedTransactions); err != nil {
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v, while fetching batched transactions from the queue", err)
 			done <- true
 		}
@@ -61,7 +61,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 			done <- true
 		}
 
-		for _, transaction := range transactionQueue {
+		for _, transaction := range queuedBatchedTransactions {
 			recipient := dto.BatchRecipients{
 				Address: transaction.Recipient,
 				Value:   transaction.Value,
@@ -118,7 +118,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while getting active batch details", err)
 			done <- true
 		}
-		if err := controller.Repository.Update(&batchDetails, &model.BatchRequest{Status: model.BatchStatus.PROCESSING}); err != nil {
+		if err := controller.Repository.Update(&batchDetails, &model.BatchRequest{Status: model.BatchStatus.PROCESSING, NoOfRecords: len(queuedBatchedTransactions)}); err != nil {
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
 			done <- true
 		}
@@ -164,7 +164,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 		done <- true
 	}()
 
-	controller.Logger.Info("Outgoing response to ProcessTransactions request %+v", utility.SUCCESS)
+	controller.Logger.Info("Outgoing response to ProcessBatchBTCTransactions request %+v", utility.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
