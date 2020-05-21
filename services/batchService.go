@@ -47,3 +47,15 @@ func CanProcess (batch model.BatchRequest, config Config.Data) bool {
 	}
 	return true
 }
+
+func CheckBatchExistAndReturn(repository database.IUserAssetRepository, logger *utility.Logger, batchId uuid.UUID ) (bool, model.BatchRequest, error)  {
+	batchDetails := model.BatchRequest{}
+	if err := repository.GetByFieldName(&model.BatchRequest{BaseModel :model.BaseModel{ID : batchId}}, &batchDetails); err != nil {
+		logger.Error("Error getting batch details : %+v for batch with id %+v", err)
+		if err.Error() != utility.SQL_404 {
+			return false, model.BatchRequest{}, nil
+		}
+		return false, model.BatchRequest{}, err
+	}
+	return true, batchDetails, nil
+}

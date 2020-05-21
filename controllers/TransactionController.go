@@ -330,56 +330,82 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())), controller.Logger)
 		return
 	}
+	
+	// Check if transaction belongs to a batch and return batch
+	batchExist, batchDetails, err := services.CheckBatchExistAndReturn(controller.Repository, controller.Logger, chainTransaction.BatchID)
+	if err != nil {
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())), controller.Logger)
+		return
+	}
 
 	chainTransactionUpdate := model.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
 	var transactionUpdate model.Transaction
 	var transactionQueueUpdate model.TransactionQueue
 	switch transactionStatusResponse.Status {
 	case "SUCCESS":
-		transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.COMPLETED}
-		transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.COMPLETED}
+		if batchExist {
+			proccessor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+			if err := proccessor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+				ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating batch transactions and batch with id %+v to COMPLETED", err.Error(), batchDetails.ID)), controller.Logger)
+				return
+			}
+		} else {
+			transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.COMPLETED}
+			transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.COMPLETED}
+		}
 	case "FAILED":
-		transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.TERMINATED}
-		transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.TERMINATED}
+		if batchExist {
+			proccessor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+			if err := proccessor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.TERMINATED); err != nil {
+				ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating batch transactions and batch with id %+v to TERMINATED", err.Error(), batchDetails.ID)), controller.Logger)
+				return
+			}
+		} else {
+			transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.TERMINATED}
+			transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.TERMINATED}
+		}
 	default:
 		transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.PROCESSING}
 		transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.PROCESSING}
 	}
 
-	tx := controller.Repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
+	if !batchExist {
+		tx := controller.Repository.Db().Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+		if err := tx.Error; err != nil {
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+			return
 		}
-	}()
-	if err := tx.Error; err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
-		return
-	}
 
-	// Goes to chain transaction table, update the status of the chain transaction,
-	if err := tx.Model(&chainTransaction).Updates(&chainTransactionUpdate).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
-	}
-	// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
-	if err := tx.Model(&transactionDetails).Updates(&transactionUpdate).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
-	}
-	// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
-	if err := tx.Model(&transactionQueueDetails).Updates(&transactionQueueUpdate).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
-	}
+		// Goes to chain transaction table, update the status of the chain transaction,
+		if err := tx.Model(&chainTransaction).Updates(&chainTransactionUpdate).Error; err != nil {
+			tx.Rollback()
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+			return
+		}
+		// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
+		if err := tx.Model(&transactionDetails).Updates(&transactionUpdate).Error; err != nil {
+			tx.Rollback()
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+			return
+		}
+		// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
+		if err := tx.Model(&transactionQueueDetails).Updates(&transactionQueueUpdate).Error; err != nil {
+			tx.Rollback()
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+			return
+		}
 
-	if err := tx.Commit().Error; err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-		return
+		if err := tx.Commit().Error; err != nil {
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+			return
+		}
 	}
+	
 
 	controller.Logger.Info("Outgoing response to ConfirmTransaction request %+v", apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
 	responseWriter.Header().Set("Content-Type", "application/json")
