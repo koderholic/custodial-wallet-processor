@@ -15,11 +15,7 @@ func Up20200520194845(tx *sql.Tx) error {
 	if err != nil {
 		 return err
 	}
-	_, err = tx.Exec("ALTER TABLE transaction_queues Change denomination_id asset_symbol varchar(100);")
-	if err != nil {
-		 return err
-	}
-	_, err = tx.Exec("ALTER TABLE chain_transactions ADD INDEX (batch_id);")
+	_, err = tx.Exec("ALTER TABLE transaction_queues ADD INDEX (batch_id);")
 	if err != nil {
 		return err
 	}
@@ -29,10 +25,6 @@ func Up20200520194845(tx *sql.Tx) error {
 func Down20200520194845(tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	_, err := tx.Exec("ALTER TABLE transaction_queues DROP COLUMN batch_id;")
-	if err != nil {
-		 return err
-	}
-	_, err = tx.Exec("ALTER TABLE transaction_queues Change asset_symbol denomination_id varchar(36);")
 	if err != nil {
 		 return err
 	}
