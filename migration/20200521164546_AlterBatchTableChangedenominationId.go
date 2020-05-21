@@ -15,7 +15,7 @@ func Up20200521164546(tx *sql.Tx) error {
 	if err != nil {
 		 return err
 	}
-	_, err := tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100) NOT NULL DEFAULT 'AWAITING_TRANSACTIONS';")
+	_, err = tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100) NOT NULL DEFAULT 'AWAITING_TRANSACTIONS';")
 	if err != nil {
 		 return err
 	}
@@ -28,7 +28,7 @@ func Down20200521164546(tx *sql.Tx) error {
 	if err != nil {
 		 return err
 	}
-	_, err := tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100)  NOT NULL DEFAULT 'PENDING';")
+	_, err = tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100)  NOT NULL DEFAULT 'PENDING';")
 	if err != nil {
 		 return err
 	}
