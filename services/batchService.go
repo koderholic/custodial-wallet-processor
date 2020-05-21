@@ -27,24 +27,23 @@ func GetActiveBTCBatchId(repository database.IUserAssetRepository, logger *utili
 	return activeBatch.ID, nil
 }
 
-func CheckActiveBatchExistAndReturn(repository database.IUserAssetRepository, logger *utility.Logger, config Config.Data) (bool, uuid.UUID, error)  {
+func GetAllActiveBatches(repository database.IUserAssetRepository, logger *utility.Logger, config Config.Data) ([]model.BatchRequest, error)  {
 	
-	var activeBatch model.BatchRequest
-	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE}, &activeBatch); err != nil {
-		if err.Error() == utility.SQL_404 {
-			logger.Error("Error response from batch service : ", err)
-			return false, uuid.UUID{}, nil
-		}
-		return false, uuid.UUID{}, err
+	var activeBatches []model.BatchRequest
+	if err := repository.FetchActiveBatches([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE}, &activeBatches); err != nil {
+		return []model.BatchRequest{}, err
 	}
 
+	return activeBatches, nil
+}
+
+func CanProcess (batch model.BatchRequest, config Config.Data) bool {
 	// Check batch duration
-	timeElapsed := time.Since(activeBatch.CreatedAt) 
+	timeElapsed := time.Since(batch.CreatedAt) 
 	timeElapsedMinutes := timeElapsed.Minutes()
 
 	if timeElapsedMinutes < float64(config.BTCBatchInterval) {
-		return false, uuid.UUID{}, nil 
+		return false
 	}
-
-	return true, activeBatch.ID, nil
+	return true
 }
