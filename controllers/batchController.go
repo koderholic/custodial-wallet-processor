@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 	"net/http"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
@@ -29,6 +30,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 		}
 
 		if !batchExist {
+			// Handle batch pending state
 			controller.Logger.Info("Outgoing response to ProcessBatchBTCTransactions request %+v", "There is no active BTC batch to process")
 			done <- true
 		}
@@ -67,8 +69,8 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 				Value:   transaction.Value,
 			}
 			batchedRecipients = append(batchedRecipients, recipient)
-			batchedTransactionsId = append(batchedTransactionsId, transaction.TransactionId)
-			queuedBatchedTransactionsId = append(queuedBatchedTransactionsId, transaction.ID)
+			batchedTransactionsIds = append(batchedTransactionsIds, transaction.TransactionId)
+			queuedBatchedTransactionsIds = append(queuedBatchedTransactionsIds, transaction.ID)
 		}
 
 		signTransactionRequest := dto.BatchBTCRequest{
@@ -118,7 +120,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while getting active batch details", err)
 			done <- true
 		}
-		if err := controller.Repository.Update(&batchDetails, &model.BatchRequest{Status: model.BatchStatus.PROCESSING, NoOfRecords: len(queuedBatchedTransactions)}); err != nil {
+		if err := controller.Repository.Update(&batchDetails, &model.BatchRequest{Status: model.BatchStatus.PROCESSING, NoOfRecords: len(queuedBatchedTransactions), DateOfprocessing : time.Now()}); err != nil {
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
 			done <- true
 		}
@@ -134,13 +136,13 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 			done <- true
 		}
 
-		if err := tx.Model(model.Transaction{}).Where(batchedTransactionsId).Updates(model.Transaction{TransactionStatus: model.TransactionStatus.PROCESSING, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+		if err := tx.Model(model.Transaction{}).Where(batchedTransactionsIds).Updates(model.Transaction{TransactionStatus: model.TransactionStatus.PROCESSING, OnChainTxId: chainTransaction.ID}).Error; err != nil {
 			tx.Rollback()
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating db transaction", err)
 			done <- true
 		}
 
-		if err := tx.Model(model.TransactionQueue{}).Where(queuedBatchedTransactionsId).Updates(model.TransactionQueue{TransactionStatus: model.TransactionStatus.PROCESSING}).Error; err != nil {
+		if err := tx.Model(model.TransactionQueue{}).Where(queuedBatchedTransactionsIds).Updates(model.TransactionQueue{TransactionStatus: model.TransactionStatus.PROCESSING}).Error; err != nil {
 			tx.Rollback()
 			controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating db transaction", err)
 			done <- true

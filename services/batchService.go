@@ -12,7 +12,7 @@ import (
 func GetActiveBTCBatchId(repository database.IUserAssetRepository, logger *utility.Logger) (uuid.UUID, error)  {
 	
 	var activeBatch model.BatchRequest
-	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.PENDING}, &activeBatch); err != nil {
+	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE}, &activeBatch); err != nil {
 		if err.Error() != utility.SQL_404 {
 			logger.Error("Error response from batch service : ", err)
 			return uuid.UUID{}, err
@@ -30,7 +30,7 @@ func GetActiveBTCBatchId(repository database.IUserAssetRepository, logger *utili
 func CheckActiveBatchExistAndReturn(repository database.IUserAssetRepository, logger *utility.Logger, config Config.Data) (bool, uuid.UUID, error)  {
 	
 	var activeBatch model.BatchRequest
-	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.PENDING}, &activeBatch); err != nil {
+	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE}, &activeBatch); err != nil {
 		if err.Error() == utility.SQL_404 {
 			logger.Error("Error response from batch service : ", err)
 			return false, uuid.UUID{}, nil
