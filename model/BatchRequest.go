@@ -2,13 +2,11 @@ package model
 
 import (
 	"time"
-
-	uuid "github.com/satori/go.uuid"
 )
 
 // BTHStatus ...
 type BTHStatus struct {
-	PENDING, PROCESSING, COMPLETED, TERMINATED, REVERSED string
+	PENDING, PROCESSING, COMPLETED, TERMINATED string
 }
 
 var (
@@ -18,14 +16,13 @@ var (
 		PROCESSING: "PROCESSING",
 		COMPLETED:  "COMPLETED",
 		TERMINATED: "TERMINATED",
-		REVERSED:   "REVERSED",
 	}
 )
 
 // BatchRequest ... Batch request DTO for batch created for both user and system transactions
 type BatchRequest struct {
 	BaseModel
-	DenominationID   uuid.UUID     `gorm:"type:VARCHAR(36);not null;index:denomination_id" json:"asset_id"`
+	AssetSymbol   string     		`json:"asset_symbol"`
 	Status           string        `gorm:"index:status;not null;default:'PENDING'" json:"status"`
 	DateOfprocessing time.Time     `json:"date_of_processing"`
 	DateCompleted    time.Time     `json:"date_completed"`

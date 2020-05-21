@@ -195,6 +195,17 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	// Batch transaction, if asset is BTC
+	var activeBatchId uuid.UUID
+	if debitReferenceAsset.AssetSymbol == utility.BTC {
+		activeBatchId, err = services.GetActiveBTCBatchId(controller.Repository, controller.Logger)
+		if err != nil {
+			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+			return
+		}
+		
+	}
+
 	// Build transaction object
 	transaction := model.Transaction{
 		InitiatorID:          decodedToken.ServiceID,
@@ -212,6 +223,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          debitReferenceTransaction.AssetSymbol,
+		BatchID : activeBatchId,
 	}
 
 	tx := controller.Repository.Db().Begin()
@@ -239,6 +251,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		DebitReference: requestData.DebitReference,
 		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
+		BatchID : activeBatchId,
 	}
 	if !strings.EqualFold(debitReferenceTransaction.Memo, utility.NO_MEMO) {
 		queue.Memo = debitReferenceTransaction.Memo

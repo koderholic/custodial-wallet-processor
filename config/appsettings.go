@@ -48,6 +48,7 @@ type Data struct {
 	FloatCronInterval           string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
+	BTCBatchInterval            int64         `mapstructure:"BTCBatchInterval"  yaml:"BTCBatchInterval,omitempty"`
 }
 
 //Init : initialize data
