@@ -50,14 +50,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 					done <- true
 				}
 			}
-
-			// If batch is in WAIT_MODE
-			shouldProcess := services.CanProcess(batch, controller.Config)
-			if !shouldProcess {
-				controller.Logger.Error("Error response from ProcessBatchBTCTransactions : Batch with id %+v cannont be processed now, still open for transactions", batch.ID)
-				done <- true
-			}
-
+			
 			var queuedBatchedTransactions []model.TransactionQueue
 			if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batch.ID, AssetSymbol: utility.BTC}, &queuedBatchedTransactions); err != nil {
 				controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v, while fetching batched transactions from the queue", err)

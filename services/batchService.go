@@ -37,17 +37,6 @@ func GetAllActiveBatches(repository database.IUserAssetRepository, logger *utili
 	return activeBatches, nil
 }
 
-func CanProcess (batch model.BatchRequest, config Config.Data) bool {
-	// Check batch duration
-	timeElapsed := time.Since(batch.CreatedAt) 
-	timeElapsedMinutes := timeElapsed.Minutes()
-
-	if timeElapsedMinutes < float64(config.BTCBatchInterval) {
-		return false
-	}
-	return true
-}
-
 func CheckBatchExistAndReturn(repository database.IUserAssetRepository, logger *utility.Logger, batchId uuid.UUID ) (bool, model.BatchRequest, error)  {
 	batchDetails := model.BatchRequest{}
 	if err := repository.GetByFieldName(&model.BatchRequest{BaseModel :model.BaseModel{ID : batchId}}, &batchDetails); err != nil {
