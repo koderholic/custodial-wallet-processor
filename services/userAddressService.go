@@ -15,7 +15,7 @@ func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, confi
 	var externalServiceErr dto.ServicesRequestErr
 
 	// Calls key-management service to create an address for the user asset
-	v1Address, err := GenerateAddress(cache, logger, config, userAsset.UserID, userAsset.AssetSymbol, &externalServiceErr)
+	v1Address, err := GenerateAddress(cache, logger, config, userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, &externalServiceErr)
 	if err != nil || v1Address == "" {
 		logger.Error("Error response from userAddress service, could not generate user address : %v => %s ", externalServiceErr, err)
 		if externalServiceErr.Code != "" {
