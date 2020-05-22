@@ -14,7 +14,7 @@ import (
 )
 
 
-// ProcessTransaction ...
+// ProcessBatchBTCTransactions ...
 func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
@@ -31,7 +31,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 
 		for _, batch := range activeBatches {
 			
-			// It calls the lock service to obtain a lock for the batch transactions
+			// It calls the lock service to obtain a lock for the batch
 			lockerServiceRequest := dto.LockerServiceRequest{
 				Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, batch.ID),
 				ExpiresAfter: 600000,
@@ -50,7 +50,7 @@ func (controller UserAssetController) ProcessBatchBTCTransactions(responseWriter
 					done <- true
 				}
 			}
-			
+
 			var queuedBatchedTransactions []model.TransactionQueue
 			if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batch.ID, AssetSymbol: utility.BTC}, &queuedBatchedTransactions); err != nil {
 				controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v, while fetching batched transactions from the queue", err)
@@ -232,6 +232,7 @@ func (processor *TransactionProccessor) retryBatchProcessing(batch model.BatchRe
 }
 
 func (processor *TransactionProccessor) UpdateBatchedTransactionsStatus(batch model.BatchRequest, chainTransaction model.ChainTransaction, status string) error  {
+	
 	// Fetches all transactions for the given BatchID
 	var queuedBatchedTransactions []model.TransactionQueue
 	if err := processor.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batch.ID, AssetSymbol: utility.BTC}, &queuedBatchedTransactions); err != nil {
