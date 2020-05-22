@@ -41,7 +41,7 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 		if coinTypeToAddrMap[asset.CoinType] != "" {
 			address = coinTypeToAddrMap[asset.CoinType]
 		} else {
-			address, err = GenerateAddress(cache, logger, config, serviceID, asset.AssetSymbol, &externalServiceErr)
+			address, err = GenerateAddressWithoutSub(cache, logger, config, serviceID, asset.AssetSymbol, &externalServiceErr)
 			if err != nil {
 				return err
 			}

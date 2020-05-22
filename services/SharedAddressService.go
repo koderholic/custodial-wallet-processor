@@ -34,7 +34,7 @@ func InitSharedAddress(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.
 		}
 
 		if address == "" {
-			address, err = GenerateAddress(cache, logger, config, userID, asset.AssetSymbol, &externalServiceErr)
+			address, err = GenerateAddress(cache, logger, config, userID, asset.AssetSymbol, asset.CoinType, &externalServiceErr)
 			if err != nil {
 				return err
 			}
