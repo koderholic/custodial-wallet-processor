@@ -344,8 +344,8 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	switch transactionStatusResponse.Status {
 	case "SUCCESS":
 		if batchExist {
-			proccessor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
-			if err := proccessor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+			processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+			if err := processor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.COMPLETED); err != nil {
 				ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating batch transactions and batch with id %+v to COMPLETED", err.Error(), batchDetails.ID)), controller.Logger)
 				return
 			}
@@ -355,8 +355,8 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		}
 	case "FAILED":
 		if batchExist {
-			proccessor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
-			if err := proccessor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.TERMINATED); err != nil {
+			processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+			if err := processor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.TERMINATED); err != nil {
 				ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating batch transactions and batch with id %+v to TERMINATED", err.Error(), batchDetails.ID)), controller.Logger)
 				return
 			}
@@ -533,14 +533,14 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 					tx.Rollback()
 				}
 			}()
-			// Updates the transaction status to REJECTED
+			// Updates the transaction status to TERMINATED
 			transactionDetails := model.Transaction{}
 			_ = processor.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transaction.TransactionId}}, &transactionDetails)
-			_ = tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: model.TransactionStatus.REJECTED})
-			// Update transactionQueue to REJECTED
+			_ = tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: model.TransactionStatus.TERMINATED})
+			// Update transactionQueue to TERMINATED
 			transactionQueueDetails := model.TransactionQueue{}
 			_ = processor.Repository.Get(&model.TransactionQueue{TransactionId: transaction.TransactionId}, &transactionQueueDetails)
-			_ = tx.Model(&transactionQueueDetails).Updates(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.REJECTED})
+			_ = tx.Model(&transactionQueueDetails).Updates(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.TERMINATED})
 			err := tx.Commit().Error
 			return err
 		}
