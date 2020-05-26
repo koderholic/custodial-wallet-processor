@@ -22,6 +22,7 @@ type IRepository interface {
 	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 	FetchTransactionsWhereIn(values []string, model interface{}) error
+	FetchBatchesWithStatus(statuses []string, batches interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -38,6 +39,18 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 			Err:     err,
 		}
 	}
+	return nil
+}
+
+func (repo *BaseRepository) FetchBatchesWithStatus(statuses []string, batches interface{}) error {
+	if err := repo.DB.Where("status IN (?)", statuses).Find(batches).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchBatchesWithStatus %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
 	return nil
 }
 

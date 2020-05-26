@@ -30,7 +30,6 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 
 	apiResponse := utility.NewResponse()
 	batchService := services.BatchService{BaseService : services.BaseService{Config: controller.Config, Cache : controller.Cache, Logger : controller.Logger}}
-	serviceErr := dto.ServicesRequestErr{}
 	done := make(chan bool)
 
 	go func() {
@@ -46,13 +45,8 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 			var queuedBatchedTransactions []model.TransactionQueue
 
 			// It calls the lock service to obtain a lock for the batch
-			lockerServiceRequest := dto.LockerServiceRequest{
-				Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, batch.ID),
-				ExpiresAfter: 600000,
-			}
-			lockerServiceResponse := dto.LockerServiceResponse{}
-			if err := services.AcquireLock(controller.Cache, controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
-				controller.Logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
+			lockerServiceToken, err := controller.obtainLock(batch.ID.String()); 
+			if err != nil {
 				continue
 			}
 			processor := &BatchTransactionProcessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
@@ -61,39 +55,37 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 			if batch.Status == model.BatchStatus.RETRY_MODE {
 				if err := processor.retryBatchProcessing(batch); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v. Batch with id %+v could not be reprocessed", err, batch.ID)
+					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 			} else {
 				if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.START_MODE, DateOfProcessing : time.Now()}); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
+					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 
 				if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v, while fetching batched transactions from the queue", err)
+					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 
 				if err := processor.processBatch(batch, queuedBatchedTransactions); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %s, while proccessing batch with id %+v", err, batch.ID)
+					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 			}
 			
 			if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.PROCESSING, NoOfRecords: len(queuedBatchedTransactions)}); err != nil {
 				controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
+				_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 				continue
 			}
 
 			// The routine returns the lock to the lock service and terminates
-			lockReleaseRequest := dto.LockReleaseRequest{
-				Identifier: fmt.Sprintf("%s%s", controller.Config.LockerPrefix, batch.ID),
-				Token:      lockerServiceResponse.Token,
-			}
-			lockReleaseResponse := dto.ServicesRequestSuccess{}
-			if err := services.ReleaseLock(controller.Cache, controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
-				controller.Logger.Error("Error occured while releasing lock : %+v; %s", serviceErr, err)
-			}
+			_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 
 		}
 		
@@ -325,4 +317,34 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 	}
 
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
+}
+
+func (controller BatchController) obtainLock(identifier string) (string, error) {
+	serviceErr := dto.ServicesRequestErr{}
+
+	lockerServiceRequest := dto.LockerServiceRequest{
+		Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, identifier),
+		ExpiresAfter: 600000,
+	}
+	lockerServiceResponse := dto.LockerServiceResponse{}
+	if err := services.AcquireLock(controller.Cache, controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+		controller.Logger.Error("Error occured while obtaining lock for (%+v) : %+v; %s",identifier, serviceErr, err)
+		return "", err
+	}
+	return lockerServiceResponse.Token, nil
+}
+
+func (controller BatchController) releaseLock(identifier string, lockerserviceToken string) error {
+	serviceErr := dto.ServicesRequestErr{}
+
+	lockReleaseRequest := dto.LockReleaseRequest{
+		Identifier: fmt.Sprintf("%s%s", controller.Config.LockerPrefix, identifier),
+		Token:      lockerserviceToken,
+	}
+	lockReleaseResponse := dto.ServicesRequestSuccess{}
+	if err := services.ReleaseLock(controller.Cache, controller.Logger, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
+		controller.Logger.Error("Error occured while releasing lock for (%+v) : %+v; %s", identifier, serviceErr, err)
+		return err
+	}
+	return nil
 }

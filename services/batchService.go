@@ -34,7 +34,7 @@ func (service BatchService) GetWaitingBTCBatchId(repository database.IBatchRepos
 func (service BatchService) GetAllActiveBatches(repository database.IBatchRepository) ([]model.BatchRequest, error) {
 
 	var activeBatches []model.BatchRequest
-	if err := repository.FetchActiveBatches([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE, model.BatchStatus.START_MODE}, &activeBatches); err != nil {
+	if err := repository.FetchBatchesWithStatus([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE, model.BatchStatus.START_MODE}, &activeBatches); err != nil {
 		return []model.BatchRequest{}, err
 	}
 
@@ -46,9 +46,9 @@ func (service BatchService) CheckBatchExistAndReturn(repository database.IBatchR
 	if err := repository.GetByFieldName(&model.BatchRequest{BaseModel: model.BaseModel{ID: batchId}}, &batchDetails); err != nil {
 		service.Logger.Error("Error getting batch details : %+v for batch with id %+v", err)
 		if err.Error() != utility.SQL_404 {
-			return false, model.BatchRequest{}, nil
+			return false, model.BatchRequest{}, err
 		}
-		return false, model.BatchRequest{}, err
+		return false, model.BatchRequest{}, nil
 	}
 	return true, batchDetails, nil
 }

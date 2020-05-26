@@ -560,20 +560,10 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 
 	transactionsIds := []uuid.UUID{}
 	transactionsIdsString := []string{}
-	transactionQueueIds := []uuid.UUID{}
 
 	for _, transaction := range transactions {
 		transactionsIds = append(transactionsIds, transaction.ID)
 		transactionsIdsString = append(transactionsIdsString, transaction.ID.String())
-	}
-
-	// fetch all queued transactions associated with the transactionsIds
-	transactionsqueueRecords := []model.TransactionQueue{}
-	if err := controller.Repository.FetchTransactionsWhereIn(transactionsIdsString, &transactionsqueueRecords); err != nil {
-		return err
-	}
-	for _, transaction := range transactionsqueueRecords {
-		transactionQueueIds = append(transactionQueueIds, transaction.ID)
 	}
 
 	tx := controller.Repository.Db().Begin()
@@ -593,7 +583,7 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 		return err
 	}
 
-	if err := tx.Model(model.TransactionQueue{}).Where(transactionQueueIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+	if err := tx.Where("transaction_id IN (?)", transactionsIdsString).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
 		return err
