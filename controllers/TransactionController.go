@@ -371,7 +371,13 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 		for _, transaction := range transactionQueue {
 			serviceErr := dto.ServicesRequestErr{}
 
-			if transaction.AssetSymbol == utility.BTC {
+			// Check if the transaction belongs to a batch and return batch
+			batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
+			batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transaction.BatchID)
+			if err != nil {
+				continue
+			}
+			if batchExist {
 				continue
 			}
 
@@ -396,8 +402,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				continue
 			}
 
-			err := processor.processSingleTxn(transaction)
-			if err != nil {
+			if err := processor.processSingleTxn(transaction); err != nil {
 				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
 
 				// Revert the transaction status back to pending
