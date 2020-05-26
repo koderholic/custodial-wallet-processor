@@ -103,7 +103,7 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 	controller.Logger.Info("Outgoing response to ProcessBatchBTCTransactions request %+v", utility.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
 
 	<-done
 }
@@ -218,7 +218,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 		}
 
 		switch broadcastedTXNDetails.Status {
-		case "FAILED":
+		case utility.FAILED:
 			// Update batch transactions status
 			if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.TransactionStatus.TERMINATED); err != nil {
 				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
@@ -229,7 +229,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 				return err
 			}
 			return err
-		case "SUCCESS":
+		case utility.SUCCESSFUL:
 			fallthrough
 		default:
 			// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter if exist

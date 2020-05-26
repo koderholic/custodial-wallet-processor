@@ -329,12 +329,12 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 
 	// Update the transactions on the transaction table and on queue tied to the chain transaction as well as the batch status,if it is a batch transaction
 	switch transactionStatusResponse.Status {
-	case "SUCCESS":
+	case utility.SUCCESSFUL:
 		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.COMPLETED); err != nil {
 			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating trnasactions tied to chain transaction with id %+v to COMPLETED", err.Error(), chainTransaction.ID)), controller.Logger)
 			return
 		}
-	case "FAILED":
+	case utility.FAILED:
 		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.TERMINATED); err != nil {
 			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating trnasactions tied to chain transaction with id %+v to TERMINATED", err.Error(), chainTransaction.ID)), controller.Logger)
 			return
@@ -343,10 +343,10 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		break
 	}
 
-	controller.Logger.Info("Outgoing response to ConfirmTransaction request %+v", apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+	controller.Logger.Info("Outgoing response to ConfirmTransaction request %+v", apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
 
 }
 
@@ -428,7 +428,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 	controller.Logger.Info("Outgoing response to ProcessTransactions request %+v", utility.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
 
 	<-done
 }
