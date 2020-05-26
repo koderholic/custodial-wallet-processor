@@ -25,7 +25,7 @@ var (
 type BatchRequest struct {
 	BaseModel
 	AssetSymbol      string        `json:"asset_symbol"`
-	Status           string        `gorm:"index:status;not null;default:'AWAITING_TRANSACTIONS'" json:"status"`
+	Status           string        `gorm:"index:status;not null;default:'WAIT_MODE'" json:"status"`
 	DateOfProcessing time.Time     `json:"date_of_processing"`
 	DateCompleted    time.Time     `json:"date_completed"`
 	NoOfRecords      int           `json:"no_of_records"`
