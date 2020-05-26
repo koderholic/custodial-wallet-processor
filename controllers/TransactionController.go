@@ -132,6 +132,7 @@ func (controller BaseController) populateChainData(transaction model.Transaction
 func (controller UserAssetController) ExternalTransfer(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 	requestData := dto.ExternalTransferRequest{}
 	responseData := dto.ExternalTransferResponse{}
 	paymentRef := utility.RandomString(16)
@@ -198,12 +199,12 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// Batch transaction, if asset is BTC
 	var activeBatchId uuid.UUID
 	if debitReferenceAsset.AssetSymbol == utility.BTC {
-		activeBatchId, err = services.GetWaitingBTCBatchId(controller.Repository, controller.Logger)
+		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.BTC)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
 			return
 		}
-		
+
 	}
 
 	// Build transaction object
@@ -223,7 +224,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          debitReferenceTransaction.AssetSymbol,
-		BatchID : activeBatchId,
+		BatchID:              activeBatchId,
 	}
 
 	tx := controller.Repository.Db().Begin()
@@ -251,7 +252,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		DebitReference: requestData.DebitReference,
 		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
-		BatchID : activeBatchId,
+		BatchID:        activeBatchId,
 	}
 	if !strings.EqualFold(debitReferenceTransaction.Memo, utility.NO_MEMO) {
 		queue.Memo = debitReferenceTransaction.Memo
@@ -296,30 +297,18 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		return
 	}
 
-	// Get the asset denomination associated with the transaction
+	// Get the chain transaction for the request hash
 	chainTransaction := model.ChainTransaction{}
-	transactionDetails := model.Transaction{}
-	transactionQueueDetails := model.TransactionQueue{}
 	err := controller.Repository.Get(&model.ChainTransaction{TransactionHash: requestData.TransactionHash}, &chainTransaction)
 	if err != nil {
 		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get chainTransaction with transactionHash = %s", utility.GetSQLErr(err), requestData.TransactionHash)), controller.Logger)
 		return
 	}
-	err = controller.Repository.Get(&model.Transaction{OnChainTxId: chainTransaction.ID}, &transactionDetails)
-	if err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transactionDetails with onChainTxId = %s", utility.GetSQLErr(err), chainTransaction.ID)), controller.Logger)
-		return
-	}
-	err = controller.Repository.GetByFieldName(&model.TransactionQueue{TransactionId: transactionDetails.ID}, &transactionQueueDetails)
-	if err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transactionQueueDetails with transactionId = %s", utility.GetSQLErr(err), transactionDetails.ID)), controller.Logger)
-		return
-	}
 
-	// Calls TransactionStatus on crypto adapter to verify the transaction status
+	// Calls TransactionStatus on crypto adapter to verify the transaction status of the hash
 	transactionStatusRequest := dto.TransactionStatusRequest{
 		TransactionHash: requestData.TransactionHash,
-		AssetSymbol:     transactionQueueDetails.AssetSymbol,
+		AssetSymbol:     chainTransaction.AssetSymbol,
 	}
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := services.TransactionStatus(controller.Cache, controller.Logger, controller.Config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
@@ -330,82 +319,29 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())), controller.Logger)
 		return
 	}
-	
-	// Check if transaction belongs to a batch and return batch
-	batchExist, batchDetails, err := services.CheckBatchExistAndReturn(controller.Repository, controller.Logger, chainTransaction.BatchID)
-	if err != nil {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())), controller.Logger)
+
+	// update the chain transaction with details of the on-chain TXN,
+	chainTransactionUpdate := model.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
+	if err := controller.Repository.Update(&chainTransaction, chainTransactionUpdate); err != nil {
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 
-	chainTransactionUpdate := model.ChainTransaction{Status: *requestData.Status, TransactionFee: requestData.TransactionFee, BlockHeight: requestData.BlockHeight}
-	var transactionUpdate model.Transaction
-	var transactionQueueUpdate model.TransactionQueue
+	// Update the transactions on the transaction table and on queue tied to the chain transaction as well as the batch status,if it is a batch transaction
 	switch transactionStatusResponse.Status {
 	case "SUCCESS":
-		if batchExist {
-			processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
-			if err := processor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.COMPLETED); err != nil {
-				ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating batch transactions and batch with id %+v to COMPLETED", err.Error(), batchDetails.ID)), controller.Logger)
-				return
-			}
-		} else {
-			transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.COMPLETED}
-			transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.COMPLETED}
+		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating trnasactions tied to chain transaction with id %+v to COMPLETED", err.Error(), chainTransaction.ID)), controller.Logger)
+			return
 		}
 	case "FAILED":
-		if batchExist {
-			processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
-			if err := processor.confirmBatchTransactions(batchDetails, chainTransaction, model.BatchStatus.TERMINATED); err != nil {
-				ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating batch transactions and batch with id %+v to TERMINATED", err.Error(), batchDetails.ID)), controller.Logger)
-				return
-			}
-		} else {
-			transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.TERMINATED}
-			transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.TERMINATED}
+		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.TERMINATED); err != nil {
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating trnasactions tied to chain transaction with id %+v to TERMINATED", err.Error(), chainTransaction.ID)), controller.Logger)
+			return
 		}
 	default:
-		transactionUpdate = model.Transaction{TransactionStatus: model.TransactionStatus.PROCESSING}
-		transactionQueueUpdate = model.TransactionQueue{TransactionStatus: model.TransactionStatus.PROCESSING}
+		break
 	}
-
-	if !batchExist {
-		tx := controller.Repository.Db().Begin()
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		if err := tx.Error; err != nil {
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
-			return
-		}
-
-		// Goes to chain transaction table, update the status of the chain transaction,
-		if err := tx.Model(&chainTransaction).Updates(&chainTransactionUpdate).Error; err != nil {
-			tx.Rollback()
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-		// With the chainTransactionUpdateId it goes to the transactions table, fetches the transaction mapped to the chainId and updates the status
-		if err := tx.Model(&transactionDetails).Updates(&transactionUpdate).Error; err != nil {
-			tx.Rollback()
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-		// It goes to the queue table and fetches the queue matching the transactionId and updates the status to either TERMINATED or COMPLETED
-		if err := tx.Model(&transactionQueueDetails).Updates(&transactionQueueUpdate).Error; err != nil {
-			tx.Rollback()
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-
-		if err := tx.Commit().Error; err != nil {
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
-			return
-		}
-	}
-	
 
 	controller.Logger.Info("Outgoing response to ConfirmTransaction request %+v", apiResponse.PlainSuccess("SUCCESS", utility.SUCCESS))
 	responseWriter.Header().Set("Content-Type", "application/json")
@@ -559,8 +495,8 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 
 	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash: broadcastToChainResponse.TransactionHash,
-		RecipientAddress : transaction.Recipient,
+		TransactionHash:  broadcastToChainResponse.TransactionHash,
+		RecipientAddress: transaction.Recipient,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		return err
@@ -590,4 +526,73 @@ func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSym
 	}
 
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
+}
+
+func (controller UserAssetController) confirmTransactions(chainTransaction model.ChainTransaction, status string) error {
+
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
+
+	// Check if chain transaction belongs to a batch and return batch
+	batchExist, batch, err := batchService.CheckBatchExistAndReturn(controller.Repository, chainTransaction.BatchID)
+	if err != nil {
+		return err
+	}
+
+	if batchExist {
+		if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: status, DateCompleted: time.Now()}); err != nil {
+			return err
+		}
+	}
+
+	transactions := []model.Transaction{}
+	if err := controller.Repository.FetchByFieldName(&model.Transaction{OnChainTxId: chainTransaction.ID}, &transactions); err != nil {
+		return err
+	}
+
+	transactionsIds := []uuid.UUID{}
+	transactionsIdsString := []string{}
+	transactionQueueIds := []uuid.UUID{}
+
+	for _, transaction := range transactions {
+		transactionsIds = append(transactionsIds, transaction.ID)
+		transactionsIdsString = append(transactionsIdsString, transaction.ID.String())
+	}
+
+	// fetch all queued transactions associated with the transactionsIds
+	transactionsqueueRecords := []model.TransactionQueue{}
+	if err := controller.Repository.FetchTransactionsWhereIn(transactionsIdsString, &transactionsqueueRecords); err != nil {
+		return err
+	}
+	for _, transaction := range transactionsqueueRecords {
+		transactionQueueIds = append(transactionQueueIds, transaction.ID)
+	}
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		controller.Logger.Error("Error response from confirmTransactions : %+v while creating db transaction", err)
+		return err
+	}
+
+	if err := tx.Model(model.Transaction{}).Where(transactionsIds).Updates(model.Transaction{TransactionStatus: status}).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction records tied to chain transaction : %+v", err, chainTransaction.ID)
+		return err
+	}
+
+	if err := tx.Model(model.TransactionQueue{}).Where(transactionQueueIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		controller.Logger.Error("Error response from confirmTransactions : %+v while commiting db transaction", err)
+		return err
+	}
+	return nil
 }

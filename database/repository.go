@@ -21,6 +21,7 @@ type IRepository interface {
 	Delete(model interface{}) error
 	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
+	FetchTransactionsWhereIn(values []string, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -37,6 +38,18 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 			Err:     err,
 		}
 	}
+	return nil
+}
+
+func (repo *BaseRepository) FetchTransactionsWhereIn(values []string, model interface{}) error {
+	if err := repo.DB.Where("transaction_id IN (?)", values).Find(model).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchWhereIn %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
 	return nil
 }
 

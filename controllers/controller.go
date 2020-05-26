@@ -30,6 +30,12 @@ type UserAssetController struct {
 	Repository database.IUserAssetRepository
 }
 
+//BatchController : Batch controller struct
+type BatchController struct {
+	Controller
+	Repository database.IBatchRepository
+}
+
 // NewController ... Create a new base controller instance
 func NewController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
 	controller := &BaseController{}
@@ -45,6 +51,18 @@ func NewController(cache *utility.MemoryCache, logger *utility.Logger, configDat
 // NewUserAssetController ... Create a new user asset controller instance
 func NewUserAssetController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IUserAssetRepository) *UserAssetController {
 	controller := &UserAssetController{}
+	controller.Cache = cache
+	controller.Logger = logger
+	controller.Config = configData
+	controller.Validator = validator
+	controller.Repository = repository
+
+	return controller
+}
+
+// NewBatchController ... Create a new batch controller instance
+func NewBatchController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IBatchRepository) *BatchController {
+	controller := &BatchController{}
 	controller.Cache = cache
 	controller.Logger = logger
 	controller.Config = configData
