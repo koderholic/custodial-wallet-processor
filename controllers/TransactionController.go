@@ -371,6 +371,10 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 		for _, transaction := range transactionQueue {
 			serviceErr := dto.ServicesRequestErr{}
 
+			if transaction.AssetSymbol == utility.BTC {
+				continue
+			}
+
 			// It calls the lock service to obtain a lock for the transaction
 			lockerServiceRequest := dto.LockerServiceRequest{
 				Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, transaction.ID),
