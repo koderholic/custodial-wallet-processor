@@ -320,7 +320,9 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 		return err
 	}
 	return nil
+	
 }
+
 
 func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string) error {
 
@@ -336,6 +338,7 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
 
+
 func (controller BatchController) obtainLock(identifier string) (string, error) {
 	serviceErr := dto.ServicesRequestErr{}
 
@@ -350,6 +353,7 @@ func (controller BatchController) obtainLock(identifier string) (string, error) 
 	}
 	return lockerServiceResponse.Token, nil
 }
+
 
 func (controller BatchController) releaseLock(identifier string, lockerserviceToken string) error {
 	serviceErr := dto.ServicesRequestErr{}
