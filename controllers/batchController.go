@@ -222,7 +222,24 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 			}
 			return err
 		case utility.SUCCESSFUL:
-			fallthrough
+			chainTransaction := model.ChainTransaction{
+				TransactionHash: broadcastedTXNDetails.TransactionHash,
+				BatchID: batch.ID,
+			}
+			if err := processor.Repository.Create(&chainTransaction); err != nil {
+				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
+				return err
+			}
+			// Update batch transactions status
+			if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.TransactionStatus.COMPLETED); err != nil {
+				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
+				return err
+			}
+			if err := processor.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.COMPLETED}); err != nil {
+				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to TERMINATED", err)
+				return err
+			}
+			return err
 		default:
 			// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter if exist
 			if broadcastedTXNDetails.TransactionHash != "" {

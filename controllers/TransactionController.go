@@ -541,12 +541,11 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 
 	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 
-	// Check if chain transaction belongs to a batch and return batch
+	// Check if chain transaction belongs to a batch and update batch
 	batchExist, batch, err := batchService.CheckBatchExistAndReturn(controller.Repository, chainTransaction.BatchID)
 	if err != nil {
 		return err
 	}
-
 	if batchExist {
 		if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: status, DateCompleted: time.Now()}); err != nil {
 			return err
