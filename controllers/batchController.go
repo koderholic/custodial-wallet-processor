@@ -266,6 +266,16 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 		return err
 	}
 
+	tx := processor.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while creating db transaction", err)
+		return err
+	}
 	if status == model.BatchStatus.PROCESSING || status == model.BatchStatus.COMPLETED || status == model.BatchStatus.TERMINATED{
 		// Updates all transactions associated with the batch
 		batchedTransactionsIds := []uuid.UUID{}
@@ -274,17 +284,6 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 		for _, transaction := range queuedBatchedTransactions {
 			batchedTransactionsIds = append(batchedTransactionsIds, transaction.TransactionId)
 			queuedBatchedTransactionsIds = append(queuedBatchedTransactionsIds, transaction.ID)
-		}
-
-		tx := processor.Repository.Db().Begin()
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		if err := tx.Error; err != nil {
-			processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while creating db transaction", err)
-			return err
 		}
 
 		if err := tx.Model(model.Transaction{}).Where(batchedTransactionsIds).Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
@@ -298,18 +297,19 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 			processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while updating the queued batchedTransactions status to %s", err, status)
 			return err
 		}
-
-		if err := tx.Commit().Error; err != nil {
-			processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while commiting db transaction", err)
-			return err
-		}
 	}
-			
+
 	dateCompleted := time.Now()
-	if err := processor.Repository.Update(&batch, &model.BatchRequest{Status: status, NoOfRecords: len(queuedBatchedTransactions), DateCompleted: &dateCompleted}); err != nil {
+	if err := tx.Model(&batch).Updates(model.BatchRequest{Status: status, NoOfRecords: len(queuedBatchedTransactions), DateCompleted: &dateCompleted}).Error; err != nil {
 		processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while updating active batch status to %s", err, status)
 		return err
 	}
+
+	if err := tx.Commit().Error; err != nil {
+		processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while commiting db transaction", err)
+		return err
+	}
+			
 	return nil
 	
 }
