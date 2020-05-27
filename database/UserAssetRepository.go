@@ -14,6 +14,7 @@ type IUserAssetRepository interface {
 	GetAssetsByID(id, model interface{}) error
 	UpdateAssetBalByID(amount, model interface{}) error
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
+	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	Db() *gorm.DB
 }
 
@@ -31,6 +32,18 @@ func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
 			Err:     err,
 		}
 	}
+	return nil
+}
+
+func (repo *UserAssetRepository) BulkUpdate(ids interface{}, model interface{}, update interface{}) error {
+	if err := repo.DB.Model(model).Where(ids).Updates(update).Error; err != nil {
+		repo.Logger.Error("Error with repository BulkUpdate %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
 	return nil
 }
 

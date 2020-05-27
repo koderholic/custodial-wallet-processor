@@ -37,6 +37,8 @@ const (
 	BNB                       = "BNB"
 	BUSD                      = "BUSD"
 	ETH                       = "ETH"
+	FAILED                    = "FAILED"
+	SUCCESSFUL                = "SUCCESS"
 )
 
 var (

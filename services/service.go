@@ -13,6 +13,13 @@ import (
 	"wallet-adapter/utility"
 )
 
+//Controller : Controller struct
+type BaseService struct {
+	Cache  *utility.MemoryCache
+	Logger *utility.Logger
+	Config Config.Data
+}
+
 type Client struct {
 	BaseURL    *url.URL
 	UserAgent  string

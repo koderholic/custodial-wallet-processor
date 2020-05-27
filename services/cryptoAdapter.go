@@ -140,3 +140,21 @@ func GetBroadcastedTXNStatusByRef(transactionRef string, cache *utility.MemoryCa
 	}
 	return true
 }
+
+// GetBroadcastedTXNStatusByRef ...
+func GetBroadcastedTXNDetails(transactionRef string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (bool, dto.TransactionStatusResponse, error) {
+	serviceErr := dto.ServicesRequestErr{}
+
+	transactionStatusRequest := dto.TransactionStatusRequest{
+		Reference: transactionRef,
+	}
+	transactionStatusResponse := dto.TransactionStatusResponse{}
+	if err := TransactionStatus(cache, logger, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
+		logger.Error("Error getting broadcasted transaction status : %+v", err)
+		if serviceErr.StatusCode != http.StatusNotFound {
+			return false, dto.TransactionStatusResponse{}, err
+		}
+		return false, dto.TransactionStatusResponse{}, nil
+	}
+	return true, transactionStatusResponse, nil
+}
