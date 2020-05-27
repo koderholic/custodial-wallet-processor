@@ -546,12 +546,6 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 	if err != nil {
 		return err
 	}
-	if batchExist {
-		dateCompleted := time.Now()
-		if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: status, DateCompleted: &dateCompleted}); err != nil {
-			return err
-		}
-	}
 
 	transactions := []model.Transaction{}
 	if err := controller.Repository.FetchByFieldName(&model.Transaction{OnChainTxId: chainTransaction.ID}, &transactions); err != nil {
@@ -587,6 +581,13 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 		tx.Rollback()
 		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
 		return err
+	}
+
+	if batchExist {
+		dateCompleted := time.Now()
+		if err := tx.Model(&batch).Updates(model.BatchRequest{Status: status, DateCompleted: &dateCompleted}).Error; err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
