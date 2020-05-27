@@ -59,7 +59,8 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 					continue
 				}
 			} else {
-				if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.START_MODE, DateOfProcessing : time.Now()}); err != nil {
+				dateOfProcessing := time.Now()
+				if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.START_MODE, DateOfProcessing : &dateOfProcessing}); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
 					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
@@ -72,7 +73,6 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 				}
 
 				if err := processor.processBatch(batch, queuedBatchedTransactions); err != nil {
-					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %s, while proccessing batch with id %+v", err, batch.ID)
 					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
@@ -142,7 +142,8 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		return err
 	}
 
-	if err := processor.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.RETRY_MODE, NoOfRecords: len(queuedBatchedTransactions), DateOfProcessing : time.Now()}); err != nil {
+	dateOfProcessing := time.Now()
+	if err := processor.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.RETRY_MODE, NoOfRecords: len(queuedBatchedTransactions), DateOfProcessing : &dateOfProcessing}); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
 		return err
 	}
@@ -235,7 +236,8 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
 				return err
 			}
-			if err := processor.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.COMPLETED}); err != nil {
+			dateCompleted := time.Now()
+			if err := processor.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.COMPLETED, DateCompleted: &dateCompleted}); err != nil {
 				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to TERMINATED", err)
 				return err
 			}

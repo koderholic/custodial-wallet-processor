@@ -547,7 +547,8 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 		return err
 	}
 	if batchExist {
-		if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: status, DateCompleted: time.Now()}); err != nil {
+		dateCompleted := time.Now()
+		if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: status, DateCompleted: &dateCompleted}); err != nil {
 			return err
 		}
 	}

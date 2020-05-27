@@ -15,7 +15,15 @@ func Up20200521164546(tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
+	_, err = tx.Exec("ALTER TABLE batch_requests DROP index denomination_id;")
+	if err != nil {
+		return err
+	}
 	_, err = tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100) NOT NULL DEFAULT 'WAIT_MODE';")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("ALTER TABLE batch_requests Change records no_of_records int;")
 	if err != nil {
 		return err
 	}
@@ -33,6 +41,10 @@ func Down20200521164546(tx *sql.Tx) error {
 		return err
 	}
 	_, err = tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100)  NOT NULL DEFAULT 'PENDING';")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("ALTER TABLE batch_requests Change no_of_records records int;")
 	if err != nil {
 		return err
 	}
