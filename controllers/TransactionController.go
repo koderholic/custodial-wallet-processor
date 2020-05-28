@@ -553,11 +553,9 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 	}
 
 	transactionsIds := []uuid.UUID{}
-	transactionsIdsString := []string{}
 
 	for _, transaction := range transactions {
 		transactionsIds = append(transactionsIds, transaction.ID)
-		transactionsIdsString = append(transactionsIdsString, transaction.ID.String())
 	}
 
 	tx := controller.Repository.Db().Begin()
@@ -571,13 +569,13 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 		return err
 	}
 
-	if err := tx.Model(model.Transaction{}).Where(transactionsIds).Updates(model.Transaction{TransactionStatus: status}).Error; err != nil {
+	if err := tx.Model(&model.Transaction{}).Where("id IN (?)", transactionsIds).Updates(model.Transaction{TransactionStatus: status}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction records tied to chain transaction : %+v", err, chainTransaction.ID)
 		return err
 	}
 
-	if err := tx.Where("transaction_id IN (?)", transactionsIdsString).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+	if err := tx.Model(&model.TransactionQueue{}).Where("transaction_id IN (?)", transactionsIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
 		tx.Rollback()
 		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
 		return err

@@ -57,8 +57,7 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 					continue
 				}
 			} else {
-				dateOfProcessing := time.Now()
-				if err := controller.Repository.Update(&batch, &model.BatchRequest{Status: model.BatchStatus.START_MODE, DateOfProcessing : &dateOfProcessing}); err != nil {
+				if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.START_MODE); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
 					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
@@ -286,13 +285,13 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 			queuedBatchedTransactionsIds = append(queuedBatchedTransactionsIds, transaction.ID)
 		}
 
-		if err := tx.Model(model.Transaction{}).Where(batchedTransactionsIds).Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+		if err := tx.Model(&model.Transaction{}).Where("id IN (?)", batchedTransactionsIds).Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
 			tx.Rollback()
 			processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while updating the batchedTransactions status to %s", err, status)
 			return err
 		}
 
-		if err := tx.Model(model.TransactionQueue{}).Where(queuedBatchedTransactionsIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+		if err := tx.Model(&model.TransactionQueue{}).Where("id IN (?)", queuedBatchedTransactionsIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
 			tx.Rollback()
 			processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while updating the queued batchedTransactions status to %s", err, status)
 			return err
