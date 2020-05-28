@@ -32,7 +32,9 @@ func main() {
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
-	migration.RunDbMigrations(logger, config)
+	if err := migration.RunDbMigrations(logger, config); err != nil {
+		log.Fatalf("Error running migration: %s", err)
+	}
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
