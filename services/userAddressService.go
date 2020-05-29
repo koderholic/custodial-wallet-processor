@@ -215,13 +215,17 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 		if err != nil {
 			return []dto.AssetAddress{}, err
 		}
-	}
-
-	if len(userAddresses) != 2 {
+		assetAddresses = TransformAddressesResponse(responseAddresses)
+	} else {
 		// Create for the missing address
 		availbleAddress := map[string]bool{}
 		for _, address := range userAddresses {
 			availbleAddress[address.AddressType] = true
+			assetAddress := dto.AssetAddress{
+				Address: address.Address,
+				Type:    address.AddressType,
+			}
+			assetAddresses = append(assetAddresses, assetAddress)
 		}
 
 		if !availbleAddress[utility.ADDRESS_TYPE_LEGACY] {
@@ -239,15 +243,7 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 				return []dto.AssetAddress{}, err
 			}
 		}
-
-	}
-
-	for _, item := range responseAddresses {
-		address := dto.AssetAddress{
-			Address: item.Data,
-			Type:    item.Type,
-		}
-		assetAddresses = append(assetAddresses, address)
+		assetAddresses = TransformAddressesResponse(responseAddresses)
 	}
 
 	return assetAddresses, nil
@@ -269,4 +265,16 @@ func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUs
 	}
 
 	return responseAddresses, nil
+}
+
+func TransformAddressesResponse(responseAddresses []dto.AllAddressResponse) []dto.AssetAddress {
+	assetAddresses := []dto.AssetAddress{}
+	for _, item := range responseAddresses {
+		address := dto.AssetAddress{
+			Address: item.Data,
+			Type:    item.Type,
+		}
+		assetAddresses = append(assetAddresses, address)
+	}
+	return assetAddresses
 }
