@@ -65,4 +65,5 @@ type TransactionReceipt struct {
 type AddressWithMemo struct {
 	Address string `json:"address,omitempty"`
 	Memo    string `json:"memo,omitempty"`
+	Type    string `json:"type,omitempty"`
 }

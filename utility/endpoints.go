@@ -102,6 +102,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.NotificationServiceUrl,
 			Action:   "/emails/send",
 		}
+	case "createAllAddresses":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.KeyManagementService,
+			Action:   "/address​/create-all-versions",
+		}
 	default:
 		return MetaData{}
 	}

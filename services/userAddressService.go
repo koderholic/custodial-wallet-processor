@@ -15,7 +15,8 @@ func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, confi
 	var externalServiceErr dto.ServicesRequestErr
 
 	// Calls key-management service to create an address for the user asset
-	v1Address, err := GenerateAddress(cache, logger, config, userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, &externalServiceErr)
+	AddressService := BaseService{Config: config, Cache: cache, Logger: logger}
+	v1Address, err := AddressService.GenerateAddress(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, &externalServiceErr)
 	if err != nil || v1Address == "" {
 		logger.Error("Error response from userAddress service, could not generate user address : %v => %s ", externalServiceErr, err)
 		if externalServiceErr.Code != "" {
@@ -196,4 +197,77 @@ func findMatchingAsset(repository database.IUserAssetRepository, userAddresses [
 	}
 
 	return userAsset
+}
+
+func (service BaseService) GetBTCAddresses(repository database.IUserAssetRepository, userAsset model.UserAsset) ([]dto.AddressWithMemo, error) {
+	var userAddresses []model.UserAddress
+	var assetAddresses []dto.AddressWithMemo
+	var responseAddresses []dto.BTCAddress
+
+	err := repository.FetchByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddresses)
+	if err != nil {
+		service.Logger.Error("Error response from userAddress service, could not generate user BTC addresses : %s ", err)
+		return []dto.AddressWithMemo{}, err
+	}
+
+	if len(userAddresses) <= 0 {
+		responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, "")
+		if err != nil {
+			return []dto.AddressWithMemo{}, err
+		}
+	}
+
+	if len(userAddresses) != 2 {
+		// Create for the missing address
+		availbleAddress := map[string]bool{}
+		for _, item := range userAddresses {
+			availbleAddress[item.AddressType] = true
+		}
+
+		if !availbleAddress[utility.LEGACY] {
+			// Create Segwit Address
+			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.LEGACY)
+			if err != nil {
+				return []dto.AddressWithMemo{}, err
+			}
+		}
+
+		if !availbleAddress["Segwit"] {
+			// Create Segwit Address
+			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.SEGWIT)
+			if err != nil {
+				return []dto.AddressWithMemo{}, err
+			}
+		}
+
+	}
+
+	for _, item := range responseAddresses {
+		address := dto.AddressWithMemo{
+			Address: item.Data,
+			Type:    item.Type,
+		}
+		assetAddresses = append(assetAddresses, address)
+	}
+
+	return assetAddresses, nil
+}
+
+func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUserAssetRepository, asset model.UserAsset, addressType string) ([]dto.BTCAddress, error) {
+	var externalServiceErr dto.ServicesRequestErr
+	userAddress := model.UserAddress{}
+
+	responseAddresses, err := service.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType, externalServiceErr)
+	if err != nil {
+		return []dto.BTCAddress{}, err
+	}
+
+	for _, item := range responseAddresses {
+		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: asset.ID}, &userAddress, model.UserAddress{Address: item.Data, AddressType: item.Type}); err != nil {
+			service.Logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
+			return []dto.BTCAddress{}, errors.New(utility.GetSQLErr(err))
+		}
+	}
+
+	return responseAddresses, nil
 }
