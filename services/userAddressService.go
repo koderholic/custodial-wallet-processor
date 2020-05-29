@@ -220,8 +220,8 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 	if len(userAddresses) != 2 {
 		// Create for the missing address
 		availbleAddress := map[string]bool{}
-		for _, item := range userAddresses {
-			availbleAddress[item.AddressType] = true
+		for _, address := range userAddresses {
+			availbleAddress[address.AddressType] = true
 		}
 
 		if !availbleAddress[utility.LEGACY] {
@@ -232,7 +232,7 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 			}
 		}
 
-		if !availbleAddress["Segwit"] {
+		if !availbleAddress[utility.SEGWIT] {
 			// Create Segwit Address
 			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.SEGWIT)
 			if err != nil {
@@ -262,9 +262,9 @@ func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUs
 		return []dto.BTCAddress{}, err
 	}
 
-	for _, item := range responseAddresses {
-		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: asset.ID}, &userAddress, model.UserAddress{Address: item.Data, AddressType: item.Type}); err != nil {
-			service.Logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
+	for _, address := range responseAddresses {
+		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: asset.ID}, &userAddress, model.UserAddress{Address: address.Data, AddressType: address.Type}); err != nil {
+			service.Logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
 			return []dto.BTCAddress{}, errors.New(utility.GetSQLErr(err))
 		}
 	}
