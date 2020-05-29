@@ -62,6 +62,7 @@ func GenerateAddressWithoutSub(cache *utility.MemoryCache, logger *utility.Logge
 
 // GenerateAllAddresses ...
 func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType string, serviceErr interface{}) ([]dto.AllAddressResponse, error) {
+	var APIClient *Client
 
 	authToken, err := GetAuthToken(service.Cache, service.Logger, service.Config)
 	if err != nil {
@@ -73,8 +74,11 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
-
-	APIClient := NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s", metaData.Endpoint, metaData.Action, addressType))
+	if addressType == "" {
+		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	} else {
+		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s", metaData.Endpoint, metaData.Action, addressType))
+	}
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return []dto.AllAddressResponse{}, err
