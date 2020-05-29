@@ -16,15 +16,15 @@ type GenerateAddressResponse struct {
 	UserID  uuid.UUID `json:"userId"`
 }
 
-type BTCAddress struct {
+type AllAddressResponse struct {
 	Type string `json:"type"`
 	Data string `json:"data"`
 }
 
 // GenerateAllAddressesResponse ... Model definition for generate all asset addresses successful response, key-management service
 type GenerateAllAddressesResponse struct {
-	Addresses []BTCAddress `json:"addresses"`
-	UserID    uuid.UUID    `json:"userId"`
+	Addresses []AllAddressResponse `json:"addresses"`
+	UserID    uuid.UUID            `json:"userId"`
 }
 
 // SignTransaction ... Request definition for sign transaction , key-management service

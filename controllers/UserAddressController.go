@@ -15,7 +15,7 @@ import (
 
 // GetAssetAddress ... Retrieves the blockchain address of an address, if non exist, it calls key-management to generate one
 func (controller UserAssetController) GetAssetAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
-	var responseData dto.AddressWithMemo
+	var responseData dto.AssetAddress
 	var userAsset model.UserAsset
 	addressVersion := requestReader.URL.Query().Get("addressVersion")
 	var address string
@@ -53,7 +53,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 		}
 	}
 
-	responseData = dto.AddressWithMemo{
+	responseData = dto.AssetAddress{
 		Address: address,
 		Memo:    memo,
 	}
@@ -66,7 +66,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 
 // GetAllAssetAddresses ... Retrieves all addresses for the given asset, if non exist, it calls key-management to generate one
 func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.ResponseWriter, requestReader *http.Request) {
-	var responseData []dto.AddressWithMemo
+	var assetAddresses []dto.AssetAddress
 	var userAsset model.UserAsset
 	apiResponse := utility.NewResponse()
 	routeParams := mux.Vars(requestReader)
@@ -89,22 +89,20 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
 			return
 		}
-		responseData = append(responseData, dto.AddressWithMemo{
+		assetAddresses = append(assetAddresses, dto.AssetAddress{
 			Address: v2Address.Address,
 			Memo:    v2Address.Memo,
 		})
 	} else {
 		var err error
 		var address string
-		var addresses []dto.AddressWithMemo
 		AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}
 
 		if userAsset.AssetSymbol == utility.BTC {
-			addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
-			responseData = addresses
+			assetAddresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
-			responseData = append(responseData, dto.AddressWithMemo{
+			assetAddresses = append(assetAddresses, dto.AssetAddress{
 				Address: address,
 			})
 		}
@@ -114,6 +112,8 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 			return
 		}
 	}
+
+	responseData := map[string][]dto.AssetAddress{"addresses": assetAddresses}
 
 	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")

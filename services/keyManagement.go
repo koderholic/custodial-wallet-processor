@@ -61,11 +61,11 @@ func GenerateAddressWithoutSub(cache *utility.MemoryCache, logger *utility.Logge
 }
 
 // GenerateAllAddresses ...
-func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType string, serviceErr interface{}) ([]dto.BTCAddress, error) {
+func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType string, serviceErr interface{}) ([]dto.AllAddressResponse, error) {
 
 	authToken, err := GetAuthToken(service.Cache, service.Logger, service.Config)
 	if err != nil {
-		return []dto.BTCAddress{}, err
+		return []dto.AllAddressResponse{}, err
 	}
 	requestData := dto.GenerateAddressRequest{}
 	responseData := dto.GenerateAllAddressesResponse{}
@@ -77,7 +77,7 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	APIClient := NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s", metaData.Endpoint, metaData.Action, addressType))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
-		return []dto.BTCAddress{}, err
+		return []dto.AllAddressResponse{}, err
 	}
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
@@ -85,9 +85,9 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	_, err = APIClient.Do(APIRequest, &responseData)
 	if err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
-			return []dto.BTCAddress{}, err
+			return []dto.AllAddressResponse{}, err
 		}
-		return []dto.BTCAddress{}, err
+		return []dto.AllAddressResponse{}, err
 	}
 	addressArray := []string{}
 	for _, item := range responseData.Addresses {
@@ -96,7 +96,7 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 
 	//call subscribe
 	if err := service.subscribeAddress(serviceErr, addressArray, coinType); err != nil {
-		return []dto.BTCAddress{}, err
+		return []dto.AllAddressResponse{}, err
 	}
 
 	return responseData.Addresses, nil

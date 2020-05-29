@@ -11,7 +11,11 @@ func init() {
 
 func Up20200529141352(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
-	_, err := tx.Exec("ALTER TABLE user_addresses ADD address_type varchar(50) NOT NULL DEFAULT 'Segwit' after `address`;")
+	_, err := tx.Exec("ALTER TABLE user_addresses ADD address_type varchar(50) NULL after `address`;")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE user_addresses SET address_type='Segwit' WHERE address_type IS NULL AND address LIKE 'bc1%';")
 	if err != nil {
 		return err
 	}

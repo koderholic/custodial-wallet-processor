@@ -62,7 +62,7 @@ type TransactionReceipt struct {
 	TransactionStatus    string    `json:"transactionStatus,omitempty"`
 }
 
-type AddressWithMemo struct {
+type AssetAddress struct {
 	Address string `json:"address,omitempty"`
 	Memo    string `json:"memo,omitempty"`
 	Type    string `json:"type,omitempty"`
