@@ -110,7 +110,6 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		}
 
 		if err != nil {
-			controller.Logger.Info("Error from GetBTCAddresses service : %s", err)
 			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
 			return
 		}
