@@ -234,6 +234,8 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 			if err != nil {
 				return []dto.AssetAddress{}, err
 			}
+			transformedResponse := TransformAddressesResponse(responseAddresses)
+			assetAddresses = append(assetAddresses, transformedResponse...)
 		}
 
 		if !availbleAddress[utility.ADDRESS_TYPE_SEGWIT] {
@@ -242,8 +244,9 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 			if err != nil {
 				return []dto.AssetAddress{}, err
 			}
+			transformedResponse := TransformAddressesResponse(responseAddresses)
+			assetAddresses = append(assetAddresses, transformedResponse...)
 		}
-		assetAddresses = TransformAddressesResponse(responseAddresses)
 	}
 
 	return assetAddresses, nil
