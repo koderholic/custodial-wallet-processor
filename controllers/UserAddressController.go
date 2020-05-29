@@ -72,13 +72,13 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		ReturnError(responseWriter, "GetAssetAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
+	controller.Logger.Info("Incoming request details for GetAllAssetAddresses : assetID : %+v", assetID)
 
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetID}}, &userAsset); err != nil {
-		ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAsset with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
+		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAsset with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		v2Address, err := services.GetV2AddressWithMemo(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 		if err != nil {
 			controller.Logger.Info("Error from GetV2AddressWithMemo service : %s", err)
-			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
+			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
 			return
 		}
 		responseData = append(responseData, dto.AddressWithMemo{
@@ -110,13 +110,13 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		}
 
 		if err != nil {
-			controller.Logger.Info("Error from GetV1Address service : %s", err)
-			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
+			controller.Logger.Info("Error from GetBTCAddresses service : %s", err)
+			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
 			return
 		}
 	}
 
-	controller.Logger.Info("Outgoing response to GetAssetAddress request %+v", responseData)
+	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(responseWriter).Encode(responseData)
 
