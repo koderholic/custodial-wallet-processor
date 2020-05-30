@@ -11,23 +11,23 @@ func init() {
 
 func Up20200521164546(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
-	// _, err := tx.Exec("ALTER TABLE batch_requests Change denomination_id asset_symbol varchar(100);")
-	// if err != nil {
-	// 	return err
-	// }
-	// _, err = tx.Exec("ALTER TABLE batch_requests DROP index denomination_id;")
-	// if err != nil {
-	// 	return err
-	// }
-	// _, err = tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100) NOT NULL DEFAULT 'WAIT_MODE';")
-	// if err != nil {
-	// 	return err
-	// }
-	// _, err = tx.Exec("ALTER TABLE batch_requests Change records no_of_records int;")
-	// if err != nil {
-	// 	return err
-	// }
-	_, err := tx.Exec("ALTER TABLE batch_requests ADD INDEX (status,asset_symbol);")
+	_, err := tx.Exec("ALTER TABLE batch_requests Change denomination_id asset_symbol varchar(100);")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("ALTER TABLE batch_requests DROP index denomination_id;")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("ALTER TABLE batch_requests Change status status VARCHAR(100) NOT NULL DEFAULT 'WAIT_MODE';")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("ALTER TABLE batch_requests Change records no_of_records int;")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("ALTER TABLE batch_requests ADD INDEX (status,asset_symbol);")
 	if err != nil {
 		return err
 	}
