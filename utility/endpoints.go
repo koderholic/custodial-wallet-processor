@@ -106,7 +106,7 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 		return MetaData{
 			Type:     http.MethodPost,
 			Endpoint: config.KeyManagementService,
-			Action:   "/address​/create-all-versions",
+			Action:   "/address/create-all-versions",
 		}
 	default:
 		return MetaData{}

@@ -228,6 +228,16 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 			assetAddresses = append(assetAddresses, assetAddress)
 		}
 
+		if !availbleAddress[utility.ADDRESS_TYPE_SEGWIT] {
+			// Create Segwit Address
+			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_SEGWIT)
+			if err != nil {
+				return []dto.AssetAddress{}, err
+			}
+			transformedResponse := TransformAddressesResponse(responseAddresses)
+			assetAddresses = append(assetAddresses, transformedResponse...)
+		}
+
 		if !availbleAddress[utility.ADDRESS_TYPE_LEGACY] {
 			// Create Segwit Address
 			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_LEGACY)
@@ -238,15 +248,6 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 			assetAddresses = append(assetAddresses, transformedResponse...)
 		}
 
-		if !availbleAddress[utility.ADDRESS_TYPE_SEGWIT] {
-			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_SEGWIT)
-			if err != nil {
-				return []dto.AssetAddress{}, err
-			}
-			transformedResponse := TransformAddressesResponse(responseAddresses)
-			assetAddresses = append(assetAddresses, transformedResponse...)
-		}
 	}
 
 	return assetAddresses, nil
