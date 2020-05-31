@@ -39,6 +39,8 @@ const (
 	ETH                       = "ETH"
 	FAILED                    = "FAILED"
 	SUCCESSFUL                = "SUCCESS"
+	ADDRESS_TYPE_LEGACY       = "Legacy"
+	ADDRESS_TYPE_SEGWIT       = "Segwit"
 )
 
 var (
