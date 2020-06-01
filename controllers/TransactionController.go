@@ -465,10 +465,8 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 	}
 
 	// Convert transactionValue to bigInt
-	denominationDecimal := decimal.NewFromInt(int64(denomination.Decimal))
-	baseExp := decimal.NewFromInt(10)
 	transactionValue := new(big.Int)
-	_, setStringValidity := transactionValue.SetString(transaction.Value.Mul(baseExp.Pow(denominationDecimal)).String(), 10)
+	_, setStringValidity := transactionValue.SetString(transaction.Value.String(), 10)
 	if !setStringValidity {
 		return errors.New("Could not convert transaction value from decimal to bigInt")
 	}
