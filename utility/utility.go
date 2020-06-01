@@ -7,10 +7,17 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
-//GenerateReferenceID ....
+func NativeValue(denominationDecimal int, rawValue decimal.Decimal) decimal.Decimal {
+	conversionDecimal := decimal.NewFromInt(int64(denominationDecimal))
+	baseExp := decimal.NewFromInt(10)
+	return rawValue.Mul(baseExp.Pow(conversionDecimal))
+}
 
+//GenerateReferenceID ....
 func RandomString(strlen int) string {
 	rand.Seed(time.Now().UTC().UnixNano())
 	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

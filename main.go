@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/getsentry/sentry-go"
 	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -9,6 +8,8 @@ import (
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
+
+	"github.com/getsentry/sentry-go"
 
 	"log"
 	"net/http"
