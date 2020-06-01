@@ -66,7 +66,6 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 
 // GetAllAssetAddresses ... Retrieves all addresses for the given asset, if non exist, it calls key-management to generate one
 func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.ResponseWriter, requestReader *http.Request) {
-	var assetAddresses []dto.AssetAddress
 	var userAsset model.UserAsset
 	var responseData dto.AllAssetAddresses
 	apiResponse := utility.NewResponse()
@@ -90,13 +89,10 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
 			return
 		}
-		assetAddresses = append(assetAddresses, dto.AssetAddress{
+		responseData.Addresses = append(responseData.Addresses, dto.AssetAddress{
 			Address: v2Address.Address,
 			Memo:    v2Address.Memo,
 		})
-		responseData = dto.AllAssetAddresses{
-			Addresses: assetAddresses,
-		}
 	} else {
 		var err error
 		var address string
@@ -105,18 +101,11 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		if userAsset.AssetSymbol == utility.BTC {
 			responseData.Addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
 			responseData.DefaultAddressType = utility.DEFAULT_BTC_ADDRESS_TYPE
-			// responseData = dto.AllAssetAddresses{
-			// 	Addresses:          assetAddresses,
-			// 	DefaultAddressType: utility.DEFAULT_BTC_ADDRESS_TYPE,
-			// }
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
-			responseData.Addresses = append(assetAddresses, dto.AssetAddress{
+			responseData.Addresses = append(responseData.Addresses, dto.AssetAddress{
 				Address: address,
 			})
-			// responseData = dto.AllAssetAddresses{
-			// 	Addresses: assetAddresses,
-			// }
 		}
 
 		if err != nil {
