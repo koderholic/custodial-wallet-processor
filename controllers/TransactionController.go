@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -458,17 +457,10 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 
 	// Get the transaction fee estimate by calling key-management to sign transaction
 
-	// Convert transactionValue to bigInt
-	transactionValue := new(big.Int)
-	_, setStringValidity := transactionValue.SetString(transaction.Value.String(), 10)
-	if !setStringValidity {
-		return errors.New("Could not convert transaction value from decimal to bigInt")
-	}
-
 	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
-		Amount:      transactionValue,
+		Amount:      transaction.Value.BigInt(),
 		Memo:        transaction.Memo,
 		AssetSymbol: transaction.AssetSymbol,
 	}

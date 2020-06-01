@@ -29,7 +29,7 @@ require (
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/shopspring/decimal v0.0.0-20200105231215-408a2507e114
+	github.com/shopspring/decimal v1.2.0
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.4.0
 	github.com/swaggo/http-swagger v0.0.0-20190614090009-c2865af9083e
