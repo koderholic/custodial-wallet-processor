@@ -11,7 +11,7 @@ func init() {
 
 func Up20200601203133(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
-	_, err := tx.Exec("ALTER TABLE transaction_queues Change value value decimal(64,18);")
+	_, err := tx.Exec("ALTER TABLE transaction_queues Change value value decimal(64,0);")
 	if err != nil {
 		return err
 	}

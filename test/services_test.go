@@ -1,6 +1,7 @@
 package test
 
 import (
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +19,6 @@ const (
 		"fee": 5250
 	}`
 )
-
 
 func TestSignTransactionImplementation(t *testing.T) {
 
@@ -38,8 +38,8 @@ func TestSignTransactionImplementation(t *testing.T) {
 	requestData := model.SignTransactionRequest{
 		FromAddress: "0xcDb4D4dbe1a5154E5046b4fBa2efA2FA5E6a64Ec",
 		ToAddress:   "0x6CB3F3b958287fD63FA39ED8a392414115c089b3",
-		Amount:      1510000000000000,
-		AssetSymbol:    "ETH",
+		Amount:      big.NewInt(1510000000000000),
+		AssetSymbol: "ETH",
 	}
 	responseData := model.SignTransactionResponse{}
 	serviceErr := model.ServicesRequestErr{}
@@ -137,7 +137,7 @@ func TestBroadcastTransactionImplementation(t *testing.T) {
 	purgeInterval := Config.PurgeCacheInterval * time.Second
 	cacheDuration := Config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
-	
+
 	if err := services.BroadcastToChain(authCache, logger, Config, requestData, &responseData, serviceErr); err == nil {
 		t.Errorf("Expected SignTransaction to error due to incorrect signed data, got %s\n", err)
 	}

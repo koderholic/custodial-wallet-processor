@@ -225,6 +225,11 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	// Convert transactionValue to bigInt
+	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
+	baseExp := decimal.NewFromInt(10)
+	value = value.Mul(baseExp.Pow(denominationDecimal))
+
 	// Queue transaction up for processing
 	queue := dto.TransactionQueue{
 		Recipient:      requestData.RecipientAddress,
