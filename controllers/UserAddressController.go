@@ -100,7 +100,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 
 		if userAsset.AssetSymbol == utility.BTC {
 			responseData.Addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
-			responseData.DefaultAddressType = utility.DEFAULT_BTC_ADDRESS_TYPE
+			responseData.DefaultAddressType = utility.DefaultAddressesTypes[userAsset.CoinType]
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 			responseData.Addresses = append(responseData.Addresses, dto.AssetAddress{

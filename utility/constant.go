@@ -41,7 +41,6 @@ const (
 	SUCCESSFUL                = "SUCCESS"
 	ADDRESS_TYPE_LEGACY       = "Legacy"
 	ADDRESS_TYPE_SEGWIT       = "Segwit"
-	DEFAULT_BTC_ADDRESS_TYPE  = "Segwit"
 )
 
 var (
@@ -49,5 +48,10 @@ var (
 		"BTC": 546,
 		"ETH": 15000000000000,
 		"BNB": 37500,
+	}
+	DefaultAddressesTypes = map[int64]string{
+		0:   ADDRESS_TYPE_SEGWIT,
+		60:  "",
+		714: "",
 	}
 )
