@@ -2,6 +2,7 @@ package model
 
 import (
 	uuid "github.com/satori/go.uuid"
+	"math/big"
 )
 
 // GenerateAddressRequest ... Request definition for generate address , key-management service
@@ -18,12 +19,12 @@ type GenerateAddressResponse struct {
 
 // SignTransaction ... Request definition for sign transaction , key-management service
 type SignTransactionRequest struct {
-	FromAddress string `json:"fromAddress"`
-	ToAddress   string `json:"toAddress"`
-	Memo        string `json:"memo"`
-	Amount      int64  `json:"amount"`
-	AssetSymbol string `json:"assetSymbol"`
-	IsSweep     bool   `json:"isSweep"`
+	FromAddress string   `json:"fromAddress"`
+	ToAddress   string   `json:"toAddress"`
+	Memo        string   `json:"memo"`
+	Amount      *big.Int `json:"amount"`
+	AssetSymbol string   `json:"assetSymbol"`
+	IsSweep     bool     `json:"isSweep"`
 }
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service

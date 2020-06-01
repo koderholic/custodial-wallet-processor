@@ -182,14 +182,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Ensure transaction value is above minimum send to chain
-	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
-	baseExp := decimal.NewFromInt(10)
-	transactionValue := new(big.Int)
-	_, setStringValidity := transactionValue.SetString(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10)
-	if !setStringValidity {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, "Conversion error", apiResponse.PlainError("SYSTEM_ERR", "Could not convert transaction value from decimal to big int"), controller.Logger)
-		return
-	}
 	minimumSpendable := decimal.NewFromFloat(utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
 	if value.Cmp(minimumSpendable) <= 0 {
 		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, utility.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %d", utility.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
@@ -236,7 +228,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// Queue transaction up for processing
 	queue := dto.TransactionQueue{
 		Recipient:      requestData.RecipientAddress,
-		Value:          transactionValue.Int64(),
+		Value:          value,
 		DebitReference: requestData.DebitReference,
 		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
@@ -460,10 +452,26 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 	}
 
 	// Get the transaction fee estimate by calling key-management to sign transaction
+
+	// Get transaction denomination
+	denomination := dto.Denomination{}
+	if err := processor.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: transaction.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return err
+	}
+
+	// Convert transactionValue to bigInt
+	denominationDecimal := decimal.NewFromInt(int64(denomination.Decimal))
+	baseExp := decimal.NewFromInt(10)
+	transactionValue := new(big.Int)
+	_, setStringValidity := transactionValue.SetString(transaction.Value.Mul(baseExp.Pow(denominationDecimal)).String(), 10)
+	if !setStringValidity {
+		return errors.New("Could not convert transaction value from decimal to bigInt")
+	}
+
 	signTransactionRequest := model.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
-		Amount:      transaction.Value,
+		Amount:      transactionValue,
 		Memo:        transaction.Memo,
 		AssetSymbol: transaction.AssetSymbol,
 	}
