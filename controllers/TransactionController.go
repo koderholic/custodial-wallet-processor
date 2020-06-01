@@ -458,12 +458,6 @@ func (processor *TransactionProccessor) processSingleTxn(transaction dto.Transac
 
 	// Get the transaction fee estimate by calling key-management to sign transaction
 
-	// Get transaction denomination
-	denomination := dto.Denomination{}
-	if err := processor.Repository.GetByFieldName(&dto.Denomination{AssetSymbol: transaction.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return err
-	}
-
 	// Convert transactionValue to bigInt
 	transactionValue := new(big.Int)
 	_, setStringValidity := transactionValue.SetString(transaction.Value.String(), 10)
