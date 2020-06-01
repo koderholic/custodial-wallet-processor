@@ -68,6 +68,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.ResponseWriter, requestReader *http.Request) {
 	var assetAddresses []dto.AssetAddress
 	var userAsset model.UserAsset
+	var responseData dto.AllAssetAddresses
 	apiResponse := utility.NewResponse()
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
@@ -93,18 +94,29 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 			Address: v2Address.Address,
 			Memo:    v2Address.Memo,
 		})
+		responseData = dto.AllAssetAddresses{
+			Addresses: assetAddresses,
+		}
 	} else {
 		var err error
 		var address string
 		AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}
 
 		if userAsset.AssetSymbol == utility.BTC {
-			assetAddresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
+			responseData.Addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
+			responseData.DefaultAddressType = utility.DEFAULT_BTC_ADDRESS_TYPE
+			// responseData = dto.AllAssetAddresses{
+			// 	Addresses:          assetAddresses,
+			// 	DefaultAddressType: utility.DEFAULT_BTC_ADDRESS_TYPE,
+			// }
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
-			assetAddresses = append(assetAddresses, dto.AssetAddress{
+			responseData.Addresses = append(assetAddresses, dto.AssetAddress{
 				Address: address,
 			})
+			// responseData = dto.AllAssetAddresses{
+			// 	Addresses: assetAddresses,
+			// }
 		}
 
 		if err != nil {
@@ -112,8 +124,6 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 			return
 		}
 	}
-
-	responseData := map[string][]dto.AssetAddress{"addresses": assetAddresses}
 
 	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")

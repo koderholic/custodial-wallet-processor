@@ -2,14 +2,14 @@ package services
 
 import (
 	"errors"
-	uuid "github.com/satori/go.uuid"
-	"sort"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (string, error) {
@@ -219,9 +219,9 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 		assetAddresses = TransformAddressesResponse(responseAddresses)
 	} else {
 		// Create for the missing address
-		sort.Slice(userAddresses, func(i, j int) bool {
-			return userAddresses[i].CreatedAt.Before(userAddresses[j].BaseModel.CreatedAt)
-		})
+		// sort.Slice(userAddresses, func(i, j int) bool {
+		// 	return userAddresses[i].CreatedAt.Before(userAddresses[j].BaseModel.CreatedAt)
+		// })
 		availbleAddress := map[string]bool{}
 		for _, address := range userAddresses {
 			availbleAddress[address.AddressType] = true

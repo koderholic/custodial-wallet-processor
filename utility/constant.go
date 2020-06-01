@@ -41,6 +41,7 @@ const (
 	SUCCESSFUL                = "SUCCESS"
 	ADDRESS_TYPE_LEGACY       = "Legacy"
 	ADDRESS_TYPE_SEGWIT       = "Segwit"
+	DEFAULT_BTC_ADDRESS_TYPE  = "Segwit"
 )
 
 var (
