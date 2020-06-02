@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"math/big"
 	uuid "github.com/satori/go.uuid"
 	"time"
 )
@@ -52,5 +53,5 @@ type BatchBTCRequest struct {
 
 type BatchRecipients struct {
 	Address string `json:"address"`
-	Value   int64  `json:"value"`
+	Value   *big.Int  `json:"value"`
 }

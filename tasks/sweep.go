@@ -6,6 +6,7 @@ import (
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
 	"math"
+	"math/big"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -120,7 +121,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 	}
 	floatRecipient := dto.BatchRecipients{
 		Address: floatAccount.Address,
-		Value:   0,
+		Value:   big.NewInt(0),
 	}
 	recipientData = append(recipientData, floatRecipient)
 	signTransactionRequest := dto.BatchBTCRequest{
@@ -182,7 +183,7 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: recipientAddress,
 		ToAddress:   floatAccount.Address,
-		Amount:      0,
+		Amount:      big.NewInt(0),
 		AssetSymbol: recipientAsset.AssetSymbol,
 		IsSweep:     true,
 	}
@@ -258,7 +259,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 		signTransactionRequest := dto.SignTransactionRequest{
 			FromAddress: floatAccount.Address,
 			ToAddress:   recipientAddress,
-			Amount:      denomination.SweepFee,
+			Amount:      big.NewInt(denomination.SweepFee),
 			AssetSymbol: denomination.MainCoinAssetSymbol,
 			//this currently only supports coins that supports Memo, ETH will not be ignored
 			Memo: utility.SWEEPMEMOBNB,
