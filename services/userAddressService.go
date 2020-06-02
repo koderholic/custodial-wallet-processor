@@ -2,13 +2,14 @@ package services
 
 import (
 	"errors"
-	uuid "github.com/satori/go.uuid"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (string, error) {
