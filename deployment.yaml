@@ -55,3 +55,16 @@ cronJobs:
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment
+  - name: wallet-adapter-trigger-batch-job-process
+    schedule: '*/15 * * * *' #Run every 15 minutes
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: request-initiator
+      image: curlimages/curl:latest
+      args:
+        - '-Ssfv'
+        - 'http://crypto-wallet-adapter/assets/process-batched-transactions'
+        - '-XPOST'
+      env:
+        ENVIRONMENT: config:default:environment
