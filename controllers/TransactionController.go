@@ -370,6 +370,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 			batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transaction.BatchID)
 			if err != nil {
+				controller.Logger.Error("Error occured while checking if transaction is batched : %s", err)
 				continue
 			}
 			if batchExist {
