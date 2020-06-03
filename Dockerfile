@@ -42,7 +42,7 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "maxOpenConns : 50" >> config.yaml && \
     echo "connMaxLifetime: 300" >> config.yaml && \
     echo "floatPercentage: 10" >> config.yaml && \
-    echo "enableFloatManager : false"  >> config.yaml && \
+    echo "enableFloatManager : true"  >> config.yaml && \
     echo "dbMigrationPath : ./migration" >> config.yaml && \
     echo "sweepCronInterval: 1/30 * * * *" >> config.yaml && \
     echo "floatCronInterval: 1/30 * * * *" >> config.yaml && \

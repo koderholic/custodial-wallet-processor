@@ -190,8 +190,8 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 
 	// Batch transaction, if asset is BTC
 	var activeBatchId uuid.UUID
-	if debitReferenceAsset.AssetSymbol == utility.BTC {
-		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.BTC)
+	if debitReferenceAsset.AssetSymbol == utility.COIN_BTC {
+		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.COIN_BTC)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
 			return

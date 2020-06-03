@@ -56,7 +56,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			}
 			return
 		}
-		if recipientAsset.AssetSymbol == utility.BTC {
+		if recipientAsset.AssetSymbol == utility.COIN_BTC {
 			//get recipient address for each transaction
 			transactionsPerRecipientAddress, err := groupTxByAddress(assetTransactions, repository, logger, recipientAsset)
 			if err != nil {
