@@ -117,15 +117,13 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				err = notifyColdWalletUsers(deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
 			}
 		}
-		if floatOnChainBalance.Cmp(maximum) < 0 && floatAccount.AssetSymbol == utility.COIN_BNB {
+		if floatOnChainBalance.Cmp(maximum) > 0 {
 			//debit float address
 			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", floatOnChainBalance.Sub(floatOnChainBalance, maximum), floatAccount.AssetSymbol)
 			depositAddressResponse := dto.DepositAddressResponse{}
 			var bigIntDeficit *big.Int
-			// excessDeficit := new(big.Float)
-			// excessDeficit.Sub(floatOnChainBalance, maximum).Int(bigIntDeficit)
-			// Just for QA
-			bigIntDeficit = big.NewInt(6664001)
+			excessDeficit := new(big.Float)
+			excessDeficit.Sub(floatOnChainBalance, maximum).Int(bigIntDeficit)
 			services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
 			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr)
 		}
