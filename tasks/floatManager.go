@@ -127,7 +127,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			// Just for QA
 			bigIntDeficit = big.NewInt(6664001)
 			services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
-			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse.Address, logger, config, floatAccount, serviceErr)
+			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr)
 		}
 
 		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximum, minimum, percentageOfUserBalance, deficit, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
@@ -300,11 +300,12 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	return sum, nil
 }
 
-func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, destinationAddress string, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) {
+func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) {
 	// Calls key-management to sign transaction
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
-		ToAddress:   destinationAddress,
+		ToAddress:   depositAccount.Address,
+		Memo:        depositAccount.Tag,
 		Amount:      amount,
 		AssetSymbol: floatAccount.AssetSymbol,
 		IsSweep:     false,
