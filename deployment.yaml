@@ -56,7 +56,7 @@ cronJobs:
       env:
         ENVIRONMENT: config:default:environment
   - name: wallet-adapter-trigger-batch-job-process
-    schedule: '*/15 * * * *' #Run every 15 minutes
+    schedule: '*/30 * * * *' #Run every 30 minutes
     allowConcurrentRun: false
     grantAwsAccess: false
     container:
