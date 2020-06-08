@@ -169,7 +169,6 @@ func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount model.
 		},
 	}
 	sendEmailRequest := dto.SendEmailRequest{
-		Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 		Content: "",
 		Template: dto.EmailTemplate{
 			ID:     config.ColdWalletEmailTemplateId,
@@ -180,6 +179,11 @@ func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount model.
 			Email: "info@bundle.africa",
 		},
 		Receivers: coldWalletEmails,
+	}
+	if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
+		sendEmailRequest.Subject = "Live: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
+	} else {
+		sendEmailRequest.Subject = "Test: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
 	}
 	sendEmailResponse := dto.SendEmailResponse{}
 	err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)

@@ -33,10 +33,10 @@ const (
 	ADDRESS_VERSION_V2           = "VERSION_2"
 	SHARED_ADDRESS_ID            = "56234b22-6f1b-4e47-b9bf-feaa68c0ae99"
 	EMPTY_MEMO_ERR               = "Memo is required"
-	COIN_BTC                          = "BTC"
-	COIN_BNB                          = "BNB"
-	COIN_BUSD                         = "BUSD"
-	COIN_ETH                          = "ETH"
+	COIN_BTC                     = "BTC"
+	COIN_BNB                     = "BNB"
+	COIN_BUSD                    = "BUSD"
+	COIN_ETH                     = "ETH"
 	FAILED                       = "FAILED"
 	SUCCESSFUL                   = "SUCCESS"
 	ADDRESS_TYPE_LEGACY          = "Legacy"
@@ -48,6 +48,8 @@ const (
 	BNB_COLD_WALLET_ADDRESS_MEMO = 109630239
 	BTC_COLD_WALLET_ADDRESS      = "17mN6BpX8k7TecMGvC1jWqztd8SYF7VbpZ"
 	ETH_COLD_WALLET_ADDRESS      = "0xad7651a207ab7a0fdcefc30c5a4fcc68d830b2f5"
+	ENV_PRODUCTION               = "production"
+	ENV_STAGING                  = "staging"
 )
 
 var (
