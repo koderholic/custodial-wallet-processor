@@ -124,8 +124,8 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			var bigIntDeficit *big.Int
 			excessDeficit := new(big.Float)
 			excessDeficit.Sub(floatOnChainBalance, maximum).Int(bigIntDeficit)
-			denomination := dto.Denomination{}
-			if err := repository.GetByFieldName(&dto.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+			denomination := model.Denomination{}
+			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 				continue
 			}
