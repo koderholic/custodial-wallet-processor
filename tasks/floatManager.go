@@ -124,7 +124,17 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			var bigIntDeficit *big.Int
 			excessDeficit := new(big.Float)
 			excessDeficit.Sub(floatOnChainBalance, maximum).Int(bigIntDeficit)
-			services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
+			denomination := model.Denomination{}
+			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
+				continue
+			}
+			//Pass network as maincoin in the case of tokens
+			if denomination.IsToken {
+				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr)
+			} else {
+				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
+			}
 			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr)
 		}
 
