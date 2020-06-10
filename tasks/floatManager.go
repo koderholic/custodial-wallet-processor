@@ -124,8 +124,18 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			var bigIntDeficit *big.Int
 			excessDeficit := new(big.Float)
 			excessDeficit.Sub(floatOnChainBalance, maximum).Int(bigIntDeficit)
-			services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
-			signTxAndBroadcastToChain(cache, repository, bigIntDeficit.Int64(), depositAddressResponse.Address, logger, config, floatAccount, serviceErr)
+			denomination := model.Denomination{}
+			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
+				continue
+			}
+			//Pass network as maincoin in the case of tokens
+			if denomination.IsToken {
+				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr)
+			} else {
+				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
+			}
+			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr)
 		}
 
 		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximum, minimum, percentageOfUserBalance, deficit, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
@@ -169,7 +179,6 @@ func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount model.
 		},
 	}
 	sendEmailRequest := dto.SendEmailRequest{
-		Subject: "Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol,
 		Content: "",
 		Template: dto.EmailTemplate{
 			ID:     config.ColdWalletEmailTemplateId,
@@ -180,6 +189,11 @@ func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount model.
 			Email: "info@bundle.africa",
 		},
 		Receivers: coldWalletEmails,
+	}
+	if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
+		sendEmailRequest.Subject = "Live: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
+	} else {
+		sendEmailRequest.Subject = "Test: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
 	}
 	sendEmailResponse := dto.SendEmailResponse{}
 	err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
@@ -298,11 +312,12 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	return sum, nil
 }
 
-func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount int64, destinationAddress string, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) {
+func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) {
 	// Calls key-management to sign transaction
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
-		ToAddress:   destinationAddress,
+		ToAddress:   depositAccount.Address,
+		Memo:        depositAccount.Tag,
 		Amount:      amount,
 		AssetSymbol: floatAccount.AssetSymbol,
 		IsSweep:     false,

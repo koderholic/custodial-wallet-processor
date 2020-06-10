@@ -39,6 +39,7 @@ resources:
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
       token: AUTHENTICATION_SERVICE_TOKEN
+      ENVIRONMENT: SENTRY_ENVIRONMENT
 
 # Definition for Cron Jobs, see https://bundle-deploy-config.s3.amazonaws.com/viewer/index.html
 cronJobs:
@@ -52,6 +53,19 @@ cronJobs:
       args:
         - '-Ssfv'
         - 'http://crypto-wallet-adapter/assets/process-transaction'
+        - '-XPOST'
+      env:
+        ENVIRONMENT: config:default:environment
+  - name: wallet-adapter-trigger-batch-job-process
+    schedule: '*/30 * * * *' #Run every 30 minutes
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: request-initiator
+      image: curlimages/curl:latest
+      args:
+        - '-Ssfv'
+        - 'http://crypto-wallet-adapter/assets/process-batched-transactions'
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment

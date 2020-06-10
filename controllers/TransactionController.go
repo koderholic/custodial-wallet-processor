@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"wallet-adapter/config"
@@ -183,23 +182,16 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Ensure transaction value is above minimum send to chain
-	denominationDecimal := decimal.NewFromInt(int64(debitReferenceAsset.Decimal))
-	baseExp := decimal.NewFromInt(10)
-	transactionValue, err := strconv.ParseInt(value.Mul(baseExp.Pow(denominationDecimal)).String(), 10, 64)
-	if err != nil {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
-		return
-	}
-
-	if transactionValue <= utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol] {
+	minimumSpendable := decimal.NewFromFloat(utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
+	if value.Cmp(minimumSpendable) <= 0 {
 		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, utility.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %d", utility.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
 		return
 	}
 
 	// Batch transaction, if asset is BTC
 	var activeBatchId uuid.UUID
-	if debitReferenceAsset.AssetSymbol == utility.BTC {
-		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.BTC)
+	if debitReferenceAsset.AssetSymbol == utility.COIN_BTC {
+		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.COIN_BTC)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
 			return
@@ -245,10 +237,13 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	// Convert transactionValue to bigInt
+	value = utility.NativeValue(debitReferenceAsset.Decimal, value)
+
 	// Queue transaction up for processing
 	queue := model.TransactionQueue{
 		Recipient:      requestData.RecipientAddress,
-		Value:          transactionValue,
+		Value:          value,
 		DebitReference: requestData.DebitReference,
 		AssetSymbol:    debitReferenceAsset.AssetSymbol,
 		TransactionId:  transaction.ID,
@@ -375,6 +370,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 			batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transaction.BatchID)
 			if err != nil {
+				controller.Logger.Error("Error occured while checking if transaction is batched : %s", err)
 				continue
 			}
 			if batchExist {
@@ -446,7 +442,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
-		Amount:      transaction.Value,
+		Amount:      transaction.Value.BigInt(),
 		Memo:        transaction.Memo,
 		AssetSymbol: transaction.AssetSymbol,
 	}

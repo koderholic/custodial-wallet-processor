@@ -44,6 +44,9 @@ func (service BatchService) GetAllActiveBatches(repository database.IBatchReposi
 
 func (service BatchService) CheckBatchExistAndReturn(repository database.IBatchRepository, batchId uuid.UUID) (bool, model.BatchRequest, error) {
 	batchDetails := model.BatchRequest{}
+	if batchId == uuid.Nil {
+		return false, batchDetails, nil
+	}
 	if err := repository.GetByFieldName(&model.BatchRequest{BaseModel: model.BaseModel{ID: batchId}}, &batchDetails); err != nil {
 		service.Logger.Error("Error getting batch details : %+v for batch with id %+v", err)
 		if err.Error() != utility.SQL_404 {

@@ -92,7 +92,7 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 			userAddress.Address = address
 		}
 
-		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: userAddress.AssetID}, &userAddress, model.UserAddress{Address: userAddress.Address}); err != nil {
+		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: userAddress.AssetID}, &userAddress, model.UserAddress{Address: userAddress.Address, AddressType: utility.ADDRESS_TYPE_SEGWIT}); err != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
 			return "", errors.New(utility.GetSQLErr(err))
 		}

@@ -48,6 +48,7 @@ type Data struct {
 	FloatCronInterval           string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
+	SENTRY_ENVIRONMENT          string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
 }
 
 //Init : initialize data
@@ -67,6 +68,7 @@ func (c *Data) Init(configDir string) {
 	viper.BindEnv("DB_USER")
 	viper.BindEnv("DB_PASSWORD")
 	viper.BindEnv("DB_NAME")
+	viper.BindEnv("SENTRY_ENVIRONMENT")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")

@@ -98,7 +98,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		var address string
 		AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}
 
-		if userAsset.AssetSymbol == utility.BTC {
+		if userAsset.AssetSymbol == utility.COIN_BTC {
 			responseData.Addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
@@ -114,7 +114,6 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 	}
 
 	responseData.DefaultAddressType = utility.DefaultAddressesTypes[userAsset.CoinType]
-	
 	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(responseWriter).Encode(responseData)

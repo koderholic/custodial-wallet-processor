@@ -69,7 +69,7 @@ func (repo *BaseRepository) FetchTransactionsWhereIn(values []string, model inte
 // Get ... Retrieves a specified record from the database for a given id
 func (repo *BaseRepository) Get(id interface{}, model interface{}) error {
 	if err := repo.DB.First(model, id).Error; err != nil {
-		repo.Logger.Error("Error with repository GetByFieldName : %+v", err)
+		repo.Logger.Error("Error with repository Get : %+v", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
