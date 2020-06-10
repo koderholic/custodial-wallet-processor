@@ -61,20 +61,24 @@ func CheckCoinTypeAddressExist(repository database.IUserAssetRepository, logger 
 		}
 		coinTypeToAddrMap[asset.CoinType] = dto.AssetAddress{
 			Address: userAddress.Address,
+			Type:    userAddress.AddressType,
 		}
 	}
 
 	if coinTypeToAddrMap[userAsset.CoinType] != (dto.AssetAddress{}) {
 		coinTypeAddress.Address = coinTypeToAddrMap[userAsset.CoinType].Address
+		coinTypeAddress.Type = coinTypeToAddrMap[userAsset.CoinType].Type
 		return true, nil
-	} else {
-		return false, nil
 	}
+	return false, nil
 }
 
 func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (string, error) {
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
+	var addressResponse []dto.AllAddressResponse
+	var externalServiceErr dto.ServicesRequestErr
+	var addressType string
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddress)
 	if (err != nil && err.Error() == utility.SQL_404) || (err == nil && userAddress.Address == "") {
@@ -84,15 +88,22 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 		}
 		userAddress.AssetID = userAsset.ID
 		userAddress.Address = assetAddress.Address
+		userAddress.AddressType = assetAddress.Type
 		if !isExist {
-			address, err := GenerateV1Address(logger, cache, config, userAsset)
+			AddressService := BaseService{Config: config, Cache: cache, Logger: logger}
+			if userAsset.AssetSymbol == utility.COIN_BTC {
+				addressType = utility.ADDRESS_TYPE_SEGWIT
+			}
+			addressResponse, err = AddressService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, addressType, externalServiceErr)
 			if err != nil {
 				return "", err
 			}
-			userAddress.Address = address
+			userAddress.Address = addressResponse[0].Data
+			userAddress.AddressType = addressResponse[0].Type
+			userAddress.AssetID = userAsset.ID
 		}
 
-		if err := repository.UpdateOrCreate(model.UserAddress{AssetID: userAddress.AssetID}, &userAddress, model.UserAddress{Address: userAddress.Address, AddressType: utility.ADDRESS_TYPE_SEGWIT}); err != nil {
+		if err := repository.Create(&userAddress); err != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
 			return "", errors.New(utility.GetSQLErr(err))
 		}
