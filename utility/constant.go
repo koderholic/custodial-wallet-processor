@@ -27,7 +27,7 @@ const (
 	WITHDRAWALPROCESS            = "WITHDRAW"
 	FLOATPROCESS                 = "FLOAT"
 	SWEEPPROCESS                 = "SWEEP"
-	SWEEPMEMOBNB                 = "ADCXADF1829038FGX"
+	SWEEPMEMOBNB                 = "9999999999999"
 	BNBTOKENSLIP                 = 714
 	ADDRESS_VERSION_V1           = "VERSION_1"
 	ADDRESS_VERSION_V2           = "VERSION_2"
