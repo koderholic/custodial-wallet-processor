@@ -1,7 +1,7 @@
 package test
 
 import (
-	"wallet-adapter/dto"
+	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
@@ -11,8 +11,8 @@ import (
 )
 
 func (s *Suite) Test_HotWalletCreation() {
-	supportedAssets := []dto.Denomination{}
-	hotWallet := []dto.HotWalletAsset{}
+	supportedAssets := []model.Denomination{}
+	hotWallet := []model.HotWalletAsset{}
 
 	if err := services.InitHotWallet(authCache, s.DB, s.Logger, s.Config); err != nil {
 		require.NoError(s.T(), err)
@@ -32,13 +32,13 @@ func (s *Suite) Test_HotWalletCreation() {
 }
 func (s *Suite) Test_BUSDHotWalletCreation() {
 
-	hotWallet := dto.HotWalletAsset{}
+	hotWallet := model.HotWalletAsset{}
 
 	if err := services.InitHotWallet(authCache, s.DB, s.Logger, s.Config); err != nil {
 		require.NoError(s.T(), err)
 	}
 
-	if err := s.DB.Where(dto.HotWalletAsset{AssetSymbol: "BUSD"}).First(&hotWallet).Error; err != nil {
+	if err := s.DB.Where(model.HotWalletAsset{AssetSymbol: "BUSD"}).First(&hotWallet).Error; err != nil {
 		if err.Error() != utility.SQL_404 {
 			require.NoError(s.T(), err)
 		}

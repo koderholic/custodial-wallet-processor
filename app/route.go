@@ -28,9 +28,11 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		DB := database.Database{Logger: logger, Config: config, DB: db}
 		baseRepository := database.BaseRepository{Database: DB}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+		batchRepository := database.BatchRepository{BaseRepository: baseRepository}
 
 		controller := controllers.NewController(memoryCache, logger, config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(memoryCache, logger, config, validator, &userAssetRepository)
+		BatchController := controllers.NewBatchController(memoryCache, logger, config, validator, &batchRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
 		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
@@ -51,11 +53,13 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/{assetId}/all-addresses", middlewares.NewMiddleware(logger, config, userAssetController.GetAllAssetAddresses).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["ExternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/confirm-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ConfirmTransaction).ValidateAuthToken(utility.Permissions["ConfirmTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ProcessTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/process-batched-transactions", middlewares.NewMiddleware(logger, config, BatchController.ProcessBatchBTCTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
 
 	})
 

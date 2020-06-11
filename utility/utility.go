@@ -11,6 +11,12 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+func RandNo(min, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min) + min
+
+}
+
 func NativeValue(denominationDecimal int, rawValue decimal.Decimal) decimal.Decimal {
 	conversionDecimal := decimal.NewFromInt(int64(denominationDecimal))
 	baseExp := decimal.NewFromInt(10)

@@ -1,10 +1,10 @@
-package dto
+package model
 
 import (
 	"time"
+	"wallet-adapter/dto"
 
 	uuid "github.com/satori/go.uuid"
-	"wallet-adapter/model"
 )
 
 // TxnType ...
@@ -48,7 +48,7 @@ var (
 
 //Transaction ... This is the transaction DTO for all user request
 type Transaction struct {
-	BaseDTO
+	BaseModel
 	InitiatorID          uuid.UUID    `gorm:"type:VARCHAR(36);not null;index:initiator_id" json:"initiator_id,omitempty"`
 	RecipientID          uuid.UUID    `json:"type:VARCHAR(36);not null" json:"recipient_id,omitempty"`
 	TransactionReference string       `gorm:"not null;unique_index" json:"transaction_reference,omitempty"`
@@ -71,7 +71,7 @@ type Transaction struct {
 	AssetSymbol          string       `gorm:"type:VARCHAR(36);not null;" json:"asset_symbol,omitempty"`
 }
 
-func (transaction Transaction) Map(tx *model.TransactionResponse) {
+func (transaction Transaction) Map(tx *dto.TransactionResponse) {
 	tx.ID = transaction.ID
 	tx.InitiatorID = transaction.InitiatorID
 	tx.RecipientID = transaction.RecipientID
