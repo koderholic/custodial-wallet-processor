@@ -487,7 +487,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		}
 
 		// Checks status of the TXN broadcast to chain
-		isBroadcastedSuccessfully := services.GetBroadcastedTXNStatusByRef(transaction.DebitReference, processor.Cache, processor.Logger, processor.Config)
+		isBroadcastedSuccessfully := services.GetBroadcastedTXNStatusByRef(transaction.DebitReference, transaction.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
 		if isBroadcastedSuccessfully {
 			return nil
 		}

@@ -2,17 +2,17 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
-	"time"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
+	"wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/tasks"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
+	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
-	"wallet-adapter/database"
-	"wallet-adapter/config"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -29,7 +29,7 @@ type BatchTransactionProcessor struct {
 func (controller BatchController) ProcessBatchBTCTransactions(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
-	batchService := services.BatchService{BaseService : services.BaseService{Config: controller.Config, Cache : controller.Cache, Logger : controller.Logger}}
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 	done := make(chan bool)
 
 	go func() {
@@ -43,7 +43,7 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 		for _, batch := range activeBatches {
 
 			// It calls the lock service to obtain a lock for the batch
-			lockerServiceToken, err := controller.obtainLock(batch.ID.String()); 
+			lockerServiceToken, err := controller.obtainLock(batch.ID.String())
 			if err != nil {
 				continue
 			}
@@ -53,34 +53,34 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 			if batch.Status == model.BatchStatus.RETRY_MODE {
 				if err := processor.retryBatchProcessing(batch); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v. Batch with id %+v could not be reprocessed", err, batch.ID)
-					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
+					_ = controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 			} else {
 				if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.START_MODE); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating active batch status to PROCESSING", err)
-					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
+					_ = controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 
 				queuedBatchedTransactions := []model.TransactionQueue{}
-				if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
+				if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID: batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
 					controller.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v, while fetching batched transactions from the queue", err)
-					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
+					_ = controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 
 				if err := processor.processBatch(batch, queuedBatchedTransactions); err != nil {
-					_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
+					_ = controller.releaseLock(batch.ID.String(), lockerServiceToken)
 					continue
 				}
 			}
 
 			// The routine returns the lock to the lock service and terminates
-			_= controller.releaseLock(batch.ID.String(), lockerServiceToken)
+			_ = controller.releaseLock(batch.ID.String(), lockerServiceToken)
 
 		}
-		
+
 		done <- true
 	}()
 
@@ -154,7 +154,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
 		TransactionHash: broadcastToChainResponse.TransactionHash,
-		BatchID: batch.ID,
+		BatchID:         batch.ID,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
@@ -169,98 +169,85 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 }
 
 func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.BatchRequest) error {
+	// Checks status of the TXN broadcast to chain
+	txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(batch.ID.String(), batch.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
+	if err != nil {
+		processor.Logger.Error("Error response from retryBatchProcessing : %+v while fetching broadcasted transaction status for batch with id %+v", err, batch.ID)
+		return err
+	}
 
-	chainTransaction := model.ChainTransaction{}
-	if err := processor.Repository.GetByFieldName(&model.ChainTransaction{BatchID : batch.ID}, &chainTransaction); err != nil {
-		processor.Logger.Error("Error response from retryBatchProcessing : %+v while checking if chain transaction exist for batch with id %+v ", err, batch.ID)
-		if err.Error() != utility.SQL_404 {
+	if !txnExist {
+		// Fetches all PENDING transactions from the transaction queue table for the given BatchID
+		var queuedBatchedTransactions []model.TransactionQueue
+		if err := processor.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID: batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
+			processor.Logger.Error("Error response from retryBatchProcessing : %+v, while fetching batched transactions from the queue", err)
 			return err
 		}
 
-		// Checks status of the TXN broadcast to chain
-		txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetails(batch.ID.String(), processor.Cache, processor.Logger, processor.Config)
-		if err != nil {	
-			processor.Logger.Error("Error response from retryBatchProcessing : %+v while fetching broadcasted transaction status for batch with id %+v", err, batch.ID)
+		if err := processor.processBatch(batch, queuedBatchedTransactions); err != nil {
+			processor.Logger.Error("Error response from retryBatchProcessing : %+v while processing batched transactions with batch id %+v", err, batch.ID)
 			return err
 		}
 
-		if !txnExist {
-			// Fetches all PENDING transactions from the transaction queue table for the given BatchID
-			var queuedBatchedTransactions []model.TransactionQueue
-			if err := processor.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID : batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
-				processor.Logger.Error("Error response from retryBatchProcessing : %+v, while fetching batched transactions from the queue", err)
-				return err
-			}
-	
-			if err := processor.processBatch(batch, queuedBatchedTransactions); err != nil {
-				processor.Logger.Error("Error response from retryBatchProcessing : %+v while processing batched transactions with batch id %+v", err, batch.ID)
-				return err
-			}
-			
-		}
+		return nil
+	}
 
-		switch broadcastedTXNDetails.Status {
-		case utility.FAILED:
-			// Update batch transactions status
-			if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.TERMINATED); err != nil {
-				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
-				return err
-			}
-			return nil
-		case utility.SUCCESSFUL:
-			chainTransaction := model.ChainTransaction{
-				TransactionHash: broadcastedTXNDetails.TransactionHash,
-				BatchID: batch.ID,
-			}
-			if err := processor.Repository.Create(&chainTransaction); err != nil {
+	chainTransaction := model.ChainTransaction{
+		TransactionHash: broadcastedTXNDetails.TransactionHash,
+		BatchID:         batch.ID,
+	}
+	switch broadcastedTXNDetails.Status {
+	case utility.FAILED:
+		if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction, model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}); err != nil {
+			processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
+			return err
+		}
+		// Update batch transactions status
+		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.TERMINATED); err != nil {
+			processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
+			return err
+		}
+		return nil
+	case utility.SUCCESSFUL:
+		chainTransaction.Status = true
+		if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction, model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash, Status: true}); err != nil {
+			processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
+			return err
+		}
+		// Update batch transactions status
+		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+			processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
+			return err
+		}
+		return nil
+	default:
+		// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter if exist
+		if broadcastedTXNDetails.TransactionHash != "" {
+			if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction, model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}); err != nil {
 				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
 				return err
 			}
 			// Update batch transactions status
-			if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+			if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.PROCESSING); err != nil {
 				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
 				return err
 			}
 			return nil
-		default:
-			// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter if exist
-			if broadcastedTXNDetails.TransactionHash != "" {
-				chainTransaction := model.ChainTransaction{
-					TransactionHash: broadcastedTXNDetails.TransactionHash,
-					BatchID: batch.ID,
-				}
-				if err := processor.Repository.Create(&chainTransaction); err != nil {
-					processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
-					return err
-				}
-				// Update batch transactions status
-				if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.PROCESSING); err != nil {
-					processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
-					return err
-				}
-				return nil
-			}
-			if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.START_MODE); err != nil {
-				return err
-			}
-			return nil
 		}
-
+		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.START_MODE); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	// Update batch transactions status
-	if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.PROCESSING); err != nil {
-		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while updating batched transaction status for batch with id %+v", err, batch.ID)
-		return err
-	}
 	return nil
 }
 
-func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batch model.BatchRequest, chainTransaction model.ChainTransaction, status string) error  {
+func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batch model.BatchRequest, chainTransaction model.ChainTransaction, status string) error {
 
 	// Fetches all transactions for the given BatchID
 	var queuedBatchedTransactions []model.TransactionQueue
-	if err := processor.Repository.FetchByFieldName(&model.TransactionQueue{BatchID : batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
+	if err := processor.Repository.FetchByFieldName(&model.TransactionQueue{BatchID: batch.ID, AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
 		processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v, while fetching batched transactions from the queue", err)
 		return err
 	}
@@ -275,7 +262,7 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 		processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while creating db transaction", err)
 		return err
 	}
-	if status == model.BatchStatus.PROCESSING || status == model.BatchStatus.COMPLETED || status == model.BatchStatus.TERMINATED{
+	if status == model.BatchStatus.PROCESSING || status == model.BatchStatus.COMPLETED || status == model.BatchStatus.TERMINATED {
 		// Updates all transactions associated with the batch
 		batchedTransactionsIds := []uuid.UUID{}
 		queuedBatchedTransactionsIds := []uuid.UUID{}
@@ -308,11 +295,10 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 		processor.Logger.Error("Error response from UpdateBatchedTransactionsStatus : %+v while commiting db transaction", err)
 		return err
 	}
-			
-	return nil
-	
-}
 
+	return nil
+
+}
 
 func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string) error {
 
@@ -328,7 +314,6 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
 
-
 func (controller BatchController) obtainLock(identifier string) (string, error) {
 	serviceErr := dto.ServicesRequestErr{}
 
@@ -338,12 +323,11 @@ func (controller BatchController) obtainLock(identifier string) (string, error) 
 	}
 	lockerServiceResponse := dto.LockerServiceResponse{}
 	if err := services.AcquireLock(controller.Cache, controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
-		controller.Logger.Error("Error occured while obtaining lock for (%+v) : %+v; %s",identifier, serviceErr, err)
+		controller.Logger.Error("Error occured while obtaining lock for (%+v) : %+v; %s", identifier, serviceErr, err)
 		return "", err
 	}
 	return lockerServiceResponse.Token, nil
 }
-
 
 func (controller BatchController) releaseLock(identifier string, lockerserviceToken string) error {
 	serviceErr := dto.ServicesRequestErr{}

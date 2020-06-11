@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"wallet-adapter/database"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -38,7 +37,6 @@ func (service BatchService) GetAllActiveBatches(repository database.IBatchReposi
 	if err := repository.FetchBatchesWithStatus([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE, model.BatchStatus.START_MODE}, &activeBatches); err != nil {
 		return []model.BatchRequest{}, err
 	}
-	fmt.Printf("activeBatches >> %+v", activeBatches)
 	return activeBatches, nil
 }
 
