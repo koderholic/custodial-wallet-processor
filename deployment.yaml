@@ -47,7 +47,7 @@ resources:
 # Definition for Cron Jobs, see https://bundle-deploy-config.s3.amazonaws.com/viewer/index.html
 cronJobs:
   - name: wallet-adapter-trigger-job-process
-    schedule: '*/3 * * * *' #Run every 5 minutes
+    schedule: '*/5 * * * *' #Run every 5 minutes
     allowConcurrentRun: false
     grantAwsAccess: false
     container:

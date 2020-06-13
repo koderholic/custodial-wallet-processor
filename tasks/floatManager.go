@@ -97,7 +97,12 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				//trigger alert to cold wallet user
 				floatAction = fmt.Sprintf("sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 				logger.Info(floatAction)
-				err = notifyColdWalletUsers("Fund", deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
+
+				params["amount"] = map[string]string {
+					deficitInDecimalUnits.String()
+					params["assetSymbol"] = floatAccount.AssetSymbol
+				}
+				err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
 			} else {
 				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
 				// using notification service to raise the float balance from it's deficit amount to
@@ -173,10 +178,7 @@ func saveFloatVariables(repository database.BaseRepository, logger *utility.Logg
 	return nil
 }
 
-func notifyColdWalletUsers(emailType string, deficitInDecimalUnits *big.Float, floatAccount model.HotWalletAsset, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) error {
-	params := make(map[string]string)
-	params["amount"] = deficitInDecimalUnits.String()
-	params["assetSymbol"] = floatAccount.AssetSymbol
+func notifyColdWalletUsers(emailType string, params map[string]string, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) error {
 	coldWalletEmails := []dto.EmailUser{
 		dto.EmailUser{
 			Name:  "Binance Cold wallet user",
@@ -184,11 +186,6 @@ func notifyColdWalletUsers(emailType string, deficitInDecimalUnits *big.Float, f
 		},
 	}
 	sendEmailRequest := dto.SendEmailRequest{
-		Content: "",
-		Template: dto.EmailTemplate{
-			ID:     config.ColdWalletEmailTemplateId,
-			Params: params,
-		},
 		Sender: dto.EmailUser{
 			Name:  "Bundle",
 			Email: "info@bundle.africa",
@@ -203,12 +200,21 @@ func notifyColdWalletUsers(emailType string, deficitInDecimalUnits *big.Float, f
 		} else {
 			sendEmailRequest.Subject = "Test: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
 		}
+		sendEmailRequest.Template = dto.EmailTemplate{
+			ID:     config.ColdWalletEmailTemplateId,
+			Params: params,
+		}
 	case "Withdraw":
 		if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
 			sendEmailRequest.Subject = "Live: Withdrawing excess funds to brokerage for " + floatAccount.AssetSymbol
 		} else {
 			sendEmailRequest.Subject = "Test: Withdrawing excess funds to brokerage for " + floatAccount.AssetSymbol
 		}
+		sendEmailRequest.Content = fmt.Sprintf(`
+		Attention:
+		To regulate float account, %+v %s has been moved from the HotWallet Address to the Brokerage Account Address %s with Memo (%s).
+		Please check to verify that movement was successful.
+		`, params["amount"], params["assetSymbol"],  )
 	}
 
 	sendEmailResponse := dto.SendEmailResponse{}
