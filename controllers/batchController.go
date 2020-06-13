@@ -170,7 +170,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.BatchRequest) error {
 	// Checks status of the TXN broadcast to chain
-	txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetails(batch.ID.String(), processor.Cache, processor.Logger, processor.Config)
+	txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(batch.ID.String(), batch.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
 	if err != nil {
 		processor.Logger.Error("Error response from retryBatchProcessing : %+v while fetching broadcasted transaction status for batch with id %+v", err, batch.ID)
 		return err
@@ -189,6 +189,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 			return err
 		}
 
+		return nil
 	}
 
 	chainTransaction := model.ChainTransaction{

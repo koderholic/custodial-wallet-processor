@@ -72,8 +72,13 @@ func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, confi
 		return err
 	}
 	metaData := utility.GetRequestMetaData("transactionStatus", config)
+	var APIClient *Client
+	if requestData.TransactionHash != "" && requestData.Reference == "" {
+		APIClient = NewClient(nil, logger, config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
+	} else if requestData.Reference != "" && requestData.TransactionHash == "" {
+		APIClient = NewClient(nil, logger, config, fmt.Sprintf("%s%s?reference=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Reference, requestData.AssetSymbol))
+	}
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -124,11 +129,12 @@ func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, confi
 }
 
 // GetBroadcastedTXNStatusByRef ...
-func GetBroadcastedTXNStatusByRef(transactionRef string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) bool {
+func GetBroadcastedTXNStatusByRef(transactionRef, assetSymbol string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) bool {
 	serviceErr := dto.ServicesRequestErr{}
 
 	transactionStatusRequest := dto.TransactionStatusRequest{
-		Reference: transactionRef,
+		Reference:   transactionRef,
+		AssetSymbol: assetSymbol,
 	}
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := TransactionStatus(cache, logger, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
@@ -142,11 +148,12 @@ func GetBroadcastedTXNStatusByRef(transactionRef string, cache *utility.MemoryCa
 }
 
 // GetBroadcastedTXNStatusByRef ...
-func GetBroadcastedTXNDetails(transactionRef string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (bool, dto.TransactionStatusResponse, error) {
+func GetBroadcastedTXNDetailsByRef(transactionRef, assetSymbol string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (bool, dto.TransactionStatusResponse, error) {
 	serviceErr := dto.ServicesRequestErr{}
 
 	transactionStatusRequest := dto.TransactionStatusRequest{
-		Reference: transactionRef,
+		Reference:   transactionRef,
+		AssetSymbol: assetSymbol,
 	}
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := TransactionStatus(cache, logger, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
