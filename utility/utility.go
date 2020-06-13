@@ -74,3 +74,16 @@ func IsGreater(value float64, availableBalance string, decimals int) bool {
 	}
 	return true
 }
+
+func Min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func GetSingleTXProcessingIntervalTime(n int) int {
+	SLEEP_INTERVAL := n * 5
+	SLEEP_INTERVAL = Min(SLEEP_INTERVAL, 20)
+	return SLEEP_INTERVAL
+}
