@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 	"wallet-adapter/config"
@@ -357,11 +358,17 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 		// Fetches all PENDING transactions from the transaction queue table for processing
 		var transactionQueue []model.TransactionQueue
+		var ETHTransactionCount int
 		if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING}, &transactionQueue); err != nil {
 			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
 			done <- true
 		}
 		processor := &TransactionProccessor{Logger: controller.Logger, Cache: controller.Cache, Config: controller.Config, Repository: controller.Repository}
+
+		// Sort by asset symbol
+		sort.Slice(transactionQueue, func(i, j int) bool {
+			return transactionQueue[i].AssetSymbol < transactionQueue[j].AssetSymbol
+		})
 
 		for _, transaction := range transactionQueue {
 			serviceErr := dto.ServicesRequestErr{}
@@ -397,7 +404,10 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				controller.Logger.Error("Error occured while updating transaction (%s) to On-going : %s", transaction.TransactionId, err)
 				continue
 			}
-
+			if transaction.AssetSymbol == utility.COIN_ETH {
+				time.Sleep(time.Duration(utility.GetSingleTXProcessingIntervalTime(ETHTransactionCount)) * time.Second)
+				ETHTransactionCount = ETHTransactionCount + 1
+			}
 			if err := processor.processSingleTxn(transaction); err != nil {
 				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
 
