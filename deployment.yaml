@@ -55,7 +55,10 @@ cronJobs:
         - 'http://crypto-wallet-adapter/assets/process-transaction'
         - '-XPOST'
       env:
-        ENVIRONMENT: config:default:environment
+        ENVIRONMENT: 'config:default:environment'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+        FLOATCRONINTERVAL: 'config:crypto-wallet-adapter:floatCronInterval'
+
   - name: wallet-adapter-trigger-batch-job-process
     schedule: '*/30 * * * *' #Run every 30 minutes
     allowConcurrentRun: false
@@ -69,3 +72,7 @@ cronJobs:
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment
+
+config:
+  enableFloatManager: 'false'
+  floatCronInterval: '0 * * * *'
