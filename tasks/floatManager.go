@@ -97,7 +97,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				//trigger alert to cold wallet user
 				floatAction = fmt.Sprintf("sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 				logger.Info(floatAction)
-				err = notifyColdWalletUsers(deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
+				err = notifyColdWalletUsers("Fund", deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
 			} else {
 				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
 				// using notification service to raise the float balance from it's deficit amount to
@@ -114,7 +114,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 				floatAction = fmt.Sprintf("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 				logger.Info(floatAction)
-				err = notifyColdWalletUsers(deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
+				err = notifyColdWalletUsers("Fund", deficitInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
 			}
 		}
 		if floatOnChainBalance.Cmp(maximum) > 0 {
@@ -123,7 +123,8 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			depositAddressResponse := dto.DepositAddressResponse{}
 			var bigIntDeficit *big.Int
 			excessDeficit := new(big.Float)
-			excessDeficit.Sub(floatOnChainBalance, maximum).Int(bigIntDeficit)
+			excessDeficit.Sub(floatOnChainBalance, maximum)
+			bigIntDeficit, _ = excessDeficit.Int(nil)
 			denomination := model.Denomination{}
 			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
@@ -136,6 +137,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
 			}
 			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr)
+			surplusInDecimalUnits := new(big.Float)
+			denominationDecimal := float64(denomination.Decimal)
+			surplusInDecimalUnits.Quo(excessDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
+			err = notifyColdWalletUsers("Withdraw", surplusInDecimalUnits, floatAccount, config, err, cache, logger, serviceErr)
 		}
 
 		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximum, minimum, percentageOfUserBalance, deficit, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
@@ -168,7 +173,7 @@ func saveFloatVariables(repository database.BaseRepository, logger *utility.Logg
 	return nil
 }
 
-func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount model.HotWalletAsset, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) error {
+func notifyColdWalletUsers(emailType string, deficitInDecimalUnits *big.Float, floatAccount model.HotWalletAsset, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) error {
 	params := make(map[string]string)
 	params["amount"] = deficitInDecimalUnits.String()
 	params["assetSymbol"] = floatAccount.AssetSymbol
@@ -190,11 +195,22 @@ func notifyColdWalletUsers(deficitInDecimalUnits *big.Float, floatAccount model.
 		},
 		Receivers: coldWalletEmails,
 	}
-	if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
-		sendEmailRequest.Subject = "Live: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
-	} else {
-		sendEmailRequest.Subject = "Test: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
+
+	switch emailType {
+	case "Fund":
+		if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
+			sendEmailRequest.Subject = "Live: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
+		} else {
+			sendEmailRequest.Subject = "Test: Please fund Bundle hot wallet address for " + floatAccount.AssetSymbol
+		}
+	case "Withdraw":
+		if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
+			sendEmailRequest.Subject = "Live: Withdrawing excess funds to brokerage for " + floatAccount.AssetSymbol
+		} else {
+			sendEmailRequest.Subject = "Test: Withdrawing excess funds to brokerage for " + floatAccount.AssetSymbol
+		}
 	}
+
 	sendEmailResponse := dto.SendEmailResponse{}
 	err = services.SendEmailNotification(cache, logger, config, sendEmailRequest, &sendEmailResponse, serviceErr)
 	if err != nil {
@@ -324,14 +340,14 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 	}
 	signTransactionResponse := dto.SignTransactionResponse{}
 	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		logger.Error("Error response from float manager : %+v while signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
+		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return
 	}
 	//need an empty array to be able to reuse the method broadcastAndCompleteFloatTx
 	emptyArrayOfTransactions := []model.Transaction{}
 	err, _ := broadcastAndCompleteFloatTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
 	if err != nil {
-		logger.Error("Error response from float manager : %+v while broadcast transaction to debit float for %+v", err, floatAccount.AssetSymbol)
+		logger.Error("Error response from float manager while broadcast transaction to debit float for %+v : %+v, additional context : %+v", floatAccount.AssetSymbol, err, serviceErr)
 		return
 	}
 }
