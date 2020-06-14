@@ -396,7 +396,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			}
 
 			// update transaction to processing
-			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING); err != nil {
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, model.ChainTransaction{}); err != nil {
 				controller.Logger.Error("Error occured while updating transaction %+v to processing : %+v; %s", transaction.TransactionId, serviceErr, err)
 				_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 				continue
@@ -419,7 +419,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 				if !txnExist {
 					// Revert the transaction status back to pending, as transaction has not been broadcasted
-					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING); err != nil {
+					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 						controller.Logger.Error("Error occured while updating transaction %+v to PENDING : %+v; %s", transaction.TransactionId, serviceErr, err)
 						_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 						continue
@@ -429,7 +429,8 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				}
 
 				chainTransaction := model.ChainTransaction{
-					TransactionHash: broadcastedTXNDetails.TransactionHash,
+					TransactionHash:  broadcastedTXNDetails.TransactionHash,
+					RecipientAddress: transaction.Recipient,
 				}
 				switch broadcastedTXNDetails.Status {
 				case utility.FAILED:
@@ -439,7 +440,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 							processor.Logger.Error("Error : %+v while creating chain transaction for the queued transaction", err, transaction.ID)
 						}
 					}
-					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED); err != nil {
+					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, chainTransaction); err != nil {
 						controller.Logger.Error("Error occured while updating the queued transaction (%+v) to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
 					}
 					_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
@@ -451,7 +452,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 							processor.Logger.Error("Error : %+v while creating chain transaction for the queued transaction", err, transaction.ID)
 						}
 					}
-					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.COMPLETED); err != nil {
+					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.COMPLETED, chainTransaction); err != nil {
 						controller.Logger.Error("Error occured while updating queued transaction %+v to COMPLETED : %+v; %s", transaction.ID, serviceErr, err)
 					}
 					_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
@@ -462,6 +463,9 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 						if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}, &chainTransaction, model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}); err != nil {
 							processor.Logger.Error("Error : %+v while creating chain transaction for the queued transaction", err, transaction.ID)
 						}
+					}
+					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, chainTransaction); err != nil {
+						controller.Logger.Error("Error occured while updating queued transaction %+v to PROCESSING : %+v; %s", transaction.ID, serviceErr, err)
 					}
 					_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 					continue
@@ -487,7 +491,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	// The routine fetches the float account info from the db and sets the floatAddress as the fromAddress
 	var floatAccount model.HotWalletAsset
 	if err := processor.Repository.GetByFieldName(&model.HotWalletAsset{AssetSymbol: transaction.AssetSymbol}, &floatAccount); err != nil {
-		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING); err != nil {
+		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
 			return err
 		}
@@ -508,7 +512,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol)
 		}
-		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING); err != nil {
+		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
 			return err
 		}
@@ -527,7 +531,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 		if serviceErr.StatusCode == http.StatusBadRequest {
-			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED); err != nil {
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
 				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
 				return err
 			}
@@ -542,6 +546,11 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		RecipientAddress: transaction.Recipient,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
+		return err
+	}
+	// Update transaction with onChainTransactionId
+	if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, chainTransaction); err != nil {
+		processor.Logger.Error("Error occured while updating queued transaction %+v to PROCESSING : %+v; %s", transaction.ID, serviceErr, err)
 		return err
 	}
 
@@ -620,7 +629,7 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 	return nil
 }
 
-func (processor TransactionProccessor) updateTransactions(transactionId uuid.UUID, status string) error {
+func (processor TransactionProccessor) updateTransactions(transactionId uuid.UUID, status string, chainTransaction model.ChainTransaction) error {
 
 	tx := processor.Repository.Db().Begin()
 	defer func() {
@@ -633,7 +642,7 @@ func (processor TransactionProccessor) updateTransactions(transactionId uuid.UUI
 	if err := processor.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, &transactionDetails); err != nil {
 		return err
 	}
-	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status}).Error; err != nil {
+	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
 		return err
 	}
 	// Update transactionQueue to PROCESSING
