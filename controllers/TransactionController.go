@@ -407,7 +407,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				ETHTransactionCount = ETHTransactionCount + 1
 			}
 
-			if err := processor.processSingleTxn(transaction); err == nil {
+			if err := processor.processSingleTxn(transaction); err != nil {
 				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
 				// Checks status of the TXN broadcast to chain
 				txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(transaction.DebitReference, transaction.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
