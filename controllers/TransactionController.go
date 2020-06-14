@@ -463,6 +463,9 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 							processor.Logger.Error("Error : %+v while creating chain transaction for the queued transaction", err, transaction.ID)
 						}
 					}
+					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, chainTransaction); err != nil {
+						controller.Logger.Error("Error occured while updating queued transaction %+v to PROCESSING : %+v; %s", transaction.ID, serviceErr, err)
+					}
 					_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 					continue
 				}
