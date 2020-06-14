@@ -136,11 +136,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		}
 		if floatOnChainBalance.Cmp(maximumFloatBalance) > 0 {
 			//debit float address
-			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", floatOnChainBalance.Sub(floatOnChainBalance, maximumFloatBalance), floatAccount.AssetSymbol)
 			depositAddressResponse := dto.DepositAddressResponse{}
 			var bigIntDeficit *big.Int
 			excessDeficit := new(big.Float)
 			excessDeficit.Sub(floatOnChainBalance, maximumFloatBalance)
+			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", excessDeficit, floatAccount.AssetSymbol)
 			bigIntDeficit, _ = excessDeficit.Int(nil)
 			denomination := model.Denomination{}
 			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
@@ -153,7 +153,10 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			} else {
 				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
 			}
-			signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr)
+			if err := signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr); err != nil {
+				continue
+			}
+
 			surplusInDecimalUnits := new(big.Float)
 			denominationDecimal := float64(denomination.Decimal)
 			surplusInDecimalUnits.Quo(excessDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
@@ -351,7 +354,7 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	return sum, nil
 }
 
-func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) {
+func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) error {
 	// Calls key-management to sign transaction
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
@@ -364,15 +367,16 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 	signTransactionResponse := dto.SignTransactionResponse{}
 	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
-		return
+		return err
 	}
 	//need an empty array to be able to reuse the method broadcastAndCompleteFloatTx
 	emptyArrayOfTransactions := []model.Transaction{}
 	err, _ := broadcastAndCompleteFloatTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
 	if err != nil {
 		logger.Error("Error response from float manager while broadcast transaction to debit float for %+v : %+v, additional context : %+v", floatAccount.AssetSymbol, err, serviceErr)
-		return
+		return err
 	}
+	return nil
 }
 
 func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
