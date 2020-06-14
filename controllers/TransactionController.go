@@ -429,7 +429,8 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				}
 
 				chainTransaction := model.ChainTransaction{
-					TransactionHash: broadcastedTXNDetails.TransactionHash,
+					TransactionHash:  broadcastedTXNDetails.TransactionHash,
+					RecipientAddress: transaction.Recipient,
 				}
 				switch broadcastedTXNDetails.Status {
 				case utility.FAILED:
@@ -547,12 +548,10 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		return err
 	}
-	if serviceErr.StatusCode == http.StatusBadRequest {
-		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, chainTransaction); err != nil {
-			processor.Logger.Error("Error occured while updating queued transaction %+v to PROCESSING : %+v; %s", transaction.ID, serviceErr, err)
-			return err
-		}
-		return nil
+	// Update transaction with onChainTransactionId
+	if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, chainTransaction); err != nil {
+		processor.Logger.Error("Error occured while updating queued transaction %+v to PROCESSING : %+v; %s", transaction.ID, serviceErr, err)
+		return err
 	}
 
 	return nil
