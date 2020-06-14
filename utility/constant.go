@@ -51,11 +51,11 @@ const (
 	ENV_PRODUCTION               = "production"
 	ENV_STAGING                  = "staging"
 
-	FLOAT_MINPercentageOfMaxUserBalance        = 60 // In percentage
-	FLOAT_MAXPercentageOfMaxUserBalance        = 80 // In percentage
-	FLOAT_MINPercentageValueOfTotalUserBalance = 30 // In percentage
-	FLOAT_AVERAGEPercentageOfTotalUserBalance  = 40 // In percentage
-	FLOAT_MAXPercentageOfTotalUserBalance      = 60 // In percentage
+	FLOAT_MINPercentageOfMaxUserBalance       = 0.6 // decimal percentage
+	FLOAT_MAXPercentageOfMaxUserBalance       = 0.8 // decimal percentage
+	FLOAT_MINPercentageOfTotalUserBalance     = 0.3 // decimal percentage
+	FLOAT_AVERAGEPercentageOfTotalUserBalance = 0.4 // decimal percentage
+	FLOAT_MAXPercentageOfTotalUserBalance     = 0.6 // decimal percentage
 )
 
 var (

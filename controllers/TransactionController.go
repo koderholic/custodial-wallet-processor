@@ -392,7 +392,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			lockerServiceResponse := dto.LockerServiceResponse{}
 			if err := services.AcquireLock(controller.Cache, controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
 				controller.Logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
-				_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 				continue
 			}
 
@@ -408,7 +407,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				ETHTransactionCount = ETHTransactionCount + 1
 			}
 
-			if err := processor.processSingleTxn(transaction); err != nil {
+			if err := processor.processSingleTxn(transaction); err == nil {
 				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
 				// Checks status of the TXN broadcast to chain
 				txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(transaction.DebitReference, transaction.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
@@ -464,10 +463,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 							processor.Logger.Error("Error : %+v while creating chain transaction for the queued transaction", err, transaction.ID)
 						}
 					}
-					// Revert the transaction status back to pending
-					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING); err != nil {
-						controller.Logger.Error("Error occured while updating the queued transaction (%+v) to processing : %+v; %s", transaction.ID, serviceErr, err)
-					}
 					_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 					continue
 				}
@@ -493,7 +488,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	var floatAccount model.HotWalletAsset
 	if err := processor.Repository.GetByFieldName(&model.HotWalletAsset{AssetSymbol: transaction.AssetSymbol}, &floatAccount); err != nil {
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING); err != nil {
-			processor.Logger.Error("Error occured while updating transaction %+v to TERMINATED : %+v; %s", transaction.TransactionId, serviceErr, err)
+			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
 			return err
 		}
 		return nil
@@ -514,7 +509,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol)
 		}
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING); err != nil {
-			processor.Logger.Error("Error occured while updating transaction %+v to TERMINATED : %+v; %s", transaction.TransactionId, serviceErr, err)
+			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
 			return err
 		}
 		return nil
@@ -533,7 +528,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
 		if serviceErr.StatusCode == http.StatusBadRequest {
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED); err != nil {
-				processor.Logger.Error("Error occured while updating transaction %+v to TERMINATED : %+v; %s", transaction.TransactionId, serviceErr, err)
+				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
 				return err
 			}
 			return nil

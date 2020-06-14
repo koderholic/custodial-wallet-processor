@@ -67,44 +67,12 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		}
 		logger.Info("maximum user balanace is %+v", maxUserBalance)
 
-		minPercentageOfMaxUserBalance := new(big.Float)
-		minPercentageOfMaxUserBalance.Quo(big.NewFloat(utility.FLOAT_MINPercentageOfMaxUserBalance), big.NewFloat(float64(100)))
-		logger.Info("minimum percentage of maximum user balance used is %+v", minPercentageOfMaxUserBalance)
-		maxPercentageOfMaxUserBalance := new(big.Float)
-		maxPercentageOfMaxUserBalance.Quo(big.NewFloat(utility.FLOAT_MAXPercentageOfMaxUserBalance), big.NewFloat(float64(100)))
-		logger.Info("maximum percentage of maximum users balance used is %+v", maxPercentageOfMaxUserBalance)
-		minPercentageOfTotalUserBalance := new(big.Float)
-		minPercentageOfTotalUserBalance.Quo(big.NewFloat(utility.FLOAT_MINPercentageValueOfTotalUserBalance), big.NewFloat(float64(100)))
-		logger.Info("minimum percentage value of total user balance used is %+v", minPercentageOfTotalUserBalance)
-		averagePercentageOfTotalUserBalance := new(big.Float)
-		averagePercentageOfTotalUserBalance.Quo(big.NewFloat(utility.FLOAT_AVERAGEPercentageOfTotalUserBalance), big.NewFloat(float64(100)))
-		logger.Info("average percentage of total users balance used is %+v", averagePercentageOfTotalUserBalance)
-		maxPercentageOfTotalUserBalance := new(big.Float)
-		maxPercentageOfTotalUserBalance.Quo(big.NewFloat(utility.FLOAT_MAXPercentageOfTotalUserBalance), big.NewFloat(float64(100)))
-		logger.Info("maximum percentage of total users balance used is %+v", maxPercentageOfTotalUserBalance)
-
-		minPercentageValueOfMaxUserBalance := new(big.Float)
-		maxPercentageValueOfMaxUserBalance := new(big.Float)
-		minPercentageValueOfTotalUserBalance := new(big.Float)
-		averagePercentageValueOfTotalUserBalance := new(big.Float)
-		maxPercentageValueOfTotalUserBalance := new(big.Float)
-
-		minPercentageValueOfMaxUserBalance.Mul(minPercentageOfMaxUserBalance, maxUserBalance)
-		logger.Info("minimum percentage value of maximum users balance is %+v", minPercentageValueOfMaxUserBalance)
-		maxPercentageValueOfMaxUserBalance.Mul(maxPercentageOfMaxUserBalance, maxUserBalance)
-		logger.Info("maximum percentage value of maximum users balance is %+v", maxPercentageValueOfMaxUserBalance)
-		minPercentageValueOfTotalUserBalance.Mul(minPercentageOfTotalUserBalance, totalUserBalance)
-		logger.Info("minimum percentage value of total users balance is %+v", minPercentageValueOfTotalUserBalance)
-		averagePercentageValueOfTotalUserBalance.Mul(averagePercentageOfTotalUserBalance, totalUserBalance)
-		logger.Info("avearage percentage value of total users balance is %+v", averagePercentageValueOfTotalUserBalance)
-		maxPercentageValueOfTotalUserBalance.Mul(maxPercentageOfTotalUserBalance, totalUserBalance)
-		logger.Info("maximum percentage value of total users balance is %+v", maxPercentageValueOfTotalUserBalance)
-		A := minPercentageValueOfTotalUserBalance.Add(minPercentageValueOfTotalUserBalance, maxPercentageValueOfMaxUserBalance)
-		C := utility.MinFloat(A, totalUserBalance)
-
-		minimumFloatBalance := utility.MaxFloat(averagePercentageValueOfTotalUserBalance, minPercentageValueOfMaxUserBalance)
+		// GetMinimum
+		minimumFloatBalance := GetMinFloatBalance(logger, totalUserBalance, maxUserBalance)
 		logger.Info("minimum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, minimumFloatBalance)
-		maximumFloatBalance := utility.MaxFloat(maxPercentageValueOfTotalUserBalance, C)
+
+		// GetMaximum
+		maximumFloatBalance := GetMaxFloatBalance(logger, totalUserBalance, maxUserBalance)
 		logger.Info("maximum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, maximumFloatBalance)
 
 		differenceOfDepositAndWithdrawals := new(big.Float)
@@ -449,4 +417,50 @@ func GetMaxUserBalanceFor(repository database.UserAssetRepository, assetType str
 		return big.NewFloat(0), err
 	}
 	return big.NewFloat(maxUserBalance), nil
+}
+
+func GetMinFloatBalance(logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
+
+	minPercentageOfMaxUserBalance := big.NewFloat(utility.FLOAT_MINPercentageOfMaxUserBalance)
+	logger.Info("minimum percentage of maximum user balance used is %+v", minPercentageOfMaxUserBalance)
+	averagePercentageOfTotalUserBalance := big.NewFloat(utility.FLOAT_AVERAGEPercentageOfTotalUserBalance)
+	logger.Info("average percentage of total users balance used is %+v", averagePercentageOfTotalUserBalance)
+
+	minPercentageValueOfMaxUserBalance := new(big.Float)
+	averagePercentageValueOfTotalUserBalance := new(big.Float)
+
+	minPercentageValueOfMaxUserBalance.Mul(minPercentageOfMaxUserBalance, maxUserBalance)
+	logger.Info("minimum percentage value of maximum users balance is %+v", minPercentageValueOfMaxUserBalance)
+	averagePercentageValueOfTotalUserBalance.Mul(averagePercentageOfTotalUserBalance, totalUserBalance)
+	logger.Info("avearage percentage value of total users balance is %+v", averagePercentageValueOfTotalUserBalance)
+
+	minimumFloatBalance := utility.MaxFloat(averagePercentageValueOfTotalUserBalance, minPercentageValueOfMaxUserBalance)
+	return minimumFloatBalance
+}
+
+func GetMaxFloatBalance(logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
+
+	minPercentageOfTotalUserBalance := big.NewFloat(utility.FLOAT_MINPercentageOfTotalUserBalance)
+	logger.Info("minimum percentage value of total user balance used is %+v", minPercentageOfTotalUserBalance)
+	maxPercentageOfTotalUserBalance := big.NewFloat(utility.FLOAT_MAXPercentageOfTotalUserBalance)
+	logger.Info("maximum percentage of total users balance used is %+v", maxPercentageOfTotalUserBalance)
+	maxPercentageOfMaxUserBalance := big.NewFloat(utility.FLOAT_MAXPercentageOfMaxUserBalance)
+	logger.Info("maximum percentage of maximum users balance used is %+v", maxPercentageOfMaxUserBalance)
+
+	maxPercentageValueOfMaxUserBalance := new(big.Float)
+	minPercentageValueOfTotalUserBalance := new(big.Float)
+	maxPercentageValueOfTotalUserBalance := new(big.Float)
+
+	minPercentageValueOfTotalUserBalance.Mul(minPercentageOfTotalUserBalance, totalUserBalance)
+	logger.Info("minimum percentage value of total users balance is %+v", minPercentageValueOfTotalUserBalance)
+	maxPercentageValueOfMaxUserBalance.Mul(maxPercentageOfMaxUserBalance, maxUserBalance)
+	logger.Info("maximum percentage value of maximum users balance is %+v", maxPercentageValueOfMaxUserBalance)
+
+	maxPercentageValueOfTotalUserBalance.Mul(maxPercentageOfTotalUserBalance, totalUserBalance)
+	logger.Info("maximum percentage value of total users balance is %+v", maxPercentageValueOfTotalUserBalance)
+	A := minPercentageValueOfTotalUserBalance.Add(minPercentageValueOfTotalUserBalance, maxPercentageValueOfMaxUserBalance)
+	C := utility.MinFloat(A, totalUserBalance)
+
+	maximumFloatBalance := utility.MaxFloat(maxPercentageValueOfTotalUserBalance, C)
+	return maximumFloatBalance
 }
