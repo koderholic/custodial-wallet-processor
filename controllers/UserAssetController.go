@@ -349,8 +349,8 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	}
 
 	//save chain tx model first, get id and use that in Transaction model
-	var chainTransaction dto.ChainTransaction
-	if err := tx.FirstOrCreate(&chainTransaction, dto.ChainTransaction{
+	var chainTransaction model.ChainTransaction
+	if err := tx.FirstOrCreate(&chainTransaction, model.ChainTransaction{
 		Status:          *requestData.ChainData.Status,
 		TransactionHash: requestData.ChainData.TransactionHash,
 		TransactionFee:  requestData.ChainData.TransactionFee,
