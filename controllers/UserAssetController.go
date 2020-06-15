@@ -351,10 +351,11 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	//save chain tx model first, get id and use that in Transaction model
 	var chainTransaction model.ChainTransaction
 	if err := tx.FirstOrCreate(&chainTransaction, model.ChainTransaction{
-		Status:          *requestData.ChainData.Status,
-		TransactionHash: requestData.ChainData.TransactionHash,
-		TransactionFee:  requestData.ChainData.TransactionFee,
-		BlockHeight:     requestData.ChainData.BlockHeight,
+		Status:           *requestData.ChainData.Status,
+		TransactionHash:  requestData.ChainData.TransactionHash,
+		TransactionFee:   requestData.ChainData.TransactionFee,
+		BlockHeight:      requestData.ChainData.BlockHeight,
+		RecipientAddress: requestData.ChainData.RecipientAddress,
 	}).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
