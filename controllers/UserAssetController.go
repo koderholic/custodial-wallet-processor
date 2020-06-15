@@ -358,8 +358,8 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		RecipientAddress: requestData.ChainData.RecipientAddress,
 	}
 	if err := tx.Where(model.ChainTransaction{
-		TransactionHash: requestData.ChainData.TransactionHash,
-		TransactionFee:  requestData.ChainData.TransactionFee,
+		TransactionHash:  requestData.ChainData.TransactionHash,
+		RecipientAddress: requestData.ChainData.RecipientAddress,
 	}).Assign(newChainTransaction).FirstOrCreate(&chainTransaction).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
