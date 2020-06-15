@@ -353,7 +353,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		BlockHeight:     requestData.ChainData.BlockHeight,
 	}
 
-	if err := tx.Create(&chainTransaction).Error; err != nil {
+	if err := tx.FirstOrCreate(&chainTransaction).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
