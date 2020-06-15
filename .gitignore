@@ -8,6 +8,10 @@
 *.DS_Store
 wallet-adapter
 .vscode/
+.idea/
+.idea/workspace.xml 
+
+
 
 # Test binary, build with `go test -c`
 *.test

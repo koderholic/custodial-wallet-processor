@@ -30,6 +30,12 @@ type UserAssetController struct {
 	Repository database.IUserAssetRepository
 }
 
+//BatchController : Batch controller struct
+type BatchController struct {
+	Controller
+	Repository database.IBatchRepository
+}
+
 // NewController ... Create a new base controller instance
 func NewController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
 	controller := &BaseController{}
@@ -54,6 +60,18 @@ func NewUserAssetController(cache *utility.MemoryCache, logger *utility.Logger, 
 	return controller
 }
 
+// NewBatchController ... Create a new batch controller instance
+func NewBatchController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IBatchRepository) *BatchController {
+	controller := &BatchController{}
+	controller.Cache = cache
+	controller.Logger = logger
+	controller.Config = configData
+	controller.Validator = validator
+	controller.Repository = repository
+
+	return controller
+}
+
 //Ping : Ping function
 func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
@@ -63,7 +81,7 @@ func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestRe
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess("SUCCESS", "Ping request successful! Server is up and listening"))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, "Ping request successful! Server is up and listening"))
 }
 
 func ValidateRequest(validator *validation.Validate, requestData interface{}, logger *utility.Logger) []map[string]string {
@@ -91,7 +109,7 @@ func ReturnError(responseWriter http.ResponseWriter, executingMethod string, sta
 			status = http.StatusNotFound
 		}
 	}
-	logger.Error("Outgoing response to %s request %+v", executingMethod, err)
+	logger.Error("Outgoing response to %s : %+v. Additional context : %s", executingMethod, response, err)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(status)
 	json.NewEncoder(responseWriter).Encode(response)

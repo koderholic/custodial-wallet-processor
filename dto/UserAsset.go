@@ -1,24 +1,74 @@
 package dto
 
 import (
-	"strconv"
-	"wallet-adapter/utility"
-
 	uuid "github.com/satori/go.uuid"
 )
 
-// UserAsset ... Fetch  user balance with corresponding asset details
-type UserAsset struct {
-	BaseDTO
-	UserID           uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"user_id"`
-	DenominationID   uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"-"`
-	AvailableBalance string    `gorm:"type:decimal(64,18) CHECK(available_balance >= 0);not null;" json:"available_balance"`
-	AssetSymbol      string    `gorm:"-" json:"asset_symbol,omitempty"`
-	Decimal          int       `gorm:"-" json:"decimal,omitempty"`
-	CoinType         int64     `gorm:"-" json:"coinType,omitempty"`
+// CreateUserAssetRequest ... Model definition for create asset request
+type CreateUserAssetRequest struct {
+	Assets []string  `json:"assets" validate:"required,gt=0"`
+	UserID uuid.UUID `json:"userId" validate:"required"`
 }
 
-func (userAsset *UserAsset) AfterFind() {
-	balance, _ := strconv.ParseFloat(userAsset.AvailableBalance, 64)
-	userAsset.AvailableBalance = strconv.FormatFloat(balance, 'g', utility.DigPrecision, 64)
+type Asset struct {
+	ID               uuid.UUID `json:"id"`
+	UserID           uuid.UUID `json:"userId"`
+	AssetSymbol      string    `json:"symbol"`
+	AvailableBalance string    `json:"availableBalance"`
+	Decimal          int       `json:"decimal"`
+}
+
+// CreateUserAssetResponse ... Model definition for create asset response
+type UserAssetResponse struct {
+	Assets []Asset `json:"assets"`
+}
+
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type CreditUserAssetRequest struct {
+	AssetID              uuid.UUID `json:"assetId" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
+	TransactionReference string    `json:"transactionReference" validate:"required"`
+	Memo                 string    `json:"memo"`
+}
+
+type ChainData struct {
+	Status           *bool  `json:"status" validate:"required"`
+	TransactionHash  string `json:"transactionHash" validate:"required"`
+	TransactionFee   string `json:"transactionFee" validate:"required"`
+	RecipientAddress string `json:"recipientAddress"`
+	BlockHeight      int64  `json:"blockHeight"`
+}
+
+type OnChainCreditUserAssetRequest struct {
+	CreditUserAssetRequest
+	ChainData ChainData `json:"chainData" validate:"required"`
+}
+
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type InternalTransferRequest struct {
+	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`
+	RecipientAssetId     uuid.UUID `json:"recipientAssetId" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
+	TransactionReference string    `json:"transactionReference" validate:"required"`
+	Memo                 string    `json:"memo" validate:"required"`
+}
+
+// TransactionReceipt ... Model definition for credit user asset request
+type TransactionReceipt struct {
+	AssetID              uuid.UUID `json:"assetId,omitempty"`
+	Value                string    `json:"value,omitempty"`
+	TransactionReference string    `json:"transactionReference,omitempty"`
+	PaymentReference     string    `json:"paymentReference,omitempty"`
+	TransactionStatus    string    `json:"transactionStatus,omitempty"`
+}
+
+type AssetAddress struct {
+	Address string `json:"address,omitempty"`
+	Memo    string `json:"memo,omitempty"`
+	Type    string `json:"type,omitempty"`
+}
+
+type AllAssetAddresses struct {
+	Addresses          []AssetAddress `json:"addresses"`
+	DefaultAddressType string         `json:"defaultAddressType"`
 }

@@ -19,6 +19,10 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	Delete(model interface{}) error
+	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
+	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
+	FetchTransactionsWhereIn(values []string, model interface{}) error
+	FetchBatchesWithStatus(statuses []string, batches interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -38,10 +42,34 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 	return nil
 }
 
+func (repo *BaseRepository) FetchBatchesWithStatus(statuses []string, batches interface{}) error {
+	if err := repo.DB.Where("status IN (?)", statuses).Find(batches).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchBatchesWithStatus %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
+	return nil
+}
+
+func (repo *BaseRepository) FetchTransactionsWhereIn(values []string, model interface{}) error {
+	if err := repo.DB.Where("transaction_id IN (?)", values).Find(model).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchWhereIn %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
+	return nil
+}
+
 // Get ... Retrieves a specified record from the database for a given id
 func (repo *BaseRepository) Get(id interface{}, model interface{}) error {
 	if err := repo.DB.First(model, id).Error; err != nil {
-		repo.Logger.Error("Error with repository GetByFieldName : %+v", err)
+		repo.Logger.Error("Error with repository Get : %+v", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
@@ -164,6 +192,18 @@ func (repo *BaseRepository) Delete(model interface{}) error {
 func (repo *BaseRepository) FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error {
 	if err := repo.DB.FirstOrCreate(model, checkExistOrUpdate).Error; err != nil {
 		repo.Logger.Error("Error with repository FindOrCreateUserAsset : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// UpdateOrCreate ...
+func (repo *BaseRepository) UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error {
+	if err := repo.DB.Where(checkExistOrUpdate).Assign(update).FirstOrCreate(model).Error; err != nil {
+		repo.Logger.Error("Error with repository UpdateOrCreate : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,

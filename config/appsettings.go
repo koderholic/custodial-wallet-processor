@@ -41,12 +41,14 @@ type Data struct {
 	SweepFeePercentageThreshold int64         `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
 	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
 	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
-	ConnMaxLifetime             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
+	ConnMaxLifetime             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
 	FloatPercentage             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
+	EnableFloatManager          bool          `mapstructure:"enableFloatManager"  yaml:"enableFloatManager,omitempty"`
 	SweepCronInterval           string        `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
 	FloatCronInterval           string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
+	SENTRY_ENVIRONMENT          string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
 }
 
 //Init : initialize data
@@ -66,6 +68,7 @@ func (c *Data) Init(configDir string) {
 	viper.BindEnv("DB_USER")
 	viper.BindEnv("DB_PASSWORD")
 	viper.BindEnv("DB_NAME")
+	viper.BindEnv("SENTRY_ENVIRONMENT")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")

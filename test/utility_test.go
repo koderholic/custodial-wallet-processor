@@ -1,10 +1,11 @@
 package test
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
 	"time"
 	"wallet-adapter/utility"
+
+	"github.com/magiconair/properties/assert"
 )
 
 func TestCachePurgesAfterSetTime(t *testing.T) {

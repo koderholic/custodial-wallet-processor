@@ -3,29 +3,29 @@ package services
 import (
 	"fmt"
 	Config "wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
 // UpdateAuthToken ...
-func UpdateAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (model.UpdateAuthTokenResponse, error) {
+func UpdateAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (dto.UpdateAuthTokenResponse, error) {
 
 	authorization := map[string]string{
 		"username": config.ServiceID,
 		"password": config.ServiceKey,
 	}
-	authToken := model.UpdateAuthTokenResponse{}
+	authToken := dto.UpdateAuthTokenResponse{}
 	metaData := utility.GetRequestMetaData("generateToken", config)
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
-		return model.UpdateAuthTokenResponse{}, err
+		return dto.UpdateAuthTokenResponse{}, err
 	}
 	APIClient.AddBasicAuth(APIRequest, authorization["username"], authorization["password"])
 	_, err = APIClient.Do(APIRequest, &authToken)
 	if err != nil {
-		return model.UpdateAuthTokenResponse{}, err
+		return dto.UpdateAuthTokenResponse{}, err
 	}
 
 	cache.Set("serviceAuth", &authToken, true)
@@ -47,7 +47,7 @@ func GetAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		return authTokenResponse.Token, err
 
 	}
-	authTokenResponse := cachedResult.(*model.UpdateAuthTokenResponse)
+	authTokenResponse := cachedResult.(*dto.UpdateAuthTokenResponse)
 	authToken := authTokenResponse.Token
 
 	if authToken == "" {

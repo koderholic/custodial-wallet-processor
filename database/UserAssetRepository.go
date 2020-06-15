@@ -2,10 +2,13 @@ package database
 
 import (
 	"errors"
+	"strconv"
 	"strings"
+	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
 	"github.com/jinzhu/gorm"
+	uuid "github.com/satori/go.uuid"
 )
 
 // IUserAssetRepository ...
@@ -14,6 +17,7 @@ type IUserAssetRepository interface {
 	GetAssetsByID(id, model interface{}) error
 	UpdateAssetBalByID(amount, model interface{}) error
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
+	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	Db() *gorm.DB
 }
 
@@ -24,13 +28,25 @@ type UserAssetRepository struct {
 
 // GetAssetsByID ...
 func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,denominations.coin_type,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,denominations.coin_type, denominations.requires_memo, user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
 		}
 	}
+	return nil
+}
+
+func (repo *UserAssetRepository) BulkUpdate(ids interface{}, model interface{}, update interface{}) error {
+	if err := repo.DB.Model(model).Where(ids).Updates(update).Error; err != nil {
+		repo.Logger.Error("Error with repository BulkUpdate %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+
 	return nil
 }
 
@@ -100,6 +116,20 @@ func (repo *UserAssetRepository) FindOrCreateAssets(checkExistOrUpdate interface
 	}
 
 	return nil
+}
+
+// GetMaxUserBalance
+func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (float64, error) {
+	maxUserBalance := model.UserAsset{}
+	if err := repo.DB.Raw("select available_balance from user_assets where denomination_id=?  order by available_balance desc limit 0,1;", denomination).Scan(&maxUserBalance).Error; err != nil {
+		repo.Logger.Error("Error with repository GetMaxUserBalance %s", err)
+		return float64(0), utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	availableBalance, _ := strconv.ParseFloat(maxUserBalance.AvailableBalance, 64)
+	return availableBalance, nil
 }
 
 func (repo *UserAssetRepository) Db() *gorm.DB {

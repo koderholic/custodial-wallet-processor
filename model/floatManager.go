@@ -1,9 +1,9 @@
-package dto
+package model
 
 import "time"
 
 type FloatManager struct {
-	BaseDTO
+	BaseModel
 	ResidualAmount        float64
 	AssetSymbol           string
 	TotalUserBalance      float64

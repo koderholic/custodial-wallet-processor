@@ -4,12 +4,19 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"math"
+	"math/big"
 	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/shopspring/decimal"
 )
+
+func RandNo(min, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min) + min
+
+}
 
 func NativeValue(denominationDecimal int, rawValue decimal.Decimal) decimal.Decimal {
 	conversionDecimal := decimal.NewFromInt(int64(denominationDecimal))
@@ -67,4 +74,31 @@ func IsGreater(value float64, availableBalance string, decimals int) bool {
 		return false
 	}
 	return true
+}
+
+func MinInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func GetSingleTXProcessingIntervalTime(n int) int {
+	SLEEP_INTERVAL := n * 5
+	SLEEP_INTERVAL = MinInt(SLEEP_INTERVAL, 20)
+	return SLEEP_INTERVAL
+}
+
+func MaxFloat(a, b *big.Float) *big.Float {
+	if a.Cmp(b) >= 0 {
+		return a
+	}
+	return b
+}
+
+func MinFloat(a, b *big.Float) *big.Float {
+	if a.Cmp(b) <= 0 {
+		return a
+	}
+	return b
 }

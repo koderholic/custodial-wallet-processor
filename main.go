@@ -33,15 +33,20 @@ func main() {
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
-	migration.RunDbMigrations(logger, config)
-	Database.DBSeeder()
+	if err := migration.RunDbMigrations(logger, config); err != nil {
+		log.Fatalf("Error running migration: %s", err)
+	}
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 
+	services.SeedSupportedAssets(Database.DB, logger)
 	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
-		logger.Error("Server started and listening on port %s", config.AppPort)
+		logger.Error("Error with InitHotWallet %s", err)
+	}
+	if err := services.InitSharedAddress(authCache, Database.DB, logger, config); err != nil {
+		logger.Error("Error with InitSharedAddress %s", err)
 	}
 
 	app.RegisterRoutes(router, validator, config, logger, Database.DB, authCache)
@@ -52,8 +57,10 @@ func main() {
 	db := *Database
 	baseRepository := database.BaseRepository{Database: db}
 	tasks.ExecuteSweepCronJob(authCache, logger, config, baseRepository)
-	// userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-	// tasks.ExecuteFloatManagerCronJob(authCache, logger, config, baseRepository, userAssetRepository)
+	if config.EnableFloatManager {
+		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+		tasks.ExecuteFloatManagerCronJob(authCache, logger, config, baseRepository, userAssetRepository)
+	}
 
 	err := sentry.Init(sentry.ClientOptions{
 		// Either set your DSN here or set the SENTRY_DSN environment variable.

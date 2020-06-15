@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 	"wallet-adapter/config"
-	"wallet-adapter/model"
+	"wallet-adapter/dto"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
 )
@@ -28,12 +28,12 @@ func TestSubscribeAddress(t *testing.T) {
 	subs := make(map[string][]string)
 	addressArray := []string{"bc1qq65rn0wzjnmcwqz4jp0cx48lvj7ynectmw60jj"}
 	subs[configTest.BtcSlipValue] = addressArray
-	requestData := model.SubscriptionRequest{
+	requestData := dto.SubscriptionRequest{
 		Subscriptions: subs,
 		Webhook:       configTest.DepositWebhookURL,
 	}
-	subscriptionResponseData := model.SubscriptionResponse{}
-	serviceErr := model.ServicesRequestErr{}
+	subscriptionResponseData := dto.SubscriptionResponse{}
+	serviceErr := dto.ServicesRequestErr{}
 
 	services.SubscribeAddress(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
 
