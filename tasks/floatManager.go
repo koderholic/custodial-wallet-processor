@@ -506,18 +506,21 @@ func GetMaxFloatBalance(floatManagerParams model.FloatManagerParam, logger *util
 }
 
 func IsSentColdWalletMail(repository database.BaseRepository, deficit *big.Float, assetSymbol string) (bool, error) {
-	floatManager := model.FloatManager{}
-	currentDate, _ := time.Parse("2006-01-02 15:04", time.Now().Format("01-02-2006"))
-	if err := repository.GetByFieldName(&model.FloatManager{AssetSymbol: assetSymbol, LastRunTime: currentDate}, &floatManager); err != nil {
+	floatManager := []model.FloatManager{}
+	if err := repository.FetchByLastRunDate(assetSymbol, time.Now().Format("01-02-2006"), &floatManager); err != nil {
 		if utility.SQL_404 == err.Error() {
 			return true, nil
 		}
 		return false, err
 	}
-	deficitValue, _ := deficit.Float64()
-	if floatManager.Deficit == float64(0) {
+	if len(floatManager) == 0 {
 		return false, nil
-	} else if floatManager.Deficit == deficitValue {
+	}
+
+	deficitValue, _ := deficit.Float64()
+	if floatManager[0].Deficit == float64(0) {
+		return false, nil
+	} else if floatManager[0].Deficit == deficitValue {
 		return true, nil
 	}
 

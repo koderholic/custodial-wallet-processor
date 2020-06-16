@@ -23,6 +23,7 @@ type IRepository interface {
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 	FetchTransactionsWhereIn(values []string, model interface{}) error
 	FetchBatchesWithStatus(statuses []string, batches interface{}) error
+	FetchByLastRunDate(assettype, lastRund string, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -215,6 +216,17 @@ func (repo *BaseRepository) UpdateOrCreate(checkExistOrUpdate interface{}, model
 func (repo *BaseRepository) BulkUpdateTransactionSweptStatus(idList []uuid.UUID) error {
 	if err := repo.DB.Exec("UPDATE transactions SET swept_status=true WHERE id IN (?)", idList).Error; err != nil {
 		repo.Logger.Error("Error with repository bulk update transaction swept_status : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+func (repo *BaseRepository) FetchByLastRunDate(assettype, lastRund string, model interface{}) error {
+	if err := repo.DB.Raw("SELECT * FROM float_manager_variables WHERE asset_symbol = ? AND last_run_time >= ? ORDER BY last_run_time DESC").Scan(model).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchByLastRunDate : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
