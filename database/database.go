@@ -36,7 +36,7 @@ func (database *Database) LoadDBInstance() {
 		//DBConnectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true", "root", "password","127.0.0.1", "wallet-adapter")
 		db, err := gorm.Open("mysql", DBConnectionString)
 		if err != nil {
-			log.Fatal("Error creating database connection: %s", err.Error())
+			log.Fatal("Error creating database connection ", err.Error())
 		}
 
 		ctx := context.Background()

@@ -67,13 +67,23 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		}
 		logger.Info("maximum user balanace is %+v", maxUserBalance)
 
+		// Get float manager params
+		floatManagerParams, err := getFloatParams(repository, logger)
+		if err != nil {
+			logger.Info("Error getting float manager params : %s", err)
+		}
+
 		// GetMinimum
-		minimumFloatBalance := GetMinFloatBalance(logger, totalUserBalance, maxUserBalance)
-		logger.Info("minimum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, minimumFloatBalance)
+		minimumFloatBalance := GetMinFloatBalance(floatManagerParams, logger, totalUserBalance, maxUserBalance)
+		minimumTriggerLevel := new(big.Float)
+		minimumTriggerLevel.Mul(big.NewFloat(floatManagerParams.PercentMinimumTriggerLevel), minimumFloatBalance)
+		logger.Info("minimum balance for this hot wallet %+v is %+v and minimum trigger amount is %v", floatAccount.AssetSymbol, minimumFloatBalance, minimumTriggerLevel)
 
 		// GetMaximum
-		maximumFloatBalance := GetMaxFloatBalance(logger, totalUserBalance, maxUserBalance)
-		logger.Info("maximum balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, maximumFloatBalance)
+		maximumFloatBalance := GetMaxFloatBalance(floatManagerParams, logger, totalUserBalance, maxUserBalance)
+		maximumTriggerLevel := new(big.Float)
+		maximumTriggerLevel.Mul(big.NewFloat(floatManagerParams.PercentMaximumTriggerLevel), minimumFloatBalance)
+		logger.Info("maximum balance for this hot wallet %+v is %+v and maximum trigger amount is %v", floatAccount.AssetSymbol, maximumFloatBalance, maximumTriggerLevel)
 
 		differenceOfDepositAndWithdrawals := new(big.Float)
 		differenceOfDepositAndWithdrawals.Sub(depositSumFromLastRun, withdrawalSumFromLastRun)
@@ -81,10 +91,12 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 		deficit := new(big.Float)
+		surplus := new(big.Float)
 		floatAction := ""
 		//it checks if the float balance is below the minimum balance or above the maximum balance
-		if floatOnChainBalance.Cmp(minimumFloatBalance) < 0 {
-			//if below the minimum balance, it then checks if deposit - withdrawal < 0,
+		if floatOnChainBalance.Cmp(minimumTriggerLevel) < 0 {
+			logger.Info("floatOnChainBalance < minimumFloatBalance")
+			//if below the minimum trigger level, it then checks if deposit - withdrawal < 0,
 			// then we call binance broker api to fund hot wallet and raise the float balance from
 			// it's deficit amount to the maximum amount (residual + % of total user
 			// balance + delta(total_deposit - total_withdrawal) since its last run).
@@ -103,14 +115,18 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				var bigIntDeficit *big.Int
 				deficit.Int(bigIntDeficit)
 				//trigger alert to cold wallet user
-				floatAction = fmt.Sprintf("sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
+				floatAction = fmt.Sprintf("sending an email to fund hot wallet %s for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 				logger.Info(floatAction)
 
-				params := map[string]string{
-					"amount":      deficitInDecimalUnits.String(),
-					"assetSymbol": floatAccount.AssetSymbol,
+				// Ensure email has not been sent already
+				emailSent, _ := IsSentColdWalletMail(repository, deficit, floatAccount.AssetSymbol)
+				if !emailSent {
+					params := map[string]string{
+						"amount":      deficitInDecimalUnits.String(),
+						"assetSymbol": floatAccount.AssetSymbol,
+					}
+					err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
 				}
-				err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
 			} else {
 				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
 				// using notification service to raise the float balance from it's deficit amount to
@@ -127,14 +143,19 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 				floatAction = fmt.Sprintf("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
 				logger.Info(floatAction)
-				params := map[string]string{
-					"amount":      deficitInDecimalUnits.String(),
-					"assetSymbol": floatAccount.AssetSymbol,
+
+				// Ensure email has not been sent already
+				emailSent, _ := IsSentColdWalletMail(repository, deficit, floatAccount.AssetSymbol)
+				if !emailSent {
+					params := map[string]string{
+						"amount":      deficitInDecimalUnits.String(),
+						"assetSymbol": floatAccount.AssetSymbol,
+					}
+					err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
 				}
-				err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
 			}
 		}
-		if floatOnChainBalance.Cmp(maximumFloatBalance) > 0 {
+		if floatOnChainBalance.Cmp(maximumTriggerLevel) > 0 {
 			//debit float address
 			depositAddressResponse := dto.DepositAddressResponse{}
 			var bigIntDeficit *big.Int
@@ -157,11 +178,11 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				continue
 			}
 
-			surplusInDecimalUnits := new(big.Float)
+			surplus := new(big.Float)
 			denominationDecimal := float64(denomination.Decimal)
-			surplusInDecimalUnits.Quo(excessDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
+			surplus.Quo(excessDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 			params := map[string]string{
-				"amount":             surplusInDecimalUnits.String(),
+				"amount":             surplus.String(),
 				"assetSymbol":        floatAccount.AssetSymbol,
 				"depositAddress":     depositAddressResponse.Address,
 				"depositAddressMemo": depositAddressResponse.Tag,
@@ -169,7 +190,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			err = notifyColdWalletUsers("Withdraw", params, config, err, cache, logger, serviceErr)
 		}
 
-		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximumFloatBalance, minimumFloatBalance, deficit, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
+		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximumFloatBalance, minimumFloatBalance, deficit, surplus, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
 			logger.Error("Error with creating saving float manager run variables for %s : %s", floatAccount.AssetSymbol, err)
 		}
 
@@ -182,7 +203,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 }
 
 //save float variables to db
-func saveFloatVariables(repository database.BaseRepository, logger *utility.Logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximum, minimum, deficit *big.Float, reservedBalance float64, floatAction, assetSymbol string) error {
+func saveFloatVariables(repository database.BaseRepository, logger *utility.Logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximum, minimum, deficit *big.Float, surplus *big.Float, reservedBalance float64, floatAction, assetSymbol string) error {
 	DepositSum, _ := depositSumFromLastRun.Float64()
 	ResidualAmount := reservedBalance
 	TotalUserBalance, _ := totalUserBalance.Float64()
@@ -191,8 +212,9 @@ func saveFloatVariables(repository database.BaseRepository, logger *utility.Logg
 	MaximumFloatRange, _ := maximum.Float64()
 	MinimumFloatRange, _ := minimum.Float64()
 	Deficit, _ := deficit.Float64()
+	Surplus, _ := surplus.Float64()
 
-	if err := repository.Create(&model.FloatManager{ResidualAmount: ResidualAmount, AssetSymbol: assetSymbol, TotalUserBalance: TotalUserBalance, DepositSum: DepositSum, WithdrawalSum: WithdrawalSum, FloatOnChainBalance: FloatOnChainBalance, MaximumFloatRange: MaximumFloatRange, MinimumFloatRange: MinimumFloatRange, Deficit: Deficit, Action: floatAction, LastRunTime: time.Now()}); err != nil {
+	if err := repository.Create(&model.FloatManager{ResidualAmount: ResidualAmount, AssetSymbol: assetSymbol, TotalUserBalance: TotalUserBalance, DepositSum: DepositSum, WithdrawalSum: WithdrawalSum, FloatOnChainBalance: FloatOnChainBalance, MaximumFloatRange: MaximumFloatRange, MinimumFloatRange: MinimumFloatRange, Deficit: Deficit, Surplus: Surplus, Action: floatAction, LastRunTime: time.Now()}); err != nil {
 		return err
 	}
 	return nil
@@ -260,6 +282,16 @@ func getTotalUserBalance(repository database.BaseRepository, assetSymbol string,
 	return scaledTotalSum, nil
 }
 
+func getFloatParams(repository database.BaseRepository, logger *utility.Logger) (model.FloatManagerParam, error) {
+	//Get float manager params
+	floatManagerParam := model.FloatManagerParam{}
+	if err := repository.Get(floatManagerParam, &floatManagerParam); err != nil {
+		logger.Error("Error response from Float manager : %+v while trying to get float manager params", err)
+		return model.FloatManagerParam{}, err
+	}
+	return floatManagerParam, nil
+}
+
 func getFloatAccounts(repository database.BaseRepository, logger *utility.Logger) ([]model.HotWalletAsset, error) {
 	//Get the float address
 	floatAccounts := []model.HotWalletAsset{}
@@ -269,6 +301,7 @@ func getFloatAccounts(repository database.BaseRepository, logger *utility.Logger
 	}
 	return floatAccounts, nil
 }
+
 func getRecipientAsset(repository database.BaseRepository, assetId uuid.UUID, recipientAsset *model.UserAsset, logger *utility.Logger) {
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetId}}, &recipientAsset); err != nil {
@@ -423,11 +456,11 @@ func GetMaxUserBalanceFor(repository database.UserAssetRepository, assetType str
 	return big.NewFloat(maxUserBalance), nil
 }
 
-func GetMinFloatBalance(logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
+func GetMinFloatBalance(floatManagerParams model.FloatManagerParam, logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
 
-	minPercentageOfMaxUserBalance := big.NewFloat(utility.FLOAT_MINPercentageOfMaxUserBalance)
+	minPercentageOfMaxUserBalance := big.NewFloat(floatManagerParams.MinPercentMaxUserBalance)
 	logger.Info("minimum percentage of maximum user balance used is %+v", minPercentageOfMaxUserBalance)
-	averagePercentageOfTotalUserBalance := big.NewFloat(utility.FLOAT_AVERAGEPercentageOfTotalUserBalance)
+	averagePercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.AveragePercentTotalUserBalance)
 	logger.Info("average percentage of total users balance used is %+v", averagePercentageOfTotalUserBalance)
 
 	minPercentageValueOfMaxUserBalance := new(big.Float)
@@ -442,13 +475,13 @@ func GetMinFloatBalance(logger *utility.Logger, totalUserBalance, maxUserBalance
 	return minimumFloatBalance
 }
 
-func GetMaxFloatBalance(logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
+func GetMaxFloatBalance(floatManagerParams model.FloatManagerParam, logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
 
-	minPercentageOfTotalUserBalance := big.NewFloat(utility.FLOAT_MINPercentageOfTotalUserBalance)
+	minPercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.MinPercentTotalUserBalance)
 	logger.Info("minimum percentage value of total user balance used is %+v", minPercentageOfTotalUserBalance)
-	maxPercentageOfTotalUserBalance := big.NewFloat(utility.FLOAT_MAXPercentageOfTotalUserBalance)
+	maxPercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.MaxPercentTotalUserBalance)
 	logger.Info("maximum percentage of total users balance used is %+v", maxPercentageOfTotalUserBalance)
-	maxPercentageOfMaxUserBalance := big.NewFloat(utility.FLOAT_MAXPercentageOfMaxUserBalance)
+	maxPercentageOfMaxUserBalance := big.NewFloat(floatManagerParams.MaxPercentMaxUserBalance)
 	logger.Info("maximum percentage of maximum users balance used is %+v", maxPercentageOfMaxUserBalance)
 
 	maxPercentageValueOfMaxUserBalance := new(big.Float)
@@ -467,4 +500,23 @@ func GetMaxFloatBalance(logger *utility.Logger, totalUserBalance, maxUserBalance
 
 	maximumFloatBalance := utility.MaxFloat(maxPercentageValueOfTotalUserBalance, C)
 	return maximumFloatBalance
+}
+
+func IsSentColdWalletMail(repository database.BaseRepository, deficit *big.Float, assetSymbol string) (bool, error) {
+	floatManager := model.FloatManager{}
+	currentDate, _ := time.Parse("2006-01-02 15:04", time.Now().Format("01-02-2006"))
+	if err := repository.GetByFieldName(&model.FloatManager{AssetSymbol: assetSymbol, LastRunTime: currentDate}, &floatManager); err != nil {
+		if utility.SQL_404 == err.Error() {
+			return true, nil
+		}
+		return false, err
+	}
+	deficitValue, _ := deficit.Float64()
+	if floatManager.Deficit == float64(0) {
+		return false, nil
+	} else if floatManager.Deficit == deficitValue {
+		return true, nil
+	}
+
+	return false, nil
 }
