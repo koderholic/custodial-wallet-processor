@@ -155,7 +155,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				}
 			}
 		}
-		if floatOnChainBalance.Cmp(maximumTriggerLevel) > 0 {
+		if floatOnChainBalance.Cmp(maximumFloatBalance) > 0 {
 			//debit float address
 			depositAddressResponse := dto.DepositAddressResponse{}
 			var bigIntDeficit *big.Int
@@ -163,6 +163,9 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			excessDeficit.Sub(floatOnChainBalance, maximumFloatBalance)
 			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", excessDeficit, floatAccount.AssetSymbol)
 			bigIntDeficit, _ = excessDeficit.Int(nil)
+			if excessDeficit.Cmp(maximumTriggerLevel) < 0 {
+				continue
+			}
 			denomination := model.Denomination{}
 			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
