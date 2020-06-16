@@ -511,6 +511,7 @@ func IsSentColdWalletMail(repository database.BaseRepository, deficit *big.Float
 		}
 		return false, err
 	}
+	fmt.Printf("floatManager >> %+v", floatManager)
 	deficitValue, _ := deficit.Float64()
 	if floatManager.Deficit == float64(0) {
 		return false, nil

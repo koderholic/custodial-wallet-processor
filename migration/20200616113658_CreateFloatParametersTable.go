@@ -18,20 +18,20 @@ func Up20200616113658(tx *sql.Tx) error {
 		id varchar(36) NOT NULL, 
 		created_at timestamp NULL, 
 		updated_at timestamp NULL,   
-		min_percent_max_user_balance decimal(64,4) NOT NULL,
-		max_percent_max_user_balance decimal(64,4) NOT NULL,
-		min_percent_total_user_balance decimal(64,4) NOT NULL,
-		average_percent_total_user_balance decimal(64,4) NOT NULL,
-		max_percent_total_user_balance decimal(64,4) NOT NULL,
-		percent_minimum_trigger_level decimal(64,4) NOT NULL,
-		percent_maximum_trigger_level decimal(64,4) NOT NULL,
+		min_percent_max_user_balance decimal(64,2) NOT NULL,
+		max_percent_max_user_balance decimal(64,2) NOT NULL,
+		min_percent_total_user_balance decimal(64,2) NOT NULL,
+		average_percent_total_user_balance decimal(64,2) NOT NULL,
+		max_percent_total_user_balance decimal(64,2) NOT NULL,
+		percent_minimum_trigger_level decimal(64,2) NOT NULL,
+		percent_maximum_trigger_level decimal(64,2) NOT NULL,
 	
 		PRIMARY KEY (id)
 	);`)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(fmt.Sprintf("INSERT into float_manager_params (id, created_at, updated_at, min_percent_max_user_balance, max_percent_max_user_balance, min_percent_total_user_balance, average_percent_total_user_balance, max_percent_total_user_balance, percent_minimum_trigger_level, percent_maximum_trigger_level) values (%v, %v, %v, %f, %f, %f, %f, %f, %f, %f)", uuid.NewV4(), time.Now(), time.Now(), 0.6, 0.8, 0.3, 0.4, 0.6, 0.1, 0.3))
+	_, err = tx.Exec(fmt.Sprintf("INSERT into float_manager_params (id, created_at, updated_at, min_percent_max_user_balance, max_percent_max_user_balance, min_percent_total_user_balance, average_percent_total_user_balance, max_percent_total_user_balance, percent_minimum_trigger_level, percent_maximum_trigger_level) VALUES ('%s', '%s', '%s', %f, %f, %f, %f, %f, %f, %f)", uuid.NewV4().String(), time.Now().Format("2006-01-02T15:04"), time.Now().Format("2006-01-02T15:04:05"), 0.6, 0.8, 0.3, 0.4, 0.6, 0.1, 0.3))
 	if err != nil {
 		return err
 	}
