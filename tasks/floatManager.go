@@ -20,54 +20,69 @@ import (
 
 func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository) {
 	logger.Info("Float manager process begins")
+
 	serviceErr := dto.ServicesRequestErr{}
 	token, err := acquireLock("float", cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
 	}
-	//get float balance
+
 	floatAccounts, err := getFloatAccounts(repository, logger)
 	if err != nil {
 		return
 	}
+
 	for _, floatAccount := range floatAccounts {
+
 		prec := uint(64)
-		request := dto.OnchainBalanceRequest{
+		floatDeficit := new(big.Float)
+		floatSurplus := new(big.Float)
+		floatAction := ""
+
+		// Get float chain balance
+		onchainBalanceRequest := dto.OnchainBalanceRequest{
 			AssetSymbol: floatAccount.AssetSymbol,
 			Address:     floatAccount.Address,
 		}
 		floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
-		services.GetOnchainBalance(cache, logger, config, request, &floatOnChainBalanceResponse, serviceErr)
+		services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
+		floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
+		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
-		//get minimum amount
+		// Get total users balance
 		totalUserBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
 		if err != nil {
 			logger.Info("error with float : %+v", err)
 			continue
 		}
-		logger.Info("totalUserBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, totalUserBalance)
+		logger.Info("totalUserBalance for this hot wallet %s is %+v", floatAccount.AssetSymbol, totalUserBalance)
+
+		// Get total deposit sum from the last run of this job
 		depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
-			logger.Info("error with float : %+v", err)
+			logger.Info("error with float manager process, while trying to get the total deposit sum from last run : %+v", err)
 			continue
 		}
-		logger.Info("depositSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, depositSumFromLastRun)
+		logger.Info("depositSumFromLastRun for this hot wallet (%s) is %+v", floatAccount.AssetSymbol, depositSumFromLastRun)
+
+		// Get total withdrawal sum from the last run of this job
 		withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
-			logger.Info("error with float : %+v", err)
+			logger.Info("error with float manager process, while trying to get the total withdrawal sum from last run : %+v", err)
 			continue
 		}
 		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
 
+		// Get the maximum user balance of this float asset type
 		maxUserBalance, err := GetMaxUserBalanceFor(userAssetRepository, floatAccount.AssetSymbol)
 		if err != nil {
-			logger.Info("Error getting maximum user balance for %s : %+v", floatAccount.AssetSymbol, err)
+			logger.Info("Error with float manager process, while getting maximum user balance for %s : %+v", floatAccount.AssetSymbol, err)
 			continue
 		}
-		logger.Info("maximum user balanace is %+v", maxUserBalance)
+		logger.Info("maximum user balanace for asset %s is %+v", floatAccount.AssetSymbol, maxUserBalance)
 
-		// Get float manager params
+		// Get float manager parameters to calculate minimum and maximum float range
 		floatManagerParams, err := getFloatParams(repository, logger)
 		if err != nil {
 			logger.Info("Error getting float manager params : %s", err)
@@ -88,121 +103,103 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		differenceOfDepositAndWithdrawals := new(big.Float)
 		differenceOfDepositAndWithdrawals.Sub(depositSumFromLastRun, withdrawalSumFromLastRun)
 		differenceOfDepositAndWithdrawals.Abs(differenceOfDepositAndWithdrawals)
-		floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
-		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
-		deficit := new(big.Float)
-		surplus := new(big.Float)
-		floatAction := ""
-		//it checks if the float balance is below the minimum balance or above the maximum balance
-		if floatOnChainBalance.Cmp(minimumTriggerLevel) < 0 {
+
+		//it checks if the float balance is below or equal to the minimum trigger level
+		if floatOnChainBalance.Cmp(minimumTriggerLevel) <= 0 {
+
 			logger.Info("floatOnChainBalance < minimumFloatBalance")
-			//if below the minimum trigger level, it then checks if deposit - withdrawal < 0,
-			// then we call binance broker api to fund hot wallet and raise the float balance from
-			// it's deficit amount to the maximum amount (residual + % of total user
-			// balance + delta(total_deposit - total_withdrawal) since its last run).
-			if depositSumFromLastRun.Cmp(withdrawalSumFromLastRun) < 0 {
-				denomination := model.Denomination{}
-				if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-					logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
-					break
-				}
-				denominationDecimal := float64(denomination.Decimal)
-				deficit.Sub(maximumFloatBalance, floatOnChainBalance)
-				//decimal units
-				deficitInDecimalUnits := new(big.Float)
-				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
-				logger.Info("deficitInDecimalUnits for this hot wallet %+v is %+v", floatAccount.AssetSymbol, deficitInDecimalUnits)
-				var bigIntDeficit *big.Int
-				deficit.Int(bigIntDeficit)
-				//trigger alert to cold wallet user
-				floatAction = fmt.Sprintf("sending an email to fund hot wallet %s for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
-				logger.Info(floatAction)
 
-				// Ensure email has not been sent already
-				emailSent, _ := IsSentColdWalletMail(repository, deficit, floatAccount.AssetSymbol)
-				if !emailSent {
-					params := map[string]string{
-						"amount":      deficitInDecimalUnits.String(),
-						"assetSymbol": floatAccount.AssetSymbol,
-					}
-					err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
-				}
-			} else {
-				//But if it then checks if deposit - withdrawal >= 0, then we trigger call to cold wallet
-				// using notification service to raise the float balance from it's deficit amount to
-				// or above the minimum amount (residual amount)
-				deficit.Sub(minimumFloatBalance, floatOnChainBalance)
-				denomination := model.Denomination{}
-				if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-					logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
-					continue
-				}
-				denominationDecimal := float64(denomination.Decimal)
-				//decimal units
-				deficitInDecimalUnits := new(big.Float)
-				deficitInDecimalUnits.Quo(deficit, big.NewFloat(math.Pow(10, denominationDecimal)))
-				floatAction = fmt.Sprintf("deposit - withdrawal >= 0 %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, deficitInDecimalUnits)
-				logger.Info(floatAction)
-
-				// Ensure email has not been sent already
-				emailSent, _ := IsSentColdWalletMail(repository, deficit, floatAccount.AssetSymbol)
-				if !emailSent {
-					params := map[string]string{
-						"amount":      deficitInDecimalUnits.String(),
-						"assetSymbol": floatAccount.AssetSymbol,
-					}
-					err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
-				}
+			floatDeficitInDecimalUnits := new(big.Float)
+			denomination := model.Denomination{}
+			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
+				break
 			}
+			denominationDecimal := float64(denomination.Decimal)
+
+			if depositSumFromLastRun.Cmp(withdrawalSumFromLastRun) < 0 {
+				//if below the minimum trigger level, it then checks if total deposit is less than total withdrawal, for this it raises float back to the maximum value, since there is a pattern of high withdrawal than deposit, float will need maximum funds
+				floatDeficit.Sub(maximumFloatBalance, floatOnChainBalance)
+			} else {
+				// Total deposit is greater than total withdrawal, for this it raises float back to the minimum value plus a certain percentage, sinces there is a higher deposit rate, having a little above the minimum float balance in float would be sufficient.
+				floatDeficit.Sub(minimumFloatBalance, floatOnChainBalance)
+				floatDeficit.Add(minimumTriggerLevel, floatDeficit)
+			}
+
+			floatDeficitInDecimalUnits.Quo(floatDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
+			logger.Info("deficitInDecimalUnits for this hot wallet %s is %+v", floatAccount.AssetSymbol, floatDeficitInDecimalUnits)
+
+			// Ensure email has not been sent already
+			emailSent, _ := IsSentColdWalletMail(repository, floatDeficit, floatAccount.AssetSymbol)
+			if !emailSent {
+
+				floatAction = fmt.Sprintf("floatOnChainBalance <= minimumFloatBalance %+v, so sending an email to fund hot wallet for amount %+v in decimal units", floatAccount.AssetSymbol, floatDeficitInDecimalUnits)
+
+				params := map[string]string{
+					"amount":      floatDeficitInDecimalUnits.String(),
+					"assetSymbol": floatAccount.AssetSymbol,
+				}
+				err = notifyColdWalletUsers("Fund", params, config, err, cache, logger, serviceErr)
+			}
+			floatAction = fmt.Sprintf("Email to fund hot wallet (%s) of %+v has already been sent", floatAccount.AssetSymbol, floatDeficitInDecimalUnits)
+			logger.Info(floatAction)
 		}
+
+		// If float balance is greater than the maximum float balance, it moves excess funds to the binance broker account
 		if floatOnChainBalance.Cmp(maximumFloatBalance) > 0 {
-			//debit float address
-			depositAddressResponse := dto.DepositAddressResponse{}
-			var bigIntDeficit *big.Int
-			excessDeficit := new(big.Float)
-			excessDeficit.Sub(floatOnChainBalance, maximumFloatBalance)
-			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", excessDeficit, floatAccount.AssetSymbol)
-			bigIntDeficit, _ = excessDeficit.Int(nil)
-			if excessDeficit.Cmp(maximumTriggerLevel) < 0 {
+
+			floatSurplus := new(big.Float)
+			floatSurplusInBigInt := new(big.Int)
+			floatSurplusInDecimal := new(big.Float)
+			floatSurplus.Sub(floatOnChainBalance, maximumFloatBalance)
+			floatSurplusInBigInt, _ = floatSurplus.Int(nil)
+			if floatSurplus.Cmp(maximumTriggerLevel) < 0 {
 				continue
 			}
+			logger.Info("floatOnChainBalance > maximum, so withdrawing excess %+v %+v to binance brokage", floatSurplus, floatAccount.AssetSymbol)
+
+			// Get binance broker deposit address, pass network as maincoin in the case of tokens
+			depositAddressResponse := dto.DepositAddressResponse{}
 			denomination := model.Denomination{}
 			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 				continue
 			}
-			//Pass network as maincoin in the case of tokens
 			if denomination.IsToken {
 				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr)
 			} else {
 				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
 			}
-			if err := signTxAndBroadcastToChain(cache, repository, bigIntDeficit, depositAddressResponse, logger, config, floatAccount, serviceErr); err != nil {
+
+			// Sign and broadcast transaction
+			if err := signTxAndBroadcastToChain(cache, repository, floatSurplusInBigInt, depositAddressResponse, logger, config, floatAccount, serviceErr); err != nil {
 				continue
 			}
 
-			surplus := new(big.Float)
-			denominationDecimal := float64(denomination.Decimal)
-			surplus.Quo(excessDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
+			// Send email to cold wallet recipients
+			floatSurplusInDecimal.Quo(floatSurplus, big.NewFloat(math.Pow(10, float64(denomination.Decimal))))
 			params := map[string]string{
-				"amount":             surplus.String(),
+				"amount":             floatSurplusInDecimal.String(),
 				"assetSymbol":        floatAccount.AssetSymbol,
 				"depositAddress":     depositAddressResponse.Address,
 				"depositAddressMemo": depositAddressResponse.Tag,
 			}
 			err = notifyColdWalletUsers("Withdraw", params, config, err, cache, logger, serviceErr)
+
 		}
 
-		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximumFloatBalance, minimumFloatBalance, deficit, surplus, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
-			logger.Error("Error with creating saving float manager run variables for %s : %s", floatAccount.AssetSymbol, err)
+		if err := saveFloatVariables(repository, logger, depositSumFromLastRun, totalUserBalance, withdrawalSumFromLastRun, floatOnChainBalance, maximumFloatBalance, minimumFloatBalance, floatDeficit, floatSurplus, float64(floatAccount.ReservedBalance), floatAction, floatAccount.AssetSymbol); err != nil {
+			logger.Error("Error with saving float manager run variables for %s : %s", floatAccount.AssetSymbol, err)
 		}
 
 	}
+
 	if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 		logger.Error("Could not release lock", err)
 		return
 	}
 	logger.Info("Float manager process ends successfully, lock released")
+
 }
 
 //save float variables to db
@@ -242,8 +239,10 @@ func notifyColdWalletUsers(emailType string, params map[string]string, config Co
 	case "Fund":
 		if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
 			sendEmailRequest.Subject = "Live: Please fund Bundle hot wallet address for " + params["assetSymbol"]
+			params["subject"] = sendEmailRequest.Subject
 		} else {
 			sendEmailRequest.Subject = "Test: Please fund Bundle hot wallet address for " + params["assetSymbol"]
+			params["subject"] = sendEmailRequest.Subject
 		}
 		sendEmailRequest.Template = dto.EmailTemplate{
 			ID:     config.ColdWalletEmailTemplateId,
@@ -507,7 +506,7 @@ func GetMaxFloatBalance(floatManagerParams model.FloatManagerParam, logger *util
 
 func IsSentColdWalletMail(repository database.BaseRepository, deficit *big.Float, assetSymbol string) (bool, error) {
 	floatManager := []model.FloatManager{}
-	if err := repository.FetchByLastRunDate(assetSymbol, time.Now().Format("01-02-2006"), &floatManager); err != nil {
+	if err := repository.FetchByLastRunDate(assetSymbol, time.Now().Format("2006-01-02"), &floatManager); err != nil {
 		if utility.SQL_404 == err.Error() {
 			return true, nil
 		}

@@ -224,8 +224,8 @@ func (repo *BaseRepository) BulkUpdateTransactionSweptStatus(idList []uuid.UUID)
 	return nil
 }
 
-func (repo *BaseRepository) FetchByLastRunDate(assettype, lastRund string, model interface{}) error {
-	if err := repo.DB.Raw("SELECT * FROM float_manager_variables WHERE asset_symbol = ? AND last_run_time >= ? ORDER BY last_run_time DESC").Scan(model).Error; err != nil {
+func (repo *BaseRepository) FetchByLastRunDate(assettype, lastRunDate string, model interface{}) error {
+	if err := repo.DB.Raw("SELECT * FROM float_manager_variables WHERE asset_symbol = ? AND last_run_time >= ? ORDER BY last_run_time DESC", assettype, lastRunDate).Scan(model).Error; err != nil {
 		repo.Logger.Error("Error with repository FetchByLastRunDate : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
