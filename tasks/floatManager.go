@@ -97,7 +97,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		// GetMaximum
 		maximumFloatBalance := GetMaxFloatBalance(floatManagerParams, logger, totalUserBalance, maxUserBalance)
 		maximumTriggerLevel := new(big.Float)
-		maximumTriggerLevel.Mul(big.NewFloat(floatManagerParams.PercentMaximumTriggerLevel), minimumFloatBalance)
+		maximumTriggerLevel.Mul(big.NewFloat(floatManagerParams.PercentMaximumTriggerLevel), maximumFloatBalance)
 		logger.Info("maximum balance for this hot wallet %+v is %+v and maximum trigger amount is %v", floatAccount.AssetSymbol, maximumFloatBalance, maximumTriggerLevel)
 
 		differenceOfDepositAndWithdrawals := new(big.Float)
