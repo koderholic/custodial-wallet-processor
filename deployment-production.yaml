@@ -1,0 +1,3 @@
+config:
+  enableFloatManager: 'true'
+  floatCronInterval: '10 */4 * * *'

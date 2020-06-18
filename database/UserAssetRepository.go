@@ -2,10 +2,13 @@ package database
 
 import (
 	"errors"
+	"strconv"
 	"strings"
+	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
 	"github.com/jinzhu/gorm"
+	uuid "github.com/satori/go.uuid"
 )
 
 // IUserAssetRepository ...
@@ -113,6 +116,20 @@ func (repo *UserAssetRepository) FindOrCreateAssets(checkExistOrUpdate interface
 	}
 
 	return nil
+}
+
+// GetMaxUserBalance
+func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (float64, error) {
+	maxUserBalance := model.UserAsset{}
+	if err := repo.DB.Raw("select available_balance from user_assets where denomination_id=?  order by available_balance desc limit 0,1;", denomination).Scan(&maxUserBalance).Error; err != nil {
+		repo.Logger.Error("Error with repository GetMaxUserBalance %s", err)
+		return float64(0), utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	availableBalance, _ := strconv.ParseFloat(maxUserBalance.AvailableBalance, 64)
+	return availableBalance, nil
 }
 
 func (repo *UserAssetRepository) Db() *gorm.DB {

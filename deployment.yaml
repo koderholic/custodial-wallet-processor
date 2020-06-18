@@ -13,6 +13,9 @@ serviceConfig:
         - 8200
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+        FLOATCRONINTERVAL: 'config:crypto-wallet-adapter:floatCronInterval'
+
 resources:
   databases:
     - type: MYSQL
@@ -44,7 +47,7 @@ resources:
 # Definition for Cron Jobs, see https://bundle-deploy-config.s3.amazonaws.com/viewer/index.html
 cronJobs:
   - name: wallet-adapter-trigger-job-process
-    schedule: '*/3 * * * *' #Run every 5 minutes
+    schedule: '*/5 * * * *' #Run every 5 minutes
     allowConcurrentRun: false
     grantAwsAccess: false
     container:
@@ -55,7 +58,8 @@ cronJobs:
         - 'http://crypto-wallet-adapter/assets/process-transaction'
         - '-XPOST'
       env:
-        ENVIRONMENT: config:default:environment
+        ENVIRONMENT: 'config:default:environment'
+
   - name: wallet-adapter-trigger-batch-job-process
     schedule: '*/30 * * * *' #Run every 30 minutes
     allowConcurrentRun: false
@@ -69,3 +73,7 @@ cronJobs:
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment
+
+config:
+  enableFloatManager: 'false'
+  floatCronInterval: '0 * * * *'
