@@ -14,6 +14,7 @@ type FloatManager struct {
 	MinimumFloatRange     float64
 	PercentageUserBalance float64
 	Deficit               float64
+	Surplus               float64
 	Action                string
 	LastRunTime           time.Time
 }

@@ -50,12 +50,6 @@ const (
 	ETH_COLD_WALLET_ADDRESS      = "0xad7651a207ab7a0fdcefc30c5a4fcc68d830b2f5"
 	ENV_PRODUCTION               = "production"
 	ENV_STAGING                  = "staging"
-
-	FLOAT_MINPercentageOfMaxUserBalance       = 0.6 // decimal percentage
-	FLOAT_MAXPercentageOfMaxUserBalance       = 0.8 // decimal percentage
-	FLOAT_MINPercentageOfTotalUserBalance     = 0.3 // decimal percentage
-	FLOAT_AVERAGEPercentageOfTotalUserBalance = 0.4 // decimal percentage
-	FLOAT_MAXPercentageOfTotalUserBalance     = 0.6 // decimal percentage
 )
 
 var (
