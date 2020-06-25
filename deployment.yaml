@@ -75,5 +75,5 @@ cronJobs:
         ENVIRONMENT: config:default:environment
 
 config:
-  enableFloatManager: 'enable'
+  enableFloatManager: 'true'
   floatCronInterval: '*/5 * * * *'
