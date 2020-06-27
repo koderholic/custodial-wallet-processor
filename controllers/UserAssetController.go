@@ -185,8 +185,16 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 			return
 		}
 		userAsset, err = services.GetAssetForV2Address(controller.Repository, address, assetSymbol, userAssetMemo)
+		if err != nil {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+			return
+		}
 	} else {
 		userAsset, err = services.GetAssetForV1Address(controller.Repository, address, assetSymbol)
+		if err != nil {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+			return
+		}
 	}
 
 	if userAsset.AssetSymbol == "" {
