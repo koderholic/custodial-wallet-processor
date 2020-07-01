@@ -83,7 +83,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		logger.Info("maximum user balanace for asset %s is %+v", floatAccount.AssetSymbol, maxUserBalance)
 
 		// Get float manager parameters to calculate minimum and maximum float range
-		floatManagerParams, err := getFloatParams(repository, logger)
+		floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
 		if err != nil {
 			logger.Info("Error getting float manager params : %s", err)
 		}
@@ -284,10 +284,10 @@ func getTotalUserBalance(repository database.BaseRepository, assetSymbol string,
 	return scaledTotalSum, nil
 }
 
-func getFloatParams(repository database.BaseRepository, logger *utility.Logger) (model.FloatManagerParam, error) {
+func getFloatParamFor(assetSymbol string, repository database.BaseRepository, logger *utility.Logger) (model.FloatManagerParam, error) {
 	//Get float manager params
-	floatManagerParam := model.FloatManagerParam{}
-	if err := repository.Get(floatManagerParam, &floatManagerParam); err != nil {
+	floatManagerParam := model.FloatManagerParam{AssetSymbol: assetSymbol}
+	if err := repository.GetByFieldName(floatManagerParam, &floatManagerParam); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to get float manager params", err)
 		return model.FloatManagerParam{}, err
 	}
