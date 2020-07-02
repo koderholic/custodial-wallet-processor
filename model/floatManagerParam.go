@@ -10,4 +10,5 @@ type FloatManagerParam struct {
 	MaxPercentTotalUserBalance     float64
 	PercentMinimumTriggerLevel     float64
 	PercentMaximumTriggerLevel     float64
+	AssetSymbol                    string
 }
