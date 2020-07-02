@@ -30,7 +30,8 @@ func Up20200701124939(tx *sql.Tx) error {
 	for _, asset := range supportedAssets {
 		_, err := tx.Exec(fmt.Sprintf(
 			`INSERT into float_manager_params (
-				id, created_at, updated_at, min_percent_max_user_balance, max_percent_max_user_balance, min_percent_total_user_balance, average_percent_total_user_balance, max_percent_total_user_balance, percent_minimum_trigger_level, percent_maximum_trigger_level, asset_symbol
+				id, created_at, updated_at, min_percent_max_user_balance, max_percent_max_user_balance, min_percent_total_user_balance,
+				average_percent_total_user_balance, max_percent_total_user_balance, percent_minimum_trigger_level, percent_maximum_trigger_level, asset_symbol
 			) 
 			VALUES ('%s', '%s', '%s', %f, %f, %f, %f, %f, %f, %f, '%s')`, uuid.NewV4().String(), time.Now().Format("2006-01-02T15:04"),
 			time.Now().Format("2006-01-02T15:04:05"), 0.6, 0.8, 0.3, 0.4, 0.6, 0.8, 0.3, asset))
