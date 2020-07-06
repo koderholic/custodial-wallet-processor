@@ -119,14 +119,20 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 	if err != nil {
 		return err
 	}
+
+	toAddress, _, err := GetSweepAddress(cache, logger, config, repository, floatAccount)
+	if err != nil {
+		return err
+	}
+
 	floatRecipient := dto.BatchRecipients{
-		Address: floatAccount.Address,
+		Address: toAddress,
 		Value:   big.NewInt(0),
 	}
 	recipientData = append(recipientData, floatRecipient)
 	signTransactionRequest := dto.BatchBTCRequest{
 		AssetSymbol:   "BTC",
-		ChangeAddress: floatAccount.Address,
+		ChangeAddress: toAddress,
 		IsSweep:       true,
 		Origins:       btcAssets,
 		Recipients:    recipientData,
@@ -179,10 +185,16 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		}
 	}
 
+	toAddress, addressMemo, err := GetSweepAddress(cache, logger, config, repository, floatAccount)
+	if err != nil {
+		return err
+	}
+
 	// Calls key-management to sign transaction
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: recipientAddress,
-		ToAddress:   floatAccount.Address,
+		ToAddress:   toAddress,
+		Memo:        addressMemo,
 		Amount:      big.NewInt(0),
 		AssetSymbol: recipientAsset.AssetSymbol,
 		IsSweep:     true,
@@ -279,6 +291,49 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	}
 	// else? i.e. if mainCoinOnChainBalance > floatAccount.SweepFee, then we want to proceed like the general case for non token sweep
 	return nil, false
+}
+
+func GetSweepAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset) (string, string, error) {
+
+	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+	totalUsersBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
+	if err != nil {
+
+	}
+
+	// Get float chain balance
+	prec := uint(64)
+	serviceErr := dto.ServicesRequestErr{}
+	onchainBalanceRequest := dto.OnchainBalanceRequest{
+		AssetSymbol: floatAccount.AssetSymbol,
+		Address:     floatAccount.Address,
+	}
+	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
+	services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
+	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
+
+	// Get broker account
+	brokerageAccountResponse := dto.DepositAddressResponse{}
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return "", "", err
+	}
+	if denomination.IsToken {
+		services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
+	} else {
+		services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
+	}
+
+	valueOfMinimumFloatPercent := new(big.Float)
+	valueOfMinimumFloatPercent.Mul(big.NewFloat(utility.MINIMUM_FLOAT_PERCENT), totalUsersBalance)
+
+	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
+		return floatAccount.Address, "", err
+	}
+
+	logger.Info("floatOnChainBalance for this hot wallet %+v is %+v, this is above %v of total user balance %v, moving sweep funds to brokerage ", floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
+
+	return brokerageAccountResponse.Address, brokerageAccountResponse.Tag, nil
 }
 
 func getFloatDetails(repository database.BaseRepository, symbol string, logger *utility.Logger) (model.HotWalletAsset, error) {
