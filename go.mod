@@ -11,6 +11,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/go-chi/chi v4.0.3+incompatible // indirect
+	github.com/go-playground/assert v1.2.1 // indirect
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-redis/redis/v7 v7.0.0-beta.4

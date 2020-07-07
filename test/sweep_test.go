@@ -1,35 +1,73 @@
 package test
 
 import (
+	"math/big"
 	"time"
-	"wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/dto"
+	"wallet-adapter/model"
+	"wallet-adapter/services"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 func (s *Suite) TestSweep() {
-	logger := utility.NewLogger()
-	configTest := config.Data{
-		AppPort:                     "9000",
-		ServiceName:                 "crypto-wallet-adapter",
-		AuthenticatorKey:            "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUE0ZjV3ZzVsMmhLc1RlTmVtL1Y0MQpmR25KbTZnT2Ryajh5bTNyRmtFVS93VDhSRHRuU2dGRVpPUXBIRWdRN0pMMzh4VWZVMFkzZzZhWXc5UVQwaEo3Cm1DcHo5RXI1cUxhTVhKd1p4ekh6QWFobGZBMGljcWFidkpPTXZRdHpENnVRdjZ3UEV5WnREVFdpUWk5QVh3QnAKSHNzUG5wWUdJbjIwWlp1TmxYMkJyQ2xjaUhoQ1BVSUlaT1FuL01tcVREMzFqU3lqb1FvVjdNaGhNVEFUS0p4MgpYckhoUisxRGNLSnpRQlNUQUducFlWYXFwc0FSYXArbndSaXByM25VVHV4eUdvaEJUU21qSjJ1c1NlUVhISTNiCk9ESVJlMUF1VHlIY2VBYmV3bjhiNDYyeUVXS0FSZHBkOUFqUVc1U0lWUGZkc3o1QjZHbFlRNUxkWUt0em5UdXkKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
-		PurgeCacheInterval:          5,
-		ExpireCacheDuration:         400,
-		ServiceID:                   "4b0bde7a-9201-4cf9-859f-e61d976e376d",
-		ServiceKey:                  "32e1f6396de342e879ca07ec68d4d907",
-		AuthenticationService:       "https://internal.dev.bundlewallet.com/authentication",
-		KeyManagementService:        "https://internal.dev.bundlewallet.com/key-management",
-		CryptoAdapterService:        "https://internal.dev.bundlewallet.com/crypto-adapter",
-		DepositWebhookURL:           "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit",
-		BtcSlipValue:                "0",
-		SweepFeePercentageThreshold: 20,
-		LockerService:               "https://internal.dev.bundlewallet.com/locker",
-	}
-	purgeInterval := configTest.PurgeCacheInterval * time.Second
-	cacheDuration := configTest.ExpireCacheDuration * time.Second
+	purgeInterval := s.Config.PurgeCacheInterval * time.Second
+	cacheDuration := s.Config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: s.Database}
-	tasks.SweepTransactions(authCache, logger, configTest, baseRepository)
+	tasks.SweepTransactions(authCache, s.Logger, s.Config, baseRepository)
+
+}
+
+func (s *Suite) TestGetSweepAddressAndMemo() {
+
+	purgeInterval := s.Config.PurgeCacheInterval * time.Second
+	cacheDuration := s.Config.ExpireCacheDuration * time.Second
+	cache := utility.InitializeCache(cacheDuration, purgeInterval)
+	baseRepository := database.BaseRepository{Database: s.Database}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+
+	floatAccount := model.HotWalletAsset{
+		BaseModel: model.BaseModel{
+			ID: uuid.FromStringOrNil("1ea282ca-8a08-4343-b1c4-372176809b13"),
+		},
+		Address:     "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg",
+		AssetSymbol: "BNB",
+		IsDisabled:  false,
+	}
+
+	// Get float chain balance
+	prec := uint(64)
+	serviceErr := dto.ServicesRequestErr{}
+	onchainBalanceRequest := dto.OnchainBalanceRequest{
+		AssetSymbol: floatAccount.AssetSymbol,
+		Address:     floatAccount.Address,
+	}
+	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
+	services.GetOnchainBalance(cache, s.Logger, s.Config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
+	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
+
+	// Get total users balance
+	totalUserBalance, err := tasks.GetTotalUserBalance(baseRepository, floatAccount.AssetSymbol, s.Logger, userAssetRepository)
+	if err != nil {
+		s.T().Errorf("Expected GetTotalUserBalance to not error, got %s\n", err)
+	}
+
+	valueOfMinimumFloatPercent := new(big.Float)
+	valueOfMinimumFloatPercent.Mul(big.NewFloat(0.01), totalUserBalance)
+
+	toAddress, _, err := tasks.GetSweepAddressAndMemo(cache, s.Logger, s.Config, baseRepository, floatAccount)
+	if err != nil {
+		s.T().Errorf("Expected GetSweepAddressAndMemo to not error, got %s\n", err)
+	}
+
+	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) > 0 {
+		if toAddress == "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg" {
+			s.T().Errorf("Expected toAddress returned to not be empty and to not equal %s, got %s\n", "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg", toAddress)
+		}
+	}
 
 }
