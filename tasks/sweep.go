@@ -122,6 +122,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 	toAddress, _, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
+		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
 		return err
 	}
 
@@ -187,6 +188,7 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 
 	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
+		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
 		return err
 	}
 
