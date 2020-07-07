@@ -28,7 +28,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		return
 	}
 
-	floatAccounts, err := getFloatAccounts(repository, logger)
+	floatAccounts, err := GetFloatAccounts(repository, logger)
 	if err != nil {
 		return
 	}
@@ -51,7 +51,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
 		// Get total users balance
-		totalUserBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
+		totalUserBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
 		if err != nil {
 			logger.Info("error with float : %+v", err)
 			continue
@@ -270,7 +270,7 @@ func notifyColdWalletUsers(emailType string, params map[string]string, config Co
 }
 
 //total liability at any given time
-func getTotalUserBalance(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, userAssetRepository database.UserAssetRepository) (*big.Float, error) {
+func GetTotalUserBalance(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, userAssetRepository database.UserAssetRepository) (*big.Float, error) {
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
@@ -294,7 +294,7 @@ func getFloatParamFor(assetSymbol string, repository database.BaseRepository, lo
 	return floatManagerParam, nil
 }
 
-func getFloatAccounts(repository database.BaseRepository, logger *utility.Logger) ([]model.HotWalletAsset, error) {
+func GetFloatAccounts(repository database.BaseRepository, logger *utility.Logger) ([]model.HotWalletAsset, error) {
 	//Get the float address
 	floatAccounts := []model.HotWalletAsset{}
 	if err := repository.Fetch(&floatAccounts); err != nil {

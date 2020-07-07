@@ -298,7 +298,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset) (string, string, error) {
 
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-	totalUsersBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
+	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
 	if err != nil {
 		return "", "", err
 	}

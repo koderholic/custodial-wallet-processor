@@ -29,28 +29,6 @@ func TestCachePurgesAfterSetTime(t *testing.T) {
 	}
 }
 
-func TestCacheExpiresAfterSetTime(t *testing.T) {
-
-	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := utility.InitializeCache(expiry, purgeInterval)
-
-	testKey, testValue := "test", "boy"
-
-	newCache.Set(testKey, testValue, true)
-	itemFetch := newCache.Get(testKey)
-	if testValue != itemFetch {
-		t.Errorf("Expected item fetched to be %s, got %s\n", testValue, itemFetch)
-	}
-
-	time.Sleep(expiry)
-
-	itemFetch = newCache.Get("test")
-	if nil != itemFetch {
-		t.Errorf("Expected item fetched to be empty %s, got %s\n", "<nil>", itemFetch)
-	}
-
-}
-
 func TestCacheNeverExpires(t *testing.T) {
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
