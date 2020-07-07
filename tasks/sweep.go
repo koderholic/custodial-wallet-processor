@@ -120,7 +120,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		return err
 	}
 
-	toAddress, _, err := GetSweepAddress(cache, logger, config, repository, floatAccount)
+	toAddress, _, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		}
 	}
 
-	toAddress, addressMemo, err := GetSweepAddress(cache, logger, config, repository, floatAccount)
+	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
 		return err
 	}
