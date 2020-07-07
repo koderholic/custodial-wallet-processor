@@ -170,6 +170,7 @@ func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray
 	subscriptionRequestData := dto.SubscriptionRequestV1{}
 	subscriptionRequestDataV2 := dto.SubscriptionRequestV2{}
 	subscriptionRequestData.Subscriptions = make(map[string][]string)
+	subscriptionRequestDataV2.Subscriptions = make(map[string][]string)
 	switch coinType {
 	case 0:
 		subscriptionRequestData.Subscriptions[service.Config.BtcSlipValue] = addressArray
