@@ -64,7 +64,7 @@ func (s *Suite) TestGetSweepAddressAndMemo() {
 		s.T().Errorf("Expected GetSweepAddressAndMemo to not error, got %s\n", err)
 	}
 
-	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
+	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) > 0 {
 		if toAddress == "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg" {
 			s.T().Errorf("Expected toAddress returned to not be empty and to not equal %s, got %s\n", "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg", toAddress)
 		}

@@ -329,7 +329,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	valueOfMinimumFloatPercent := new(big.Float)
 	valueOfMinimumFloatPercent.Mul(big.NewFloat(utility.MINIMUM_FLOAT_PERCENT), totalUsersBalance)
 
-	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) > 0 {
+	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
 		return floatAccount.Address, "", err
 	}
 
