@@ -190,11 +190,6 @@ func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray
 
 	subscriptionResponseData := dto.SubscriptionResponse{}
 
-	if err := SubscribeAddressV1(service.Cache, service.Logger, service.Config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
-		service.Logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)
-		return err
-	}
-
 	if err := SubscribeAddressV2(service.Cache, service.Logger, service.Config, subscriptionRequestDataV2, &subscriptionResponseData, serviceErr); err != nil {
 		service.Logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)
 		return err
