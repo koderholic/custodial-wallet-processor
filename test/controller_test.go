@@ -109,22 +109,25 @@ func (s *Suite) SetupSuite() {
 	router := mux.NewRouter()
 	validator := validation.New()
 	Config := config.Data{
-		AppPort:               "9000",
-		ServiceName:           "crypto-wallet-adapter",
-		AuthenticatorKey:      "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUE0ZjV3ZzVsMmhLc1RlTmVtL1Y0MQpmR25KbTZnT2Ryajh5bTNyRmtFVS93VDhSRHRuU2dGRVpPUXBIRWdRN0pMMzh4VWZVMFkzZzZhWXc5UVQwaEo3Cm1DcHo5RXI1cUxhTVhKd1p4ekh6QWFobGZBMGljcWFidkpPTXZRdHpENnVRdjZ3UEV5WnREVFdpUWk5QVh3QnAKSHNzUG5wWUdJbjIwWlp1TmxYMkJyQ2xjaUhoQ1BVSUlaT1FuL01tcVREMzFqU3lqb1FvVjdNaGhNVEFUS0p4MgpYckhoUisxRGNLSnpRQlNUQUducFlWYXFwc0FSYXArbndSaXByM25VVHV4eUdvaEJUU21qSjJ1c1NlUVhISTNiCk9ESVJlMUF1VHlIY2VBYmV3bjhiNDYyeUVXS0FSZHBkOUFqUVc1U0lWUGZkc3o1QjZHbFlRNUxkWUt0em5UdXkKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
-		PurgeCacheInterval:    60,
-		ServiceID:             "4b0bde7a-9201-4cf9-859f-e61d976e376d",
-		ServiceKey:            "32e1f6396de342e879ca07ec68d4d907",
-		AuthenticationService: "https://internal.dev.bundlewallet.com/authentication",
-		KeyManagementService:  "https://internal.dev.bundlewallet.com/key-management",
-		CryptoAdapterService:  "https://internal.dev.bundlewallet.com/crypto-adapter",
-		LockerService:         "https://internal.dev.bundlewallet.com/locker",
-		ExpireCacheDuration:   400,
-		RequestTimeout:        60,
-		MaxIdleConns:          25,
-		MaxOpenConns:          50,
-		ConnMaxLifetime:       300,
-		LockerPrefix:          "Wallet-Adapter-Lock-",
+		AppPort:                "9000",
+		ServiceName:            "crypto-wallet-adapter",
+		AuthenticatorKey:       "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUE0ZjV3ZzVsMmhLc1RlTmVtL1Y0MQpmR25KbTZnT2Ryajh5bTNyRmtFVS93VDhSRHRuU2dGRVpPUXBIRWdRN0pMMzh4VWZVMFkzZzZhWXc5UVQwaEo3Cm1DcHo5RXI1cUxhTVhKd1p4ekh6QWFobGZBMGljcWFidkpPTXZRdHpENnVRdjZ3UEV5WnREVFdpUWk5QVh3QnAKSHNzUG5wWUdJbjIwWlp1TmxYMkJyQ2xjaUhoQ1BVSUlaT1FuL01tcVREMzFqU3lqb1FvVjdNaGhNVEFUS0p4MgpYckhoUisxRGNLSnpRQlNUQUducFlWYXFwc0FSYXArbndSaXByM25VVHV4eUdvaEJUU21qSjJ1c1NlUVhISTNiCk9ESVJlMUF1VHlIY2VBYmV3bjhiNDYyeUVXS0FSZHBkOUFqUVc1U0lWUGZkc3o1QjZHbFlRNUxkWUt0em5UdXkKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
+		PurgeCacheInterval:     60,
+		ServiceID:              "4b0bde7a-9201-4cf9-859f-e61d976e376d",
+		ServiceKey:             "32e1f6396de342e879ca07ec68d4d907",
+		AuthenticationService:  "https://internal.dev.bundlewallet.com/authentication",
+		KeyManagementService:   "https://internal.dev.bundlewallet.com/key-management",
+		CryptoAdapterService:   "https://internal.dev.bundlewallet.com/crypto-adapter",
+		LockerService:          "https://internal.dev.bundlewallet.com/locker",
+		DepositWebhookURL:      "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit",
+		WithdrawToHotWalletUrl: "http://order-book",
+		NotificationServiceUrl: "http://internal.dev.bundlewallet.com/notifications",
+		ExpireCacheDuration:    400,
+		RequestTimeout:         60,
+		MaxIdleConns:           25,
+		MaxOpenConns:           50,
+		ConnMaxLifetime:        300,
+		LockerPrefix:           "Wallet-Adapter-Lock-",
 	}
 
 	Database := database.Database{
@@ -687,7 +690,7 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 	creditAssetRequest.Header.Set("x-auth-token", authToken)
 	creditAssetResponse := httptest.NewRecorder()
 	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
-	
+
 	onchainCreditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 3.441122091,"transactionReference" : "ra29bv7y111p945e17516","memo" :"Test credit transaction","chainData": {"status": true,"transactionHash": "string","transactionFee": "string","blockHeight": 0, "recipientAddress": "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2"}}`, createAssetResponse.Assets[0].ID))
 	onchainCreditAssetRequest, _ := http.NewRequest("POST", test.OnchainDepositEndpoint, bytes.NewBuffer(onchainCreditAssetInputData))
 	onchainCreditAssetRequest.Header.Set("x-auth-token", authToken)
