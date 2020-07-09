@@ -59,10 +59,7 @@ func (s *Suite) TestGetSweepAddressAndMemo() {
 	valueOfMinimumFloatPercent := new(big.Float)
 	valueOfMinimumFloatPercent.Mul(big.NewFloat(0.01), totalUserBalance)
 
-	toAddress, _, err := tasks.GetSweepAddressAndMemo(cache, s.Logger, s.Config, baseRepository, floatAccount)
-	if err != nil {
-		s.T().Errorf("Expected GetSweepAddressAndMemo to not error, got %s\n", err)
-	}
+	toAddress, _, _ := tasks.GetSweepAddressAndMemo(cache, s.Logger, s.Config, baseRepository, floatAccount)
 
 	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) > 0 {
 		if toAddress == "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg" {

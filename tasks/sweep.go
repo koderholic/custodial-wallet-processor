@@ -337,6 +337,8 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	valueOfMinimumFloatPercent.Mul(big.NewFloat(utility.MINIMUM_FLOAT_PERCENT), totalUsersBalance)
 
 	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
+		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below %v of total user balance %v, moving sweep funds to float account ",
+			floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
 		return floatAccount.Address, "", err
 	}
 	logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is above %v of total user balance %v, moving sweep funds to brokerage ",
