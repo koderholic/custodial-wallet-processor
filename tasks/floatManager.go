@@ -123,7 +123,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			} else {
 				// Total deposit is greater than total withdrawal, for this it raises float back to the minimum value plus a certain percentage, sinces there is a higher deposit rate, having a little above the minimum float balance in float would be sufficient.
 				floatDeficit.Sub(minimumFloatBalance, floatOnChainBalance)
-				floatDeficit.Add(minimumTriggerLevel, floatDeficit)
 			}
 
 			floatDeficitInDecimalUnits.Quo(floatDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))

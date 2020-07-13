@@ -3,8 +3,6 @@ package tasks
 import (
 	"errors"
 	"fmt"
-	"github.com/robfig/cron/v3"
-	uuid "github.com/satori/go.uuid"
 	"math"
 	"math/big"
 	"strconv"
@@ -14,6 +12,9 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
+
+	"github.com/robfig/cron/v3"
+	uuid "github.com/satori/go.uuid"
 )
 
 func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
@@ -302,6 +303,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	if err != nil {
 		return "", "", err
 	}
+	logger.Info("SWEEP_OPERATION : Total users balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, totalUsersBalance)
 
 	// Get float chain balance
 	prec := uint(64)
@@ -313,6 +315,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
 	services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
 	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
+	logger.Info("SWEEP_OPERATION : Float on-chain balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
 	// Get broker account
 	brokerageAccountResponse := dto.DepositAddressResponse{}
@@ -320,20 +323,27 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 		return "", "", err
 	}
+
 	if denomination.IsToken {
-		services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
+		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
 	} else {
-		services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
+		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
+	if err != nil {
+		return "", "", err
+	}
+	logger.Info("SWEEP_OPERATION : Brokerage account for this hot wallet %+v is %+v", floatAccount.AssetSymbol, brokerageAccountResponse)
 
 	valueOfMinimumFloatPercent := new(big.Float)
 	valueOfMinimumFloatPercent.Mul(big.NewFloat(utility.MINIMUM_FLOAT_PERCENT), totalUsersBalance)
 
 	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
+		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below %v of total user balance %v, moving sweep funds to float account ",
+			floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
 		return floatAccount.Address, "", err
 	}
-
-	logger.Info("floatOnChainBalance for this hot wallet %+v is %+v, this is above %v of total user balance %v, moving sweep funds to brokerage ", floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
+	logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is above %v of total user balance %v, moving sweep funds to brokerage ",
+		floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
 
 	return brokerageAccountResponse.Address, brokerageAccountResponse.Tag, nil
 }
