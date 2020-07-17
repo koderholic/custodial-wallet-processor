@@ -333,16 +333,21 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	}
 	logger.Info("SWEEP_OPERATION : Brokerage account for this hot wallet %+v is %+v", floatAccount.AssetSymbol, brokerageAccountResponse)
 
+	// Get float manager parameters to calculate minimum float
+	floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
+	if err != nil {
+		return "", "", err
+	}
 	valueOfMinimumFloatPercent := new(big.Float)
-	valueOfMinimumFloatPercent.Mul(big.NewFloat(utility.MINIMUM_FLOAT_PERCENT), totalUsersBalance)
+	valueOfMinimumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
 
 	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
 		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below %v of total user balance %v, moving sweep funds to float account ",
-			floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
+			floatAccount.AssetSymbol, floatOnChainBalance, floatManagerParams.MinPercentTotalUserBalance, totalUsersBalance)
 		return floatAccount.Address, "", err
 	}
 	logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is above %v of total user balance %v, moving sweep funds to brokerage ",
-		floatAccount.AssetSymbol, floatOnChainBalance, utility.MINIMUM_FLOAT_PERCENT, totalUsersBalance)
+		floatAccount.AssetSymbol, floatOnChainBalance, floatManagerParams.MinPercentTotalUserBalance, totalUsersBalance)
 
 	return brokerageAccountResponse.Address, brokerageAccountResponse.Tag, nil
 }
