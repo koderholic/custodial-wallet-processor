@@ -113,10 +113,9 @@ func calculateSum(addressTransactions []model.Transaction, recipientAsset model.
 }
 
 func CalculateSumOfBtcBatch(addressTransactions []model.Transaction) float64 {
-	//Get total sum to be swept for this assetId address
+	//Get total sum to be swept for this batch
 	var sum = float64(0)
 	for _, tx := range addressTransactions {
-		//convert to native units
 		value, _ := strconv.ParseFloat(tx.Value, 64)
 		sum += value
 	}
@@ -132,7 +131,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		return err
 	}
 
-	//check total sum threshold for BTC
+	//check total sum threshold for this batch
 	if CalculateSumOfBtcBatch(btcAssetTransactionsToSweep) < config.SweepBtcBatchMinimum {
 		return err
 	}
