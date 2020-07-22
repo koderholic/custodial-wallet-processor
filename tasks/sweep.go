@@ -112,12 +112,28 @@ func calculateSum(addressTransactions []model.Transaction, recipientAsset model.
 	return sum
 }
 
+func CalculateSumOfBtcBatch(addressTransactions []model.Transaction) float64 {
+	//Get total sum to be swept for this assetId address
+	var sum = float64(0)
+	for _, tx := range addressTransactions {
+		//convert to native units
+		value, _ := strconv.ParseFloat(tx.Value, 64)
+		sum += value
+	}
+	return sum
+}
+
 func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, btcAssets []string, btcAssetTransactionsToSweep []model.Transaction) error {
 	// Calls key-management to batch sign transaction
 	recipientData := []dto.BatchRecipients{}
 	//get float
 	floatAccount, err := getFloatDetails(repository, "BTC", logger)
 	if err != nil {
+		return err
+	}
+
+	//check total sum threshold for BTC
+	if CalculateSumOfBtcBatch(btcAssetTransactionsToSweep) < config.SweepBtcBatchMinimum {
 		return err
 	}
 
