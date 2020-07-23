@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"time"
 	"wallet-adapter/database"
-	"wallet-adapter/model"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
