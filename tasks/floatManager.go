@@ -28,7 +28,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		return
 	}
 
-	floatAccounts, err := getFloatAccounts(repository, logger)
+	floatAccounts, err := GetFloatAccounts(repository, logger)
 	if err != nil {
 		return
 	}
@@ -51,7 +51,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
 		// Get total users balance
-		totalUserBalance, err := getTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
+		totalUserBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
 		if err != nil {
 			logger.Info("error with float : %+v", err)
 			continue
@@ -83,7 +83,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		logger.Info("maximum user balanace for asset %s is %+v", floatAccount.AssetSymbol, maxUserBalance)
 
 		// Get float manager parameters to calculate minimum and maximum float range
-		floatManagerParams, err := getFloatParams(repository, logger)
+		floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
 		if err != nil {
 			logger.Info("Error getting float manager params : %s", err)
 		}
@@ -123,7 +123,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			} else {
 				// Total deposit is greater than total withdrawal, for this it raises float back to the minimum value plus a certain percentage, sinces there is a higher deposit rate, having a little above the minimum float balance in float would be sufficient.
 				floatDeficit.Sub(minimumFloatBalance, floatOnChainBalance)
-				floatDeficit.Add(minimumTriggerLevel, floatDeficit)
 			}
 
 			floatDeficitInDecimalUnits.Quo(floatDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
@@ -270,7 +269,7 @@ func notifyColdWalletUsers(emailType string, params map[string]string, config Co
 }
 
 //total liability at any given time
-func getTotalUserBalance(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, userAssetRepository database.UserAssetRepository) (*big.Float, error) {
+func GetTotalUserBalance(repository database.BaseRepository, assetSymbol string, logger *utility.Logger, userAssetRepository database.UserAssetRepository) (*big.Float, error) {
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
@@ -284,17 +283,17 @@ func getTotalUserBalance(repository database.BaseRepository, assetSymbol string,
 	return scaledTotalSum, nil
 }
 
-func getFloatParams(repository database.BaseRepository, logger *utility.Logger) (model.FloatManagerParam, error) {
+func getFloatParamFor(assetSymbol string, repository database.BaseRepository, logger *utility.Logger) (model.FloatManagerParam, error) {
 	//Get float manager params
-	floatManagerParam := model.FloatManagerParam{}
-	if err := repository.Get(floatManagerParam, &floatManagerParam); err != nil {
+	floatManagerParam := model.FloatManagerParam{AssetSymbol: assetSymbol}
+	if err := repository.GetByFieldName(floatManagerParam, &floatManagerParam); err != nil {
 		logger.Error("Error response from Float manager : %+v while trying to get float manager params", err)
 		return model.FloatManagerParam{}, err
 	}
 	return floatManagerParam, nil
 }
 
-func getFloatAccounts(repository database.BaseRepository, logger *utility.Logger) ([]model.HotWalletAsset, error) {
+func GetFloatAccounts(repository database.BaseRepository, logger *utility.Logger) ([]model.HotWalletAsset, error) {
 	//Get the float address
 	floatAccounts := []model.HotWalletAsset{}
 	if err := repository.Fetch(&floatAccounts); err != nil {
@@ -462,42 +461,42 @@ func GetMinFloatBalance(floatManagerParams model.FloatManagerParam, logger *util
 
 	minPercentageOfMaxUserBalance := big.NewFloat(floatManagerParams.MinPercentMaxUserBalance)
 	logger.Info("minimum percentage of maximum user balance used is %+v", minPercentageOfMaxUserBalance)
-	averagePercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.AveragePercentTotalUserBalance)
-	logger.Info("average percentage of total users balance used is %+v", averagePercentageOfTotalUserBalance)
+	minPercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.MinPercentTotalUserBalance)
+	logger.Info("average percentage of total users balance used is %+v", minPercentageOfTotalUserBalance)
 
 	minPercentageValueOfMaxUserBalance := new(big.Float)
-	averagePercentageValueOfTotalUserBalance := new(big.Float)
+	minPercentageValueOfTotalUserBalance := new(big.Float)
 
 	minPercentageValueOfMaxUserBalance.Mul(minPercentageOfMaxUserBalance, maxUserBalance)
 	logger.Info("minimum percentage value of maximum users balance is %+v", minPercentageValueOfMaxUserBalance)
-	averagePercentageValueOfTotalUserBalance.Mul(averagePercentageOfTotalUserBalance, totalUserBalance)
-	logger.Info("avearage percentage value of total users balance is %+v", averagePercentageValueOfTotalUserBalance)
+	minPercentageValueOfTotalUserBalance.Mul(minPercentageOfTotalUserBalance, totalUserBalance)
+	logger.Info("avearage percentage value of total users balance is %+v", minPercentageValueOfTotalUserBalance)
 
-	minimumFloatBalance := utility.MaxFloat(averagePercentageValueOfTotalUserBalance, minPercentageValueOfMaxUserBalance)
+	minimumFloatBalance := utility.MaxFloat(minPercentageValueOfTotalUserBalance, minPercentageValueOfMaxUserBalance)
 	return minimumFloatBalance
 }
 
 func GetMaxFloatBalance(floatManagerParams model.FloatManagerParam, logger *utility.Logger, totalUserBalance, maxUserBalance *big.Float) *big.Float {
 
-	minPercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.MinPercentTotalUserBalance)
-	logger.Info("minimum percentage value of total user balance used is %+v", minPercentageOfTotalUserBalance)
+	averagePercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.AveragePercentTotalUserBalance)
+	logger.Info("minimum percentage value of total user balance used is %+v", averagePercentageOfTotalUserBalance)
 	maxPercentageOfTotalUserBalance := big.NewFloat(floatManagerParams.MaxPercentTotalUserBalance)
 	logger.Info("maximum percentage of total users balance used is %+v", maxPercentageOfTotalUserBalance)
 	maxPercentageOfMaxUserBalance := big.NewFloat(floatManagerParams.MaxPercentMaxUserBalance)
 	logger.Info("maximum percentage of maximum users balance used is %+v", maxPercentageOfMaxUserBalance)
 
 	maxPercentageValueOfMaxUserBalance := new(big.Float)
-	minPercentageValueOfTotalUserBalance := new(big.Float)
+	averagePercentageValueOfTotalUserBalance := new(big.Float)
 	maxPercentageValueOfTotalUserBalance := new(big.Float)
 
-	minPercentageValueOfTotalUserBalance.Mul(minPercentageOfTotalUserBalance, totalUserBalance)
-	logger.Info("minimum percentage value of total users balance is %+v", minPercentageValueOfTotalUserBalance)
+	averagePercentageValueOfTotalUserBalance.Mul(averagePercentageOfTotalUserBalance, totalUserBalance)
+	logger.Info("minimum percentage value of total users balance is %+v", averagePercentageValueOfTotalUserBalance)
 	maxPercentageValueOfMaxUserBalance.Mul(maxPercentageOfMaxUserBalance, maxUserBalance)
 	logger.Info("maximum percentage value of maximum users balance is %+v", maxPercentageValueOfMaxUserBalance)
 
 	maxPercentageValueOfTotalUserBalance.Mul(maxPercentageOfTotalUserBalance, totalUserBalance)
 	logger.Info("maximum percentage value of total users balance is %+v", maxPercentageValueOfTotalUserBalance)
-	A := minPercentageValueOfTotalUserBalance.Add(minPercentageValueOfTotalUserBalance, maxPercentageValueOfMaxUserBalance)
+	A := averagePercentageValueOfTotalUserBalance.Add(averagePercentageValueOfTotalUserBalance, maxPercentageValueOfMaxUserBalance)
 	C := utility.MinFloat(A, totalUserBalance)
 
 	maximumFloatBalance := utility.MaxFloat(maxPercentageValueOfTotalUserBalance, C)
