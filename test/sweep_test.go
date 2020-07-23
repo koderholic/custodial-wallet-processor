@@ -4,6 +4,7 @@ import (
 	"time"
 	"wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/model"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 )
@@ -31,5 +32,25 @@ func (s *Suite) TestSweep() {
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: s.Database}
 	tasks.SweepTransactions(authCache, logger, configTest, baseRepository)
+
+}
+
+func (s *Suite) TestCalculateSumOfBtcBatch() {
+	addressTransactions := []model.Transaction{}
+	transation1 := model.Transaction{
+		Value: "0.12390554019510966",
+	}
+	transation2 := model.Transaction{
+		Value: "0.112390554019510966",
+	}
+
+	addressTransactions = append(addressTransactions, transation1)
+	addressTransactions = append(addressTransactions, transation2)
+
+	sum := tasks.CalculateSumOfBtcBatch(addressTransactions)
+
+	if sum < 0.2 {
+		s.T().Errorf("Expected sum returned to be greater than  %s, got %f\n", "0.2", sum)
+	}
 
 }
