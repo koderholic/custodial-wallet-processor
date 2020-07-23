@@ -39,6 +39,7 @@ type Data struct {
 	RequestTimeout              time.Duration `mapstructure:"requestTimeout"  yaml:"requestTimeout,omitempty"`
 	ExpireCacheDuration         time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
 	SweepFeePercentageThreshold int64         `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
+	SweepBtcBatchMinimum        float64       `mapstructure:"sweepBtcBatchMinimum"  yaml:"sweepBtcBatchMinimum,omitempty"`
 	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
 	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
 	ConnMaxLifetime             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
