@@ -17,6 +17,16 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+// BTCSweepParam ... Model definition for BTC sweep
+type (
+	BTCSweepParam struct {
+		FloatAddress     string
+		BrokerageAddress string
+		FloatPercent     *big.Int
+		BrokeragePercent *big.Int
+	}
+)
+
 func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	logger.Info("Sweep operation begins")
 	serviceErr := dto.ServicesRequestErr{}
@@ -316,9 +326,9 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	return nil, false
 }
 
-func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, sweepFund float64) (dto.BTCSweepParam, error) {
+func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, sweepFund float64) (BTCSweepParam, error) {
 
-	sweepParam := dto.BTCSweepParam{}
+	sweepParam := BTCSweepParam{}
 
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
@@ -387,7 +397,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 		floatPercent.Quo(deficit, big.NewFloat(sweepFund))
 		floatPercent.Int(floatPercentInInt)
 
-		sweepParam = dto.BTCSweepParam{
+		sweepParam = BTCSweepParam{
 			FloatAddress: floatAccount.Address,
 			FloatPercent: floatPercentInInt,
 		}
