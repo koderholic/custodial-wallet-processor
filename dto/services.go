@@ -57,9 +57,14 @@ type BroadcastToChainResponse struct {
 	TransactionHash string `json:"transactionHash"`
 }
 
-type SubscriptionRequest struct {
+type SubscriptionRequestV1 struct {
 	Subscriptions map[string][]string `json:"subscriptions"`
 	Webhook       string              `json:"webhook"`
+}
+
+type SubscriptionRequestV2 struct {
+	Subscriptions map[string][]string `json:"subscriptions"`
+	UserId        uuid.UUID           `json:"userId"`
 }
 
 type SubscriptionResponse struct {

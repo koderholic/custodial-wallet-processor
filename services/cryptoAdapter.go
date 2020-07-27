@@ -39,8 +39,33 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 	return nil
 }
 
-func SubscribeAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SubscriptionRequest, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
-	metaData := utility.GetRequestMetaData("subscribeAddress", config)
+func SubscribeAddressV1(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SubscriptionRequestV1, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
+	metaData := utility.GetRequestMetaData("subscribeAddressV1", config)
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	if responseData.Status == false {
+		err := utility.AppError{
+			ErrType: "Could not subscribe address",
+			Err:     nil,
+		}
+		return err
+	}
+	return nil
+}
+
+func SubscribeAddressV2(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SubscriptionRequestV2, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
+	metaData := utility.GetRequestMetaData("subscribeAddressV2", config)
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
