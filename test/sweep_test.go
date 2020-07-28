@@ -10,6 +10,7 @@ import (
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
+	"github.com/magiconair/properties/assert"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -99,9 +100,7 @@ func (s *Suite) TestGetFloatDeficit() {
 	result := tasks.GetFloatDeficit(depositSum, withdrawalSum, minimumFloat, maximumFloat, onchainBalance, s.Logger)
 	deficit, _ := result.Float64()
 
-	if deficit != float64(500) {
-		s.T().Errorf("Expected deficit returned to be %v, got %v\n", 500, deficit)
-	}
+	assert.Equal(s.T(), float64(500), deficit, "Incorrect deficit amount returned")
 }
 
 func (s *Suite) TestGetSweepPercentFor() {
@@ -110,9 +109,7 @@ func (s *Suite) TestGetSweepPercentFor() {
 
 	sweepPercent := tasks.GetSweepPercentFor(floatDeficit, sweepSum)
 
-	if sweepPercent.Int64() != int64(10) {
-		s.T().Errorf("Expected sweepPercent returned to be %v, got %v\n", 10, sweepPercent)
-	}
+	assert.Equal(s.T(), int64(10), sweepPercent.Int64(), "Incorrect sweep percent for float returned")
 }
 
 func (s *Suite) TestGetFloatBalanceRange() {
@@ -126,7 +123,6 @@ func (s *Suite) TestGetFloatBalanceRange() {
 	mimBalance, _ := min.Float64()
 	maxBalance, _ := max.Float64()
 
-	if mimBalance != float64(10) && maxBalance != float64(500) {
-		s.T().Errorf("Expected mimBalance to be %v and maxBalance returned is %v, but got %v, %v\n", 50, 500, mimBalance, maxBalance)
-	}
+	assert.Equal(s.T(), float64(50), mimBalance, "Incorrect minimum balance returned")
+	assert.Equal(s.T(), float64(500), maxBalance, "Incorrect maximum balance returned")
 }
