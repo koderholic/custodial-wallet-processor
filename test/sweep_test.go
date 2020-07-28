@@ -88,3 +88,45 @@ func (s *Suite) TestCalculateSumOfBtcBatch() {
 	}
 
 }
+
+func (s *Suite) TestGetFloatDeficit() {
+	depositSum := big.NewFloat(5000)
+	withdrawalSum := big.NewFloat(3000)
+	onchainBalance := big.NewFloat(500)
+	minimumFloat := big.NewFloat(1000)
+	maximumFloat := big.NewFloat(3000)
+
+	result := tasks.GetFloatDeficit(depositSum, withdrawalSum, minimumFloat, maximumFloat, onchainBalance, s.Logger)
+	deficit, _ := result.Float64()
+
+	if deficit != float64(500) {
+		s.T().Errorf("Expected deficit returned to be %v, got %v\n", 500, deficit)
+	}
+}
+
+func (s *Suite) TestGetSweepPercentFor() {
+	floatDeficit := big.NewFloat(500)
+	sweepSum := big.NewFloat(5000)
+
+	sweepPercent := tasks.GetSweepPercentFor(floatDeficit, sweepSum)
+
+	if sweepPercent.Int64() != int64(10) {
+		s.T().Errorf("Expected sweepPercent returned to be %v, got %v\n", 10, sweepPercent)
+	}
+}
+
+func (s *Suite) TestGetFloatBalanceRange() {
+	floatParam := model.FloatManagerParam{
+		MinPercentTotalUserBalance: float64(0.01),
+		MaxPercentTotalUserBalance: float64(0.1),
+	}
+	totalUserBalance := big.NewFloat(5000)
+
+	min, max := tasks.GetFloatBalanceRange(floatParam, totalUserBalance, s.Logger)
+	mimBalance, _ := min.Float64()
+	maxBalance, _ := max.Float64()
+
+	if mimBalance != float64(10) && maxBalance != float64(500) {
+		s.T().Errorf("Expected mimBalance to be %v and maxBalance returned is %v, but got %v, %v\n", 50, 500, mimBalance, maxBalance)
+	}
+}

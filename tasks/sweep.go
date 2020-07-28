@@ -450,7 +450,7 @@ func GetFloatBalanceRange(floatManagerParams model.FloatManagerParam, totalUsers
 	valueOfMinimumFloatPercent := new(big.Float)
 	valueOfMaximumFloatPercent := new(big.Float)
 	valueOfMinimumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
-	valueOfMaximumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
+	valueOfMaximumFloatPercent.Mul(big.NewFloat(floatManagerParams.MaxPercentTotalUserBalance), totalUsersBalance)
 	logger.Info("SWEEP_OPERATION : valueOfMinimumFloatPercent and valueOfMaximumFloatPercent for this hot wallet %+v is %+v and %+v", floatManagerParams.AssetSymbol, valueOfMinimumFloatPercent, valueOfMaximumFloatPercent)
 
 	return valueOfMinimumFloatPercent, valueOfMaximumFloatPercent
