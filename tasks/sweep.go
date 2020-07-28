@@ -329,6 +329,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, sweepFund float64) (BTCSweepParam, error) {
 
 	sweepParam := BTCSweepParam{}
+	serviceErr := dto.ServicesRequestErr{}
 
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
@@ -339,7 +340,6 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 
 	// Get float chain balance
 	prec := uint(64)
-	serviceErr := dto.ServicesRequestErr{}
 	onchainBalanceRequest := dto.OnchainBalanceRequest{
 		AssetSymbol: floatAccount.AssetSymbol,
 		Address:     floatAccount.Address,
@@ -349,20 +349,15 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 	logger.Info("SWEEP_OPERATION : Float on-chain balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
-	// Get float manager parameters to calculate minimum float
+	// Get float manager parameters to calculate float range
+	floatDeficit := new(big.Float)
 	floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
 	if err != nil {
 		return sweepParam, err
 	}
 
-	floatDeficit := new(big.Float)
-	valueOfMinimumFloatPercent := new(big.Float)
-	valueOfMaximumFloatPercent := new(big.Float)
-	valueOfMinimumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
-	valueOfMaximumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
-	logger.Info("SWEEP_OPERATION : valueOfMinimumFloatPercent and valueOfMaximumFloatPercent for this hot wallet %+v is %+v and %+v", floatAccount.AssetSymbol, valueOfMinimumFloatPercent, valueOfMaximumFloatPercent)
-
-	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) <= 0 {
+	minimumFloatBalance, maximumFloatBalance := GetFloatBalanceRange(floatManagerParams, totalUsersBalance, logger)
+	if floatOnChainBalance.Cmp(minimumFloatBalance) <= 0 {
 
 		// Get total deposit sum from the last run of this job
 		depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
@@ -380,66 +375,96 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 		}
 		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
 
-		if depositSumFromLastRun.Cmp(withdrawalSumFromLastRun) < 0 {
-			// if total deposit is less than total withdrawal, use maximum
-			floatDeficit.Sub(valueOfMaximumFloatPercent, floatOnChainBalance)
-			logger.Info("SWEEP_OPERATION : depositSumFromLastRun <=  withdrawalSumFromLastRun, using valueOfMaximumFloatPercent to calculate float deficit")
-		} else {
-			// if total deposit is greater than total withdrawal, use minimum
-			floatDeficit.Sub(valueOfMinimumFloatPercent, floatOnChainBalance)
-			logger.Info("SWEEP_OPERATION : depositSumFromLastRun > withdrawalSumFromLastRun, using valueOfMinimumFloatPercent to calculate float deficit")
-		}
+		floatDeficit := GetFloatDeficit(depositSumFromLastRun, withdrawalSumFromLastRun, minimumFloatBalance, maximumFloatBalance, floatOnChainBalance, logger)
 
-		deficit := new(big.Float)
-		floatPercent := new(big.Float)
-		floatPercentInInt := new(big.Int)
-		deficit.Mul(floatDeficit, big.NewFloat(100))
-		floatPercent.Quo(deficit, big.NewFloat(sweepFund))
-		floatPercent.Int(floatPercentInInt)
+		floatPercent := GetSweepPercentFor(floatDeficit, big.NewFloat(sweepFund))
 
 		sweepParam = BTCSweepParam{
 			FloatAddress: floatAccount.Address,
-			FloatPercent: floatPercentInInt,
+			FloatPercent: floatPercent,
 		}
 
 		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below %v of total user balance %v, moving %v percent of sweep funds to float account ",
-			floatAccount.AssetSymbol, floatOnChainBalance, floatManagerParams.MinPercentTotalUserBalance, totalUsersBalance)
+			floatAccount.AssetSymbol, floatOnChainBalance, floatManagerParams.MinPercentTotalUserBalance, totalUsersBalance, floatPercent)
 
 	}
-	// Get broker account
-	brokerageAccountResponse := dto.DepositAddressResponse{}
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return sweepParam, err
-	}
 
-	if denomination.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
-	} else {
-		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
-	}
+	// Get broker account and percentage
+	brokerageAccountResponse, err := GetBrokerAccountFor(floatAccount.AssetSymbol, repository, cache, config, logger, serviceErr)
 	if err != nil {
 		return sweepParam, err
 	}
-	logger.Info("SWEEP_OPERATION : Brokerage account for this hot wallet %+v is %+v", floatAccount.AssetSymbol, brokerageAccountResponse)
-
-	deficit := new(big.Float)
 	brokerageDeficit := new(big.Float)
-	brokeragePercent := new(big.Float)
-	brokeragePercentInInt := new(big.Int)
 	brokerageDeficit.Sub(big.NewFloat(sweepFund), floatDeficit)
-	deficit.Mul(brokerageDeficit, big.NewFloat(100))
-	brokeragePercent.Quo(deficit, big.NewFloat(sweepFund))
-	brokeragePercent.Int(brokeragePercentInInt)
+	brokeragePercent := GetSweepPercentFor(brokerageDeficit, big.NewFloat(sweepFund))
 
 	sweepParam.BrokerageAddress = brokerageAccountResponse.Address
-	sweepParam.BrokeragePercent = brokeragePercentInInt
+	sweepParam.BrokeragePercent = brokeragePercent
 
-	logger.Info("SWEEP_OPERATION : Moving %v % of sweep funds to brokerage account for this hot wallet %+v ",
-		brokeragePercent, floatAccount.AssetSymbol)
+	logger.Info("SWEEP_OPERATION : Moving %v % of sweep funds to brokerage account for this hot wallet %+v ", brokeragePercent, floatAccount.AssetSymbol)
 
 	return sweepParam, nil
+}
 
+func GetBrokerAccountFor(assetSymbol string, repository database.BaseRepository, cache *utility.MemoryCache, config Config.Data, logger *utility.Logger, serviceErr dto.ServicesRequestErr) (dto.DepositAddressResponse, error) {
+
+	brokerageAccountResponse := dto.DepositAddressResponse{}
+	denomination := model.Denomination{}
+	err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination)
+	if err != nil {
+		return brokerageAccountResponse, err
+	}
+
+	if denomination.IsToken {
+		err = services.GetDepositAddress(cache, logger, config, assetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
+	} else {
+		err = services.GetDepositAddress(cache, logger, config, assetSymbol, "", &brokerageAccountResponse, serviceErr)
+	}
+	if err != nil {
+		return brokerageAccountResponse, err
+	}
+
+	logger.Info("SWEEP_OPERATION : Brokerage account for this hot wallet %+v is %+v", assetSymbol, brokerageAccountResponse)
+	return brokerageAccountResponse, nil
+}
+
+func GetFloatDeficit(depositSumFromLastRun, withdrawalSumFromLastRun, minimumBalance, maximumBalance, onChainBalance *big.Float, logger *utility.Logger) *big.Float {
+
+	deficit := new(big.Float)
+
+	if depositSumFromLastRun.Cmp(withdrawalSumFromLastRun) < 0 {
+		// if total deposit is less than total withdrawal, use maximum
+		deficit.Sub(maximumBalance, onChainBalance)
+		logger.Info("SWEEP_OPERATION : depositSumFromLastRun <=  withdrawalSumFromLastRun, using valueOfMaximumFloatPercent to calculate float deficit")
+	} else {
+		// if total deposit is greater than total withdrawal, use minimum
+		deficit.Sub(minimumBalance, onChainBalance)
+		logger.Info("SWEEP_OPERATION : depositSumFromLastRun > withdrawalSumFromLastRun, using valueOfMinimumFloatPercent to calculate float deficit")
+	}
+
+	return deficit
+}
+
+func GetFloatBalanceRange(floatManagerParams model.FloatManagerParam, totalUsersBalance *big.Float, logger *utility.Logger) (*big.Float, *big.Float) {
+
+	valueOfMinimumFloatPercent := new(big.Float)
+	valueOfMaximumFloatPercent := new(big.Float)
+	valueOfMinimumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
+	valueOfMaximumFloatPercent.Mul(big.NewFloat(floatManagerParams.MinPercentTotalUserBalance), totalUsersBalance)
+	logger.Info("SWEEP_OPERATION : valueOfMinimumFloatPercent and valueOfMaximumFloatPercent for this hot wallet %+v is %+v and %+v", floatManagerParams.AssetSymbol, valueOfMinimumFloatPercent, valueOfMaximumFloatPercent)
+
+	return valueOfMinimumFloatPercent, valueOfMaximumFloatPercent
+}
+
+func GetSweepPercentFor(accountDeficit, sweepFund *big.Float) *big.Int {
+
+	deficit := new(big.Float)
+	floatPercent := new(big.Float)
+	floatPercentInInt := new(big.Int)
+	deficit.Mul(accountDeficit, big.NewFloat(100))
+	floatPercent.Quo(deficit, sweepFund)
+	floatPercent.Int(floatPercentInInt)
+	return floatPercentInInt
 }
 
 func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset) (string, string, error) {
