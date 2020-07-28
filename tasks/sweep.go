@@ -22,8 +22,8 @@ type (
 	BTCSweepParam struct {
 		FloatAddress     string
 		BrokerageAddress string
-		FloatPercent     *big.Int
-		BrokeragePercent *big.Int
+		FloatPercent     int64
+		BrokeragePercent int64
 	}
 )
 
@@ -381,7 +381,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 
 		sweepParam = BTCSweepParam{
 			FloatAddress: floatAccount.Address,
-			FloatPercent: floatPercent,
+			FloatPercent: floatPercent.Int64(),
 		}
 
 		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below %v of total user balance %v, moving %v percent of sweep funds to float account ",
@@ -399,7 +399,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 	brokeragePercent := GetSweepPercentFor(brokerageDeficit, big.NewFloat(sweepFund))
 
 	sweepParam.BrokerageAddress = brokerageAccountResponse.Address
-	sweepParam.BrokeragePercent = brokeragePercent
+	sweepParam.BrokeragePercent = brokeragePercent.Int64()
 
 	logger.Info("SWEEP_OPERATION : Moving %v % of sweep funds to brokerage account for this hot wallet %+v ", brokeragePercent, floatAccount.AssetSymbol)
 
