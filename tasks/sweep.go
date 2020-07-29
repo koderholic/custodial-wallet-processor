@@ -153,15 +153,20 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		return err
 	}
 
-	floatRecipient := dto.BatchRecipients{
-		Address: sweepParam.FloatAddress,
-		Value:   sweepParam.FloatPercent,
+	if sweepParam.FloatPercent != int64(0) {
+		floatRecipient := dto.BatchRecipients{
+			Address: sweepParam.FloatAddress,
+			Value:   sweepParam.FloatPercent,
+		}
+		recipientData = append(recipientData, floatRecipient)
 	}
-	brokerageRecipient := dto.BatchRecipients{
-		Address: sweepParam.BrokerageAddress,
-		Value:   sweepParam.BrokeragePercent,
+	if sweepParam.BrokeragePercent != int64(0) {
+		brokerageRecipient := dto.BatchRecipients{
+			Address: sweepParam.BrokerageAddress,
+			Value:   sweepParam.BrokeragePercent,
+		}
+		recipientData = append(recipientData, brokerageRecipient)
 	}
-	recipientData = append(recipientData, floatRecipient, brokerageRecipient)
 	signTransactionRequest := dto.BatchBTCRequest{
 		AssetSymbol:   "BTC",
 		ChangeAddress: sweepParam.BrokerageAddress,
