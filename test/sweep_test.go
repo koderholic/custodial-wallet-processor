@@ -10,6 +10,7 @@ import (
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
+	"github.com/magiconair/properties/assert"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -87,4 +88,41 @@ func (s *Suite) TestCalculateSumOfBtcBatch() {
 		s.T().Errorf("Expected sum returned to be greater than  %s, got %f\n", "0.2", sum)
 	}
 
+}
+
+func (s *Suite) TestGetFloatDeficit() {
+	depositSum := big.NewFloat(5000)
+	withdrawalSum := big.NewFloat(3000)
+	onchainBalance := big.NewFloat(500)
+	minimumFloat := big.NewFloat(1000)
+	maximumFloat := big.NewFloat(3000)
+
+	result := tasks.GetFloatDeficit(depositSum, withdrawalSum, minimumFloat, maximumFloat, onchainBalance, s.Logger)
+	deficit, _ := result.Float64()
+
+	assert.Equal(s.T(), float64(500), deficit, "Incorrect deficit amount returned")
+}
+
+func (s *Suite) TestGetSweepPercentFor() {
+	floatDeficit := big.NewFloat(500)
+	sweepSum := big.NewFloat(5000)
+
+	sweepPercent := tasks.GetSweepPercentFor(floatDeficit, sweepSum)
+
+	assert.Equal(s.T(), int64(10), sweepPercent.Int64(), "Incorrect sweep percent for float returned")
+}
+
+func (s *Suite) TestGetFloatBalanceRange() {
+	floatParam := model.FloatManagerParam{
+		MinPercentTotalUserBalance: float64(0.01),
+		MaxPercentTotalUserBalance: float64(0.1),
+	}
+	totalUserBalance := big.NewFloat(5000)
+
+	min, max := tasks.GetFloatBalanceRange(floatParam, totalUserBalance, s.Logger)
+	mimBalance, _ := min.Float64()
+	maxBalance, _ := max.Float64()
+
+	assert.Equal(s.T(), float64(50), mimBalance, "Incorrect minimum balance returned")
+	assert.Equal(s.T(), float64(500), maxBalance, "Incorrect maximum balance returned")
 }

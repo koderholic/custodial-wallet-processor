@@ -107,7 +107,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	for _, transaction := range queuedBatchedTransactions {
 		recipient := dto.BatchRecipients{
 			Address: transaction.Recipient,
-			Value:   transaction.Value.BigInt(),
+			Value:   transaction.Value.BigInt().Int64(),
 		}
 		batchedRecipients = append(batchedRecipients, recipient)
 		batchedTransactionsIds = append(batchedTransactionsIds, transaction.TransactionId)
