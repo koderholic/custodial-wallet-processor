@@ -103,11 +103,11 @@ func (s *Suite) TestGetFloatDeficit() {
 	assert.Equal(s.T(), float64(500), deficit, "Incorrect deficit amount returned")
 }
 
-func (s *Suite) TestGetSweepPercentFor() {
+func (s *Suite) TestGeTFloatPercent() {
 	floatDeficit := big.NewFloat(500)
 	sweepSum := big.NewFloat(5000)
 
-	sweepPercent := tasks.GetSweepPercentFor(floatDeficit, sweepSum)
+	sweepPercent := tasks.GeTFloatPercent(floatDeficit, sweepSum)
 
 	assert.Equal(s.T(), int64(10), sweepPercent.Int64(), "Incorrect sweep percent for float returned")
 }
@@ -125,4 +125,23 @@ func (s *Suite) TestGetFloatBalanceRange() {
 
 	assert.Equal(s.T(), float64(50), mimBalance, "Incorrect minimum balance returned")
 	assert.Equal(s.T(), float64(500), maxBalance, "Incorrect maximum balance returned")
+}
+
+func (s *Suite) TestGetSweepPercentages() {
+	totalUsersBalance := big.NewFloat(5000)
+	onchainBalance := big.NewFloat(500)
+	minimumFloat := big.NewFloat(1000)
+	floatDeficit := big.NewFloat(500)
+	sweepFund := big.NewFloat(500)
+
+	floatParam := model.FloatManagerParam{
+		MinPercentTotalUserBalance: float64(0.2),
+		MaxPercentTotalUserBalance: float64(0.3),
+	}
+
+	floatPercent, brokeragePercent := tasks.GetSweepPercentages(onchainBalance, minimumFloat, floatDeficit, sweepFund, totalUsersBalance, floatParam, s.Logger)
+	print("floatPercent >>!!!!!!! ", floatPercent, "brokeragePercent >>>>!!!!!!!!! ", brokeragePercent)
+	totalPercent := floatPercent + brokeragePercent
+
+	assert.Equal(s.T(), totalPercent, int64(100), "Sweep percentages do not sum up to 100")
 }
