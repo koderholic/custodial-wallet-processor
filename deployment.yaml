@@ -77,3 +77,4 @@ cronJobs:
 config:
   enableFloatManager: 'false'
   floatCronInterval: '0 * * * *'
+  sweepBtcBatchMinimum: 0.0001 
