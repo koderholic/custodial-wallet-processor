@@ -144,3 +144,21 @@ func (s *Suite) TestGetSweepPercentages() {
 
 	assert.Equal(s.T(), totalPercent, int64(100), "Sweep percentages do not sum up to 100")
 }
+
+func (s *Suite) TestGetSweepPercentageValues() {
+	totalUsersBalance := big.NewFloat(5000)
+	onchainBalance := big.NewFloat(500)
+	minimumFloat := big.NewFloat(1000)
+	floatDeficit := big.NewFloat(50)
+	sweepFund := big.NewFloat(500)
+
+	floatParam := model.FloatManagerParam{
+		MinPercentTotalUserBalance: float64(0.2),
+		MaxPercentTotalUserBalance: float64(0.3),
+	}
+
+	floatPercent, brokeragePercent := tasks.GetSweepPercentages(onchainBalance, minimumFloat, floatDeficit, sweepFund, totalUsersBalance, floatParam, s.Logger)
+
+	assert.Equal(s.T(), floatPercent, int64(10), "float percent is invalid")
+	assert.Equal(s.T(), brokeragePercent, int64(90), "brokerage percent is invalid")
+}
