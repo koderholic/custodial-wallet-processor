@@ -336,7 +336,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 	if err != nil {
 		return sweepParam, err
 	}
-	logger.Info("SWEEP_OPERATION : Total users balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, totalUsersBalance)
+	logger.Info("SWEEP_OPERATION : Total users balance for this hot wallet %+v is %+v and total amount to sweep is %+v", floatAccount.AssetSymbol, totalUsersBalance, sweepFund)
 
 	// Get float chain balance
 	prec := uint(64)
@@ -376,7 +376,9 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
 
 		floatDeficit := GetFloatDeficit(depositSumFromLastRun, withdrawalSumFromLastRun, minimumFloatBalance, maximumFloatBalance, floatOnChainBalance, logger)
-
+		if floatDeficit.Cmp(big.NewFloat(sweepFund)) > 0 {
+			floatDeficit = big.NewFloat(sweepFund)
+		}
 		floatPercent := GetSweepPercentFor(floatDeficit, big.NewFloat(sweepFund))
 
 		sweepParam = BTCSweepParam{
@@ -384,24 +386,25 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 			FloatPercent: floatPercent.Int64(),
 		}
 
-		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below %v of total user balance %v, moving %v percent of sweep funds to float account ",
-			floatAccount.AssetSymbol, floatOnChainBalance, floatManagerParams.MinPercentTotalUserBalance, totalUsersBalance, floatPercent)
-
+		logger.Info("SWEEP_OPERATION : FloatOnChainBalance for this hot wallet %+v is %+v, this is below the minimum %+v of total user balance %v which is %+v, moving %v percent of sweep funds %+v to float account ",
+			floatAccount.AssetSymbol, floatOnChainBalance, floatManagerParams.MinPercentTotalUserBalance, totalUsersBalance, minimumFloatBalance, floatPercent, sweepFund)
 	}
 
 	// Get broker account and percentage
-	brokerageAccountResponse, err := GetBrokerAccountFor(floatAccount.AssetSymbol, repository, cache, config, logger, serviceErr)
-	if err != nil {
-		return sweepParam, err
+	if floatDeficit.Cmp(big.NewFloat(sweepFund)) != 0 {
+		brokerageAccountResponse, err := GetBrokerAccountFor(floatAccount.AssetSymbol, repository, cache, config, logger, serviceErr)
+		if err != nil {
+			return sweepParam, err
+		}
+		brokerageDeficit := new(big.Float)
+		brokerageDeficit.Sub(big.NewFloat(sweepFund), floatDeficit)
+		brokeragePercent := GetSweepPercentFor(brokerageDeficit, big.NewFloat(sweepFund))
+
+		sweepParam.BrokerageAddress = brokerageAccountResponse.Address
+		sweepParam.BrokeragePercent = brokeragePercent.Int64()
+
+		logger.Info("SWEEP_OPERATION : Moving %+v of sweep funds %+v to brokerage account for this hot wallet %+v ", brokeragePercent, sweepFund, floatAccount.AssetSymbol)
 	}
-	brokerageDeficit := new(big.Float)
-	brokerageDeficit.Sub(big.NewFloat(sweepFund), floatDeficit)
-	brokeragePercent := GetSweepPercentFor(brokerageDeficit, big.NewFloat(sweepFund))
-
-	sweepParam.BrokerageAddress = brokerageAccountResponse.Address
-	sweepParam.BrokeragePercent = brokeragePercent.Int64()
-
-	logger.Info("SWEEP_OPERATION : Moving %v % of sweep funds to brokerage account for this hot wallet %+v ", brokeragePercent, floatAccount.AssetSymbol)
 
 	return sweepParam, nil
 }
