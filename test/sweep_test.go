@@ -140,7 +140,6 @@ func (s *Suite) TestGetSweepPercentages() {
 	}
 
 	floatPercent, brokeragePercent := tasks.GetSweepPercentages(onchainBalance, minimumFloat, floatDeficit, sweepFund, totalUsersBalance, floatParam, s.Logger)
-	print("floatPercent >>!!!!!!! ", floatPercent, "brokeragePercent >>>>!!!!!!!!! ", brokeragePercent)
 	totalPercent := floatPercent + brokeragePercent
 
 	assert.Equal(s.T(), totalPercent, int64(100), "Sweep percentages do not sum up to 100")
