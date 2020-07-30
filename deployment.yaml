@@ -74,6 +74,33 @@ cronJobs:
       env:
         ENVIRONMENT: config:default:environment
 
+  - name: crytpo-sweep-task
+    schedule: '0/15 * * * *'
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: sweep-task
+      image: bundle/wallet-adapter-service
+      fromDockerFile: ./Dockerfile
+      containerPorts: []
+      env:
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+
+  - name: crytpo-floatmanager-task
+    schedule: '10 */4 * * *'
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: floatmanager-task
+      image: bundle/wallet-adapter-service
+      fromDockerFile: ./Dockerfile
+      containerPorts: []
+      env:
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+
+
 config:
   enableFloatManager: 'false'
-  floatCronInterval: '0 * * * *'
+
