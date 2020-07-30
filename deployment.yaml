@@ -80,6 +80,7 @@ cronJobs:
       name: sweep-task
       image: bundle/wallet-adapter-service
       fromDockerFile: ./Dockerfile
+      command: /app/bin/sweep_job
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
@@ -92,6 +93,7 @@ cronJobs:
       name: floatmanager-task
       image: bundle/wallet-adapter-service
       fromDockerFile: ./Dockerfile
+      command: /app/bin/float_manager
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
