@@ -567,7 +567,9 @@ func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSym
 		processor.SweepTriggered = true
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
 	}
-
+	//send sms
+	serviceErr := dto.ServicesRequestErr{}
+	services.BuildAndSendSms(assetSymbol, processor.Cache, processor.Logger, processor.Config, serviceErr)
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
 
