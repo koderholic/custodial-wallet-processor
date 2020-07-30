@@ -21,7 +21,6 @@ WORKDIR /app/bin/
 ENTRYPOINT ["/app/bin/service"]
 EXPOSE 8002
 
-RUN ls -l /app/bin
 ## Build Config
 RUN echo "appPort: 8200" >> config.yaml && \
     echo "serviceName : crypto-wallet-adapter" >> config.yaml && \
