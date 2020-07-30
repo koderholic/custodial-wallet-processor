@@ -45,6 +45,8 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		}
 		return
 	}
+
+	logger.Info("Fetched %d sweep candidates", len(transactions))
 	//group transactions by recipientId
 	transactionsPerAssetId := make(map[uuid.UUID][]model.Transaction)
 	for _, tx := range transactions {
@@ -86,6 +88,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		}
 		for address, addressTransactions := range transactionsPerRecipientAddress {
 			sum := calculateSum(addressTransactions, recipientAsset)
+			logger.Info("Sweeping %s with total of %d", address, sum)
 			if err := sweepPerAssetIdPerAddress(cache, logger, config, repository, serviceErr, assetTransactions, sum, address); err != nil {
 				continue
 			}
