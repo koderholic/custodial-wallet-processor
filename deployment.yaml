@@ -13,8 +13,6 @@ serviceConfig:
         - 8200
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
-        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
-        FLOATCRONINTERVAL: 'config:crypto-wallet-adapter:floatCronInterval'
 
 resources:
   databases:
