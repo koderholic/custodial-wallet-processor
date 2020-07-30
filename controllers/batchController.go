@@ -107,7 +107,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	for _, transaction := range queuedBatchedTransactions {
 		recipient := dto.BatchRecipients{
 			Address: transaction.Recipient,
-			Value:   transaction.Value.BigInt(),
+			Value:   transaction.Value.BigInt().Int64(),
 		}
 		batchedRecipients = append(batchedRecipients, recipient)
 		batchedTransactionsIds = append(batchedTransactionsIds, transaction.TransactionId)
@@ -310,7 +310,9 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 		processor.SweepTriggered = true
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
 	}
-
+	//send sms
+	serviceErr := dto.ServicesRequestErr{}
+	services.BuildAndSendSms(assetSymbol, processor.Cache, processor.Logger, processor.Config, serviceErr)
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
 

@@ -42,11 +42,17 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.CryptoAdapterService,
 			Action:   "/broadcast-transaction",
 		}
-	case "subscribeAddress":
+	case "subscribeAddressV1":
 		return MetaData{
 			Type:     http.MethodPost,
 			Endpoint: config.CryptoAdapterService,
 			Action:   "/webhook/register",
+		}
+	case "subscribeAddressV2":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.CryptoAdapterService,
+			Action:   "/subscription/register",
 		}
 	case "transactionStatus":
 		return MetaData{
@@ -101,6 +107,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Type:     http.MethodPost,
 			Endpoint: config.NotificationServiceUrl,
 			Action:   "/emails/send",
+		}
+	case "sendSms":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.NotificationServiceUrl,
+			Action:   "/sms/send",
 		}
 	case "createAllAddresses":
 		return MetaData{

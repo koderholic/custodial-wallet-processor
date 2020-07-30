@@ -1,9 +1,9 @@
 package dto
 
 import (
-	"math/big"
-	uuid "github.com/satori/go.uuid"
 	"time"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 // transactionRequest ... Model definition for get transaction request
@@ -53,5 +53,5 @@ type BatchBTCRequest struct {
 
 type BatchRecipients struct {
 	Address string `json:"address"`
-	Value   *big.Int  `json:"value"`
+	Value   int64  `json:"value"`
 }
