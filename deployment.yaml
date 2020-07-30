@@ -72,7 +72,7 @@ cronJobs:
       env:
         ENVIRONMENT: config:default:environment
 
-  - name: crytpo-sweep-task
+  - name: crypto-sweep-task
     schedule: '0/15 * * * *'
     allowConcurrentRun: false
     grantAwsAccess: false
@@ -85,7 +85,7 @@ cronJobs:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
 
-  - name: crytpo-floatmanager-task
+  - name: crypto-floatmanager-task
     schedule: '10 */4 * * *'
     allowConcurrentRun: false
     grantAwsAccess: false
