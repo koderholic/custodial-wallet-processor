@@ -13,8 +13,6 @@ serviceConfig:
         - 8200
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
-        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
-        FLOATCRONINTERVAL: 'config:crypto-wallet-adapter:floatCronInterval'
 
 resources:
   databases:
@@ -74,6 +72,33 @@ cronJobs:
       env:
         ENVIRONMENT: config:default:environment
 
+  - name: crypto-sweep-task
+    schedule: '0/15 * * * *'
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: sweep-task
+      image: bundle/wallet-adapter-service
+      fromDockerFile: ./Dockerfile
+      command: /app/bin/sweep_job
+      env:
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+
+  - name: crypto-floatmanager-task
+    schedule: '10 */4 * * *'
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: floatmanager-task
+      image: bundle/wallet-adapter-service
+      fromDockerFile: ./Dockerfile
+      command: /app/bin/float_manager
+      env:
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+
+
 config:
   enableFloatManager: 'false'
-  floatCronInterval: '0 * * * *'
+

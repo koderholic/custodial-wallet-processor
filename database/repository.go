@@ -104,7 +104,7 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 }
 
 func (repo *BaseRepository) FetchSweepCandidates(model interface{}) error {
-	sweepCandidatesQuery := "SELECT * FROM transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0)"
+	sweepCandidatesQuery := "SELECT * FROM transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0) ORDER BY asset_symbol, created_at"
 	if err := repo.DB.Raw(sweepCandidatesQuery).Scan(model).Error; err != nil {
 		repo.Logger.Error("Error when fetching sweep status : %s", err)
 		return utility.AppError{

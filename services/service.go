@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/utility"
 )
@@ -26,6 +28,7 @@ type Client struct {
 	Logger     *utility.Logger
 	Config     Config.Data
 	httpClient *http.Client
+	startTime  int64
 }
 
 func NewClient(httpClient *http.Client, logger *utility.Logger, config Config.Data, baseURL string) *Client {
@@ -45,6 +48,12 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	if c.BaseURL.String() != fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action) {
 		c.Logger.Info("Outgoing request to %s : %+v", c.BaseURL, body)
 	}
+
+	if strings.Contains(c.BaseURL.String(), "key-management/sign") {
+		//We need to increase timeout in Key Management also
+		c.httpClient.Timeout = 120 * time.Second
+	}
+
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
 	var buf io.ReadWriter
@@ -80,8 +89,10 @@ func (c *Client) AddBasicAuth(req *http.Request, username, password string) *htt
 }
 
 func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
+	c.startTime = time.Now().UnixNano()
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.Logger.Info("Response from %s : +%v", c.BaseURL, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -90,15 +101,18 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	if err != nil {
 		return resp, err
 	}
+
+	metaData := utility.GetRequestMetaData("generateToken", c.Config)
+	if c.BaseURL.String() != fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action) {
+		duration := (time.Now().UnixNano() - c.startTime) / 1000000
+		c.Logger.Info("Response from %s : [%d] %+s Time: %d", c.BaseURL, resp.StatusCode, resBody, duration)
+	}
+
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
 	}
 
 	err = json.Unmarshal(resBody, v)
-	metaData := utility.GetRequestMetaData("generateToken", c.Config)
-	if c.BaseURL.String() != fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action) {
-		c.Logger.Info("Incoming response from %s : %+v", c.BaseURL, v)
-	}
 	return resp, err
 
 }

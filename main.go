@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/migration"
 	"wallet-adapter/services"
-	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 
 	"github.com/getsentry/sentry-go"
@@ -20,6 +20,7 @@ import (
 )
 
 func main() {
+	fmt.Println("Starting application: Wallet Adapter")
 	config := Config.Data{}
 	config.Init("")
 
@@ -54,13 +55,6 @@ func main() {
 	serviceAddress := ":" + config.AppPort
 
 	// middleware := middlewares.NewMiddleware(logger, config, router).ValidateAuthToken().LogAPIRequests().Build()
-	db := *Database
-	baseRepository := database.BaseRepository{Database: db}
-	tasks.ExecuteSweepCronJob(authCache, logger, config, baseRepository)
-	if config.EnableFloatManager {
-		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-		tasks.ExecuteFloatManagerCronJob(authCache, logger, config, baseRepository, userAssetRepository)
-	}
 
 	err := sentry.Init(sentry.ClientOptions{
 		// Either set your DSN here or set the SENTRY_DSN environment variable.
