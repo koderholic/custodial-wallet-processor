@@ -184,7 +184,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.EMPTY_MEMO_ERR), controller.Logger)
 			return
 		}
-		userAsset, err = services.GetAssetForV2Address(controller.Repository, address, assetSymbol, userAssetMemo)
+		userAsset, err = services.GetAssetForV2Address(controller.Repository, controller.Logger, address, assetSymbol, userAssetMemo)
 		if err != nil {
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 			return
@@ -196,6 +196,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 			return
 		}
 	}
+	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address %+v", userAsset)
 
 	if userAsset.AssetSymbol == "" {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, utility.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
