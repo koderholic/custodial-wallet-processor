@@ -169,7 +169,7 @@ func CheckV2Address(repository database.IUserAssetRepository, address string) (b
 
 }
 
-func GetAssetForV1Address(repository database.IUserAssetRepository, address string, assetSymbol string) (model.UserAsset, error) {
+func GetAssetForV1Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string) (model.UserAsset, error) {
 	var userAsset model.UserAsset
 	var userAddresses []model.UserAddress
 
@@ -177,25 +177,26 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, address stri
 		return model.UserAsset{}, err
 	}
 
-	userAsset = findMatchingAsset(repository, userAddresses, assetSymbol)
+	userAsset = findMatchingAsset(repository, logger, userAddresses, assetSymbol)
 
 	return userAsset, nil
 }
 
-func GetAssetForV2Address(repository database.IUserAssetRepository, address string, assetSymbol string, memo string) (model.UserAsset, error) {
+func GetAssetForV2Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string, memo string) (model.UserAsset, error) {
 	var userAsset model.UserAsset
 	var userAddresses []model.UserAddress
 
 	if err := repository.FetchByFieldName(&model.UserAddress{V2Address: address, Memo: memo}, &userAddresses); err != nil {
 		return model.UserAsset{}, err
 	}
+	logger.Info("GetAssetForV2Address logs : Response from FetchByFieldName %+v", userAsset)
 
-	userAsset = findMatchingAsset(repository, userAddresses, assetSymbol)
+	userAsset = findMatchingAsset(repository, logger, userAddresses, assetSymbol)
 
 	return userAsset, nil
 }
 
-func findMatchingAsset(repository database.IUserAssetRepository, userAddresses []model.UserAddress, assetSymbol string) model.UserAsset {
+func findMatchingAsset(repository database.IUserAssetRepository, logger *utility.Logger, userAddresses []model.UserAddress, assetSymbol string) model.UserAsset {
 	userAsset := model.UserAsset{}
 	for _, userAddress := range userAddresses {
 		asset := model.UserAsset{}
@@ -207,6 +208,7 @@ func findMatchingAsset(repository database.IUserAssetRepository, userAddresses [
 			break
 		}
 	}
+	logger.Info("findMatchingAsset logs : matching asset %+v", userAsset)
 
 	return userAsset
 }
