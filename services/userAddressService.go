@@ -169,7 +169,7 @@ func CheckV2Address(repository database.IUserAssetRepository, address string) (b
 
 }
 
-func GetAssetForV1Address(repository database.IUserAssetRepository, address string, assetSymbol string) (model.UserAsset, error) {
+func GetAssetForV1Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string) (model.UserAsset, error) {
 	var userAsset model.UserAsset
 	var userAddresses []model.UserAddress
 
@@ -177,7 +177,7 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, address stri
 		return model.UserAsset{}, err
 	}
 
-	userAsset = findMatchingAsset(repository, userAddresses, assetSymbol)
+	userAsset = findMatchingAsset(repository, logger, userAddresses, assetSymbol)
 
 	return userAsset, nil
 }
