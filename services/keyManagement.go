@@ -187,5 +187,12 @@ func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray
 	}
 	subscriptionRequestData.Webhook = service.Config.DepositWebhookURL
 	subscriptionRequestDataV2.UserId = userID
+
+	subscriptionResponseData := dto.SubscriptionResponse{}
+	if err := SubscribeAddressV1(service.Cache, service.Logger, service.Config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
+		service.Logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)
+		return err
+	}
+
 	return nil
 }
