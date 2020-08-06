@@ -49,6 +49,7 @@ type BatchBTCRequest struct {
 	IsSweep       bool              `json:"isSweep"`
 	Origins       []string          `json:"origins"`
 	Recipients    []BatchRecipients `json:"recipients"`
+	ProcessType   string            `json:"processType"`
 }
 
 type BatchRecipients struct {
