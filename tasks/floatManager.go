@@ -22,7 +22,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 	logger.Info("Float manager process begins")
 
 	serviceErr := dto.ServicesRequestErr{}
-	token, err := acquireLock("float", cache, logger, config, serviceErr)
+	token, err := AcquireLock("float", utility.SIX_HUNDRED_MILLISECONDS, cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return

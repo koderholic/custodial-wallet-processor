@@ -65,6 +65,7 @@ func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, con
 }
 
 func BuildAndSendSms(assetSymbol string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
+	logger.Info("Sending sms notification for asset ", assetSymbol)
 	sendSmsRequest := dto.SendSmsRequest{
 		Message:     "Please fund Bundle hot wallet address for " + assetSymbol,
 		PhoneNumber: config.ColdWalletSmsNumber,
