@@ -398,18 +398,12 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		AssetSymbol: floatAccount.AssetSymbol,
 		IsSweep:     false,
 	}
-	signTransactionResponse := dto.SignTransactionResponse{}
-	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
+	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return err
 	}
-	//need an empty array to be able to reuse the method broadcastAndCompleteFloatTx
-	emptyArrayOfTransactions := []model.Transaction{}
-	err, _ := broadcastAndCompleteFloatTx(signTransactionResponse, config, floatAccount.AssetSymbol, cache, logger, serviceErr, emptyArrayOfTransactions, repository)
-	if err != nil {
-		logger.Error("Error response from float manager while broadcast transaction to debit float for %+v : %+v, additional context : %+v", floatAccount.AssetSymbol, err, serviceErr)
-		return err
-	}
+
 	return nil
 }
 
@@ -417,30 +411,6 @@ func ExecuteFloatManagerCronJob(cache *utility.MemoryCache, logger *utility.Logg
 	c := cron.New()
 	c.AddFunc(config.FloatCronInterval, func() { ManageFloat(cache, logger, config, repository, userAssetRepository) })
 	c.Start()
-}
-
-func broadcastAndCompleteFloatTx(signTransactionResponse dto.SignTransactionResponse, config Config.Data, symbol string, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
-	// Send the signed data to crypto adapter to send to chain
-	broadcastToChainRequest := dto.BroadcastToChainRequest{
-		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: symbol,
-		ProcessType: utility.FLOATPROCESS,
-	}
-	broadcastToChainResponse := dto.BroadcastToChainResponse{}
-	if err := services.BroadcastToChain(cache, logger, config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
-		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
-		return err, true
-	}
-	//update all assetTransactions with new swept status
-	var assetIdList []uuid.UUID
-	for _, tx := range assetTransactions {
-		assetIdList = append(assetIdList, tx.ID)
-	}
-	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
-		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
-		return err, true
-	}
-	return nil, false
 }
 
 func GetMaxUserBalanceFor(repository database.UserAssetRepository, assetType string) (*big.Float, error) {

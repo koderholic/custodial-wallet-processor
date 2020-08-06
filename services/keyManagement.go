@@ -134,12 +134,70 @@ func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
+// SignTransaction ... Calls key-management service with a transaction object to sign
+func SignTransactionAndBroadcast(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SignTransactionRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+
+	authToken, err := GetAuthToken(cache, logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("signAndBroadcastTransaction", config)
+
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+}
+
 func SignBatchBTCTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("signBatchTransaction", config)
+
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	if httpClient != nil {
+		APIClient.httpClient = httpClient
+	}
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+
+}
+
+func SignBatchBTCTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+	authToken, err := GetAuthToken(cache, logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("signBatchTransactionAndbroadcast", config)
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	if httpClient != nil {

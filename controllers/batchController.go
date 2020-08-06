@@ -119,41 +119,29 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		ChangeAddress: floatAccount,
 		Origins:       []string{floatAccount},
 		Recipients:    batchedRecipients,
+		ProcessType:   utility.WITHDRAWALPROCESS,
 	}
 
 	// Calls key-management to sign batched transactions
-	signTransactionResponse := dto.SignTransactionResponse{}
+	SignBatchBTCTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ServicesRequestErr{}
-	if err := services.SignBatchBTCTransaction(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
+	if err := services.SignBatchBTCTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchBTCTransactionAndBroadcastResponse, serviceErr); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
 			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol); err != nil {
-				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
+				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling SignBatchBTCTransactionAndBroadcast", err)
 			}
+			return err
 		}
-		return err
-	}
-
-	if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.RETRY_MODE); err != nil {
-		return err
-	}
-
-	// Send the signed data to crypto adapter to send to chain
-	broadcastToChainRequest := dto.BroadcastToChainRequest{
-		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: batch.AssetSymbol,
-		Reference:   batch.ID.String(),
-		ProcessType: utility.WITHDRAWALPROCESS,
-	}
-	broadcastToChainResponse := dto.BroadcastToChainResponse{}
-	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
-		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while broadcasting to chain", err)
+		if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.TERMINATED); err != nil {
+			return err
+		}
 		return err
 	}
 
 	// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash: broadcastToChainResponse.TransactionHash,
+		TransactionHash: SignBatchBTCTransactionAndBroadcastResponse.TransactionHash,
 		BatchID:         batch.ID,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
