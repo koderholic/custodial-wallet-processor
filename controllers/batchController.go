@@ -308,13 +308,13 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 	if !processor.SweepTriggered {
 		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
 		processor.SweepTriggered = true
+		//send sms
+		serviceErr := dto.ServicesRequestErr{}
+		if _, err := tasks.AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, processor.Cache, processor.Logger, processor.Config, serviceErr); err == nil {
+			//lock was successfully acquired
+			services.BuildAndSendSms(assetSymbol, processor.Cache, processor.Logger, processor.Config, serviceErr)
+		}
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
-	}
-	//send sms
-	serviceErr := dto.ServicesRequestErr{}
-	if _, err := tasks.AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, processor.Cache, processor.Logger, processor.Config, serviceErr); err == nil {
-		//lock was successfully acquired
-		services.BuildAndSendSms(assetSymbol, processor.Cache, processor.Logger, processor.Config, serviceErr)
 	}
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
