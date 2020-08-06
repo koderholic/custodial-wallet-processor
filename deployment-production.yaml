@@ -2,4 +2,4 @@ config:
   enableFloatManager: 'true'
   floatCronInterval: '10 */4 * * *'
   sweepBtcBatchMinimum: '0.15'
-  coldWalletSmsNumber: '2349084859418'
+  coldWalletSmsNumber: '+2349084859418'
