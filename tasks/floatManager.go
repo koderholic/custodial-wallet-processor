@@ -417,6 +417,7 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		Amount:      amount,
 		AssetSymbol: floatAccount.AssetSymbol,
 		IsSweep:     false,
+		ProcessType: utility.FLOATPROCESS,
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {

@@ -511,7 +511,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	signTransactionResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error occured while signing and broadcast transaction : %+v", serviceErr)
-		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
+		if serviceErr.Code == "INSUFFICIENT_FUNDS" {
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionRequest.Amount)
 		}
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {

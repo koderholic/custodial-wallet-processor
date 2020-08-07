@@ -124,11 +124,11 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	}
 
 	// Calls key-management to sign batched transactions
-	SignBatchBTCTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
+	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ServicesRequestErr{}
-	if err := services.SignBatchBTCTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchBTCTransactionAndBroadcastResponse, serviceErr); err != nil {
+	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, serviceErr); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
-		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
+		if serviceErr.Code == "INSUFFICIENT_FUNDS" {
 			total := int64(0)
 			for _, value := range signTransactionRequest.Recipients {
 				total += value.Value
@@ -146,7 +146,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 	// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash: SignBatchBTCTransactionAndBroadcastResponse.TransactionHash,
+		TransactionHash: SignBatchTransactionAndBroadcastResponse.TransactionHash,
 		BatchID:         batch.ID,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
