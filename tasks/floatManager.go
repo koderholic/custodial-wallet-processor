@@ -225,11 +225,11 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 		logger.Error("Error response from NotifyColdWalletUsersViaSMS : %+v while trying to denomination of float asset", err)
 	}
 
-	scaledBalance := big.NewFloat(float64(amount.Int64()) * math.Pow(10, float64(denomination.Decimal)))
+	decimalBalance := big.NewFloat(float64(amount.Int64()) / math.Pow(10, float64(denomination.Decimal)))
 	//send sms
 	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
 		//lock was successfully acquired
-		services.BuildAndSendSms(assetSymbol, *scaledBalance, cache, logger, config, serviceErr)
+		services.BuildAndSendSms(assetSymbol, *decimalBalance, cache, logger, config, serviceErr)
 	}
 }
 
