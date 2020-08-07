@@ -131,7 +131,7 @@ func TestBroadcastTransactionImplementation(t *testing.T) {
 		SignedData:  "f86a808447868c0082520894c6c55ce8e861119a9013c35e5b93de56b36ee6c0871ff973cafa80008026a09883e0019f6383d22a35aa9ce611717af670cadd5abe44eb2fe8fd2db46cacaca04f2c44b4319ee988e4b78636ec14425b44e945c2d2f583c744f9bf92faadd90c",
 		AssetSymbol: "ETH",
 	}
-	responseData := dto.BroadcastToChainResponse{}
+	responseData := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ServicesRequestErr{}
 
 	purgeInterval := Config.PurgeCacheInterval * time.Second

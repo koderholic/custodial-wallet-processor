@@ -170,7 +170,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		}
 		recipientData = append(recipientData, brokerageRecipient)
 	}
-	signTransactionRequest := dto.BatchBTCRequest{
+	signBatchTransactionAndBroadcastRequest := dto.BatchBTCRequest{
 		AssetSymbol:   "BTC",
 		ChangeAddress: sweepParam.BrokerageAddress,
 		IsSweep:       true,
@@ -178,9 +178,9 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		Recipients:    recipientData,
 		ProcessType:   utility.SWEEPPROCESS,
 	}
-	signTransactionResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignBatchBTCTransactionAndBroadcast(nil, cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		logger.Error("Error response from SignBatchBTCTransactionAndBroadcast : %+v while sweeping batch transactions for BTC", err)
+	signBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
+	if err := services.SignBatchTransactionAndBroadcast(nil, cache, logger, config, signBatchTransactionAndBroadcastRequest, &signBatchTransactionAndBroadcastResponse, serviceErr); err != nil {
+		logger.Error("Error response from SignBatchTransactionAndBroadcast : %+v while sweeping batch transactions for BTC", err)
 		return err
 	}
 	if err := updateSweptStatus(btcAssetTransactionsToSweep, repository, logger); err != nil {
@@ -310,16 +310,17 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	//check if onchain balance in main coin asset is less than floatAccount.SweepFee
 	if int64(mainCoinOnChainBalance) < denomination.SweepFee {
 		// Calls key-management to sign sweep fee transaction
-		signTransactionRequest := dto.SignTransactionRequest{
+		signTransactionAndBroadcastRequest := dto.SignTransactionRequest{
 			FromAddress: floatAccount.Address,
 			ToAddress:   recipientAddress,
 			Amount:      big.NewInt(denomination.SweepFee),
 			AssetSymbol: denomination.MainCoinAssetSymbol,
 			//this currently only supports coins that supports Memo, ETH will not be ignored
-			Memo: utility.SWEEPMEMOBNB,
+			Memo:        utility.SWEEPMEMOBNB,
+			ProcessType: utility.SWEEPPROCESS,
 		}
 		signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
+		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 			return err, true
 		}
