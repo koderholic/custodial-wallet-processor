@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
 	"wallet-adapter/utility"
@@ -66,9 +67,14 @@ func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, con
 
 func BuildAndSendSms(assetSymbol string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
 	logger.Info("Sending sms notification for asset ", assetSymbol)
+	formattedPhoneNumber := config.ColdWalletSmsNumber
+	if !strings.HasPrefix(config.ColdWalletSmsNumber, "+") {
+		formattedPhoneNumber = "+" + config.ColdWalletSmsNumber
+	}
+	logger.Info("FORMATTED_NUMBER", formattedPhoneNumber)
 	sendSmsRequest := dto.SendSmsRequest{
 		Message:     "Please fund Bundle hot wallet address for " + assetSymbol,
-		PhoneNumber: config.ColdWalletSmsNumber,
+		PhoneNumber: formattedPhoneNumber,
 		SmsType:     utility.NOTIFICATION_SMS_TYPE,
 		Country:     utility.NOTIFICATION_SMS_COUNTRY,
 	}
