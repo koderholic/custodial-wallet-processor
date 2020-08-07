@@ -219,11 +219,17 @@ func saveFloatVariables(repository database.BaseRepository, logger *utility.Logg
 	return nil
 }
 
-func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) {
+func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr, repository database.BaseRepository) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		logger.Error("Error response from NotifyColdWalletUsersViaSMS : %+v while trying to denomination of float asset", err)
+	}
+
+	scaledBalance := big.NewFloat(float64(amount.Int64()) * math.Pow(10, float64(denomination.Decimal)))
 	//send sms
 	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
 		//lock was successfully acquired
-		services.BuildAndSendSms(assetSymbol, amount, cache, logger, config, serviceErr)
+		services.BuildAndSendSms(assetSymbol, *scaledBalance, cache, logger, config, serviceErr)
 	}
 }
 

@@ -564,7 +564,7 @@ func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSym
 	baseRepository := database.BaseRepository{Database: DB}
 
 	serviceErr := dto.ServicesRequestErr{}
-	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Logger, serviceErr)
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Logger, serviceErr, baseRepository)
 	if !processor.SweepTriggered {
 		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
 		processor.SweepTriggered = true
