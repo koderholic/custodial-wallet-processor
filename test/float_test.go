@@ -1,9 +1,14 @@
 package test
 
 import (
+	"fmt"
+	"math/big"
+	"strings"
+	"testing"
 	"time"
 	"wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/model"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
 )
@@ -38,4 +43,16 @@ func (s *Suite) TestFloat() {
 	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 	tasks.ManageFloat(authCache, logger, configTest, baseRepository, userAssetRepository)
 
+}
+
+func TestConversion(t *testing.T) {
+	amount := big.NewInt(1699)
+	denomination := model.Denomination{
+		Decimal: 8,
+	}
+	result := tasks.ConvertBigIntToDecimalUnit(*amount, denomination)
+	fmt.Println(fmt.Sprintf("%f", result))
+	if !strings.EqualFold(fmt.Sprintf("%f", result), "0.000017") {
+		t.Fail()
+	}
 }
