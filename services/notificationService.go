@@ -73,7 +73,7 @@ func BuildAndSendSms(assetSymbol string, amount big.Int, cache *utility.MemoryCa
 		formattedPhoneNumber = "+" + config.ColdWalletSmsNumber
 	}
 	sendSmsRequest := dto.SendSmsRequest{
-		Message:     fmt.Sprintf(" Please fund Bundle hot wallet address for %s %s", amount, assetSymbol),
+		Message:     fmt.Sprintf(" Please fund Bundle hot wallet address for %s with at least %s %s", assetSymbol, amount, assetSymbol),
 		PhoneNumber: formattedPhoneNumber,
 		SmsType:     utility.NOTIFICATION_SMS_TYPE,
 		Country:     utility.NOTIFICATION_SMS_COUNTRY,
