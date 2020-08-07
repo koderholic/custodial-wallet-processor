@@ -10,7 +10,7 @@ import (
 )
 
 // broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BroadcastToChainRequest, responseData *dto.BroadcastToChainResponse, serviceErr interface{}) error {
+func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BroadcastToChainRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {

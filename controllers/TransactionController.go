@@ -500,18 +500,19 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	}
 
 	// Get the transaction fee estimate by calling key-management to sign transaction
-	signTransactionRequest := dto.SignTransactionRequest{
+	signTransactionAndBroadcastRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value.BigInt(),
 		Memo:        transaction.Memo,
 		AssetSymbol: transaction.AssetSymbol,
+		ProcessType: utility.WITHDRAWALPROCESS,
 	}
-	signTransactionResponse := dto.SignTransactionResponse{}
-	if err := services.SignTransaction(processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
-		processor.Logger.Error("Error occured while signing transaction : %+v", serviceErr)
-		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionRequest.Amount)
+	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
+	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
+		processor.Logger.Error("Error occured while signing and broadcast transaction : %+v", serviceErr)
+		if serviceErr.Code == "INSUFFICIENT_FUNDS" {
+			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
 		}
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
@@ -520,30 +521,9 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		return nil
 	}
 
-	// Send the signed data to crypto adapter to send to chain
-	broadcastToChainRequest := dto.BroadcastToChainRequest{
-		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: transaction.AssetSymbol,
-		Reference:   transaction.DebitReference,
-		ProcessType: utility.WITHDRAWALPROCESS,
-	}
-	broadcastToChainResponse := dto.BroadcastToChainResponse{}
-
-	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, &serviceErr); err != nil {
-		processor.Logger.Error("Error occured while broadcasting transaction : %+v", serviceErr)
-		if serviceErr.StatusCode == http.StatusBadRequest {
-			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
-				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
-				return err
-			}
-			return nil
-		}
-		return err
-	}
-
 	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash:  broadcastToChainResponse.TransactionHash,
+		TransactionHash:  signTransactionAndBroadcastResponse.TransactionHash,
 		RecipientAddress: transaction.Recipient,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
