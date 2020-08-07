@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"time"
 	"wallet-adapter/config"
@@ -128,8 +129,12 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	if err := services.SignBatchBTCTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchBTCTransactionAndBroadcastResponse, serviceErr); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol); err != nil {
-				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling SignBatchBTCTransactionAndBroadcast", err)
+			total := int64(0)
+			for _, value := range signTransactionRequest.Recipients {
+				total += value.Value
+			}
+			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total)); err != nil {
+				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
 			}
 			return err
 		}
@@ -288,21 +293,16 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 
 }
 
-func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string) error {
+func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string, amount big.Int) error {
 
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
-
+	serviceErr := dto.ServicesRequestErr{}
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Logger, serviceErr, baseRepository)
 	if !processor.SweepTriggered {
 		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
 		processor.SweepTriggered = true
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
-	}
-	//send sms
-	serviceErr := dto.ServicesRequestErr{}
-	if _, err := tasks.AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, processor.Cache, processor.Logger, processor.Config, serviceErr); err == nil {
-		//lock was successfully acquired
-		services.BuildAndSendSms(assetSymbol, processor.Cache, processor.Logger, processor.Config, serviceErr)
 	}
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }

@@ -219,6 +219,26 @@ func saveFloatVariables(repository database.BaseRepository, logger *utility.Logg
 	return nil
 }
 
+func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr, repository database.BaseRepository) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		logger.Error("Error response from NotifyColdWalletUsersViaSMS : %+v while trying to denomination of float asset", err)
+	}
+	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
+	//send sms
+	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
+		//lock was successfully acquired
+		services.BuildAndSendSms(assetSymbol, *decimalBalance, cache, logger, config, serviceErr)
+	}
+}
+
+func ConvertBigIntToDecimalUnit(amount big.Int, denomination model.Denomination) *big.Float {
+	amountInFloat, _ := strconv.ParseFloat(amount.String(), 64)
+	amountInBigFloat := big.NewFloat(amountInFloat)
+	decimalBalance := amountInBigFloat.Quo(amountInBigFloat, big.NewFloat(math.Pow(10, float64(denomination.Decimal))))
+	return decimalBalance
+}
+
 func notifyColdWalletUsers(emailType string, params map[string]string, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) error {
 	coldWalletEmails := []dto.EmailUser{
 		dto.EmailUser{
