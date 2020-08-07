@@ -128,7 +128,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			floatDeficitInDecimalUnits.Quo(floatDeficit, big.NewFloat(math.Pow(10, denominationDecimal)))
 			logger.Info("deficitInDecimalUnits for this hot wallet %s is %+v", floatAccount.AssetSymbol, floatDeficitInDecimalUnits)
 
-			notifyColdWalletUsersViaSMS(floatDeficitInDecimalUnits, floatAccount.AssetSymbol, config, err, cache, logger, serviceErr)
 			// Ensure email has not been sent already
 			emailSent, _ := IsSentColdWalletMail(repository, floatDeficit, floatAccount.AssetSymbol)
 			if !emailSent {
@@ -220,7 +219,7 @@ func saveFloatVariables(repository database.BaseRepository, logger *utility.Logg
 	return nil
 }
 
-func notifyColdWalletUsersViaSMS(amount *big.Float, assetSymbol string, config Config.Data, err error, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) {
+func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *utility.MemoryCache, logger *utility.Logger, serviceErr dto.ServicesRequestErr) {
 	//send sms
 	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
 		//lock was successfully acquired

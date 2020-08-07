@@ -66,13 +66,12 @@ func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, con
 	return nil
 }
 
-func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
+func BuildAndSendSms(assetSymbol string, amount big.Int, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
 	logger.Info("Sending sms notification for asset ", assetSymbol)
 	formattedPhoneNumber := config.ColdWalletSmsNumber
 	if !strings.HasPrefix(config.ColdWalletSmsNumber, "+") {
 		formattedPhoneNumber = "+" + config.ColdWalletSmsNumber
 	}
-	logger.Info("FORMATTED_NUMBER", formattedPhoneNumber)
 	sendSmsRequest := dto.SendSmsRequest{
 		Message:     fmt.Sprintf(" Please fund Bundle hot wallet address for %s %s", amount, assetSymbol),
 		PhoneNumber: formattedPhoneNumber,
