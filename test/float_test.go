@@ -51,7 +51,7 @@ func TestConversion(t *testing.T) {
 		Decimal: 8,
 	}
 	result := tasks.ConvertBigIntToDecimalUnit(*amount, denomination)
-	fmt.Println(fmt.Sprintf("%f", result))
+	fmt.Println(fmt.Sprintf("%s %f", "BUSD", result))
 	if !strings.EqualFold(fmt.Sprintf("%f", result), "0.000017") {
 		t.Fail()
 	}
