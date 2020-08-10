@@ -274,14 +274,6 @@ func groupTxByAddress(assetTransactions []model.Transaction, repository database
 	return transactionsPerRecipientAddress, nil
 }
 
-func feeThresholdCheck(fee int64, sum int64, config Config.Data, logger *utility.Logger, recipientAsset model.UserAsset) error {
-	if (((fee) / sum) * 100) > config.SweepFeePercentageThreshold {
-		logger.Error("Skipping asset, %+v ratio of fee to sum for this asset with asset symbol %+v is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %+v", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold)
-		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold))
-	}
-	return nil
-}
-
 func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, recipientAsset model.UserAsset, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
 
 	request := dto.OnchainBalanceRequest{
