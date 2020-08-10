@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"time"
 	"wallet-adapter/config"
@@ -127,7 +128,11 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	if err := services.SignBatchBTCTransaction(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol); err != nil {
+			total := big.NewInt(0)
+			for _, value := range signTransactionRequest.Recipients {
+				total.Add(total, value.Value)
+			}
+			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total.Int64())); err != nil {
 				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
 			}
 		}
@@ -300,11 +305,13 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 
 }
 
-func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string) error {
+func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string, amount big.Int) error {
 
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
 
+	serviceErr := dto.ServicesRequestErr{}
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Logger, serviceErr, baseRepository)
 	if !processor.SweepTriggered {
 		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
 		processor.SweepTriggered = true

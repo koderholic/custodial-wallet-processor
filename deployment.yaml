@@ -101,4 +101,4 @@ cronJobs:
 
 config:
   enableFloatManager: 'false'
-
+  coldWalletSmsNumber: '+2348178500655'

@@ -215,3 +215,14 @@ type SendEmailResponse struct {
 		} `json:"data"`
 	} `json:"error"`
 }
+
+type SendSmsRequest struct {
+	Message     string `json:"message"`
+	PhoneNumber string `json:"phoneNumber"`
+	SmsType     string `json:"smsType"`
+	Country     string `json:"country"`
+}
+
+type SendSmsResponse struct {
+	SendEmailResponse
+}
