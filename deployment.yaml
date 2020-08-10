@@ -14,7 +14,6 @@ serviceConfig:
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         COLDWALLETSMSNUMBER: 'config:crypto-wallet-adapter:coldWalletSmsNumber'
-        coldWalletSmsNumber
 
 resources:
   databases:
