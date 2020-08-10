@@ -13,6 +13,7 @@ serviceConfig:
         - 8200
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        COLDWALLETSMSNUMBER: 'config:crypto-wallet-adapter:coldWalletSmsNumber'
 
 resources:
   databases:
@@ -101,4 +102,4 @@ cronJobs:
 
 config:
   enableFloatManager: 'false'
-
+  coldWalletSmsNumber: '+2348178500655'

@@ -1,3 +1,4 @@
 config:
   enableFloatManager: 'true'
   floatCronInterval: '10 */4 * * *'
+  coldWalletSmsNumber: '+2349084859418'

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"sort"
 	"strings"
@@ -510,7 +511,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	if err := services.SignTransaction(processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error occured while signing transaction : %+v", serviceErr)
 		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol)
+			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionRequest.Amount)
 		}
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
@@ -557,11 +558,13 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	return nil
 }
 
-func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string) error {
+func (processor *TransactionProccessor) ProcessTxnWithInsufficientFloat(assetSymbol string, amount big.Int) error {
 
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
 
+	serviceErr := dto.ServicesRequestErr{}
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Logger, serviceErr, baseRepository)
 	if !processor.SweepTriggered {
 		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
 		processor.SweepTriggered = true

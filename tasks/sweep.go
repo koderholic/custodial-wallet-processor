@@ -19,7 +19,7 @@ import (
 func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	logger.Info("Sweep operation begins")
 	serviceErr := dto.ServicesRequestErr{}
-	token, err := acquireLock("sweep", cache, logger, config, serviceErr)
+	token, err := AcquireLock("sweep", utility.SIX_HUNDRED_MILLISECONDS, cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -137,7 +137,6 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 	if CalculateSumOfBtcBatch(btcAssetTransactionsToSweep) < config.SweepBtcBatchMinimum {
 		return err
 	}
-
 
 	toAddress, _, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
@@ -409,14 +408,15 @@ func updateSweptStatus(assetTransactions []model.Transaction, repository databas
 	return nil
 }
 
-func acquireLock(identifier string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr) (string, error) {
+func AcquireLock(identifier string, ttl int64, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr) (string, error) {
 	// It calls the lock service to obtain a lock for the transaction
 	lockerServiceRequest := dto.LockerServiceRequest{
 		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, identifier),
-		ExpiresAfter: 600000,
+		ExpiresAfter: ttl,
 	}
 	lockerServiceResponse := dto.LockerServiceResponse{}
 	if err := services.AcquireLock(cache, logger, config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+		logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
 		if !serviceErr.Success && serviceErr.Message != "" {
 			return "", errors.New(serviceErr.Message)
 		}
