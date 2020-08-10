@@ -111,3 +111,10 @@ config:
     BUSD:
       minimumSweep: '0.5'
   coldWalletSmsNumber: '+2348178500655'
+config:
+  enableFloatManager: 'false'
+  supportedAssets_minimumSweep_BTC: '0.0001'
+  supportedAssets_minimumSweep_BNB: '0.005'
+  supportedAssets_minimumSweep_ETH: '0.001'
+  supportedAssets_minimumSweep_BUSD: '0.5'
+  coldWalletSmsNumber: '+2348178500655'
