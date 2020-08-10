@@ -1,7 +1,13 @@
 config:
   enableFloatManager: 'true'
   floatCronInterval: '10 */4 * * *'
-  sweepBtcBatchMinimum: '0.15'
-  sweepEthMinimum: 0.5
-  sweepBnbMinimum: 5
+  supportedAssets:
+    BTC:
+      minimumSweep: '0.15'
+    BNB:
+      minimumSweep: '5'
+    ETH:
+      minimumSweep: 0.5'
+    BUSD:
+      minimumSweep: '300'
   coldWalletSmsNumber: '+2349084859418'
