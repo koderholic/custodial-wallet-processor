@@ -102,4 +102,6 @@ cronJobs:
 config:
   enableFloatManager: 'false'
   sweepBtcBatchMinimum: '0.0001'
+  sweepEthMinimum: 0.001
+  sweepBnbMinimum: 0.005
   coldWalletSmsNumber: '+2348178500655'

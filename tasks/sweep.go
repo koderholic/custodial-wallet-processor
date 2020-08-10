@@ -209,24 +209,21 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		return err
 	}
 
-	//Do this only for BEp-2 tokens and not for BNB itself
-	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != "BNB" {
-		//Check that fee is below X% of the total value.
-		err = feeThresholdCheck(denomination.SweepFee, sum, config, logger, recipientAsset)
-		if err != nil {
-			return err
-		}
-		//send sweep fee to main address
-		err, done := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
-		if done {
-			return err
-		}
-	}
-
 	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
 		return err
+	}
+
+	//Check that fee is below X% of the total value.
+	if denomination.AssetSymbol == "ETH" {
+		if float64(sum) < config.SweepEthMinimum {
+			return err
+		}
+	} else {
+		if float64(sum) < config.SweepBnbMinimum {
+			return err
+		}
 	}
 
 	// Calls key-management to sign transaction
@@ -238,15 +235,6 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		AssetSymbol: recipientAsset.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
-	}
-	signTransactionResponse := dto.SignTransactionResponse{}
-	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		logger.Error("Error response from SignTransaction : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return err
-	}
-	//Check that fee is below X% of the total value.
-	if err := feeThresholdCheck(signTransactionResponse.Fee, sum, config, logger, recipientAsset); err != nil {
-		return err
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, serviceErr); err != nil {

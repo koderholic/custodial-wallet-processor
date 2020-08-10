@@ -41,6 +41,8 @@ type Data struct {
 	ExpireCacheDuration         time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
 	SweepFeePercentageThreshold int64         `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
 	SweepBtcBatchMinimum        float64       `mapstructure:"sweepBtcBatchMinimum"  yaml:"sweepBtcBatchMinimum,omitempty"`
+	SweepEthMinimum        float64       `mapstructure:"sweepEthMinimum"  yaml:"sweepEthMinimum,omitempty"`
+	SweepBnbMinimum        float64       `mapstructure:"sweepBnbMinimum"  yaml:"sweepBnbMinimum,omitempty"`
 	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
 	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
 	ConnMaxLifetime             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
@@ -51,10 +53,6 @@ type Data struct {
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 	SENTRY_ENVIRONMENT          string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
-	ETH_MIN_SWEEP               float64       `mapstructure:"ETH_MIN_SWEEP"  yaml:"ETH_MIN_SWEEP,omitempty"`
-	BTC_MIN_SWEEP               float64       `mapstructure:"BTC_MIN_SWEEP"  yaml:"BTC_MIN_SWEEP,omitempty"`
-	BNB_MIN_SWEEP               float64       `mapstructure:"BNB_MIN_SWEEP"  yaml:"BNB_MIN_SWEEP,omitempty"`
-}
 
 //Init : initialize data
 func (c *Data) Init(configDir string) {
