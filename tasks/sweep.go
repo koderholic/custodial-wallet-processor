@@ -146,7 +146,8 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 	//check total sum threshold for this batch
 	totalSweepSum := CalculateSumOfBtcBatch(btcAssetTransactionsToSweep)
-	if totalSweepSum < config.SweepBtcBatchMinimum {
+	if totalSweepSum < config.SupportedAssets[utility.COIN_BTC].MinimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, utility.COIN_BTC, config.SupportedAssets[utility.COIN_BTC].MinimumSweep, err)
 		return err
 	}
 
@@ -205,27 +206,19 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 	}
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-		logger.Error("Error response from sweep process : %+v while trying to denomination of float asset", err)
+		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
 		return err
-	}
-
-	//Do this only for BEp-2 tokens and not for BNB itself
-	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != "BNB" {
-		//Check that fee is below X% of the total value.
-		err = feeThresholdCheck(denomination.SweepFee, sum, config, logger, recipientAsset)
-		if err != nil {
-			return err
-		}
-		//send sweep fee to main address
-		err, done := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
-		if done {
-			return err
-		}
 	}
 
 	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
+		return err
+	}
+
+	//Check that sweep amount is not below the minimum sweep amount
+	if float64(sum) < config.SupportedAssets[denomination.AssetSymbol].MinimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.SupportedAssets[denomination.AssetSymbol].MinimumSweep, err)
 		return err
 	}
 
@@ -238,15 +231,6 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		AssetSymbol: recipientAsset.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
-	}
-	signTransactionResponse := dto.SignTransactionResponse{}
-	if err := services.SignTransaction(cache, logger, config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		logger.Error("Error response from SignTransaction : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return err
-	}
-	//Check that fee is below X% of the total value.
-	if err := feeThresholdCheck(signTransactionResponse.Fee, sum, config, logger, recipientAsset); err != nil {
-		return err
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, serviceErr); err != nil {
@@ -288,14 +272,6 @@ func groupTxByAddress(assetTransactions []model.Transaction, repository database
 
 	}
 	return transactionsPerRecipientAddress, nil
-}
-
-func feeThresholdCheck(fee int64, sum int64, config Config.Data, logger *utility.Logger, recipientAsset model.UserAsset) error {
-	if (((fee) / sum) * 100) > config.SweepFeePercentageThreshold {
-		logger.Error("Skipping asset, %+v ratio of fee to sum for this asset with asset symbol %+v is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %+v", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold)
-		return errors.New(fmt.Sprintf("Skipping asset, %s ratio of fee to sum for this asset with asset symbol %s is greater than the sweepFeePercentageThreshold, would be too expensive to sweep %s", recipientAsset.ID, recipientAsset.AssetSymbol, config.SweepFeePercentageThreshold))
-	}
-	return nil
 }
 
 func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, recipientAsset model.UserAsset, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {

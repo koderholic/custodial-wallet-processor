@@ -101,5 +101,13 @@ cronJobs:
 
 config:
   enableFloatManager: 'false'
-  sweepBtcBatchMinimum: '0.0001'
+  supportedAssets:
+    BTC:
+      minimumSweep: '0.0001'
+    BNB:
+      minimumSweep: '0.005'
+    ETH:
+      minimumSweep: '0.001'
+    BUSD:
+      minimumSweep: '0.5'
   coldWalletSmsNumber: '+2348178500655'
