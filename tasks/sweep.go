@@ -146,7 +146,8 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 	//check total sum threshold for this batch
 	totalSweepSum := CalculateSumOfBtcBatch(btcAssetTransactionsToSweep)
-	if totalSweepSum < config.SweepBtcBatchMinimum {
+	if totalSweepSum < config.SupportedAssets[utility.COIN_BTC].MinimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, utility.COIN_BTC, config.SupportedAssets[utility.COIN_BTC].MinimumSweep, err)
 		return err
 	}
 
@@ -205,7 +206,7 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 	}
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-		logger.Error("Error response from sweep process : %+v while trying to denomination of float asset", err)
+		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
 		return err
 	}
 
@@ -215,15 +216,10 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		return err
 	}
 
-	//Check that fee is below X% of the total value.
-	if denomination.AssetSymbol == "ETH" {
-		if float64(sum) < config.SweepEthMinimum {
-			return err
-		}
-	} else {
-		if float64(sum) < config.SweepBnbMinimum {
-			return err
-		}
+	//Check that sweep amount is not below the minimum sweep amount
+	if float64(sum) < config.SupportedAssets[denomination.AssetSymbol].MinimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.SupportedAssets[denomination.AssetSymbol].MinimumSweep, err)
+		return err
 	}
 
 	// Calls key-management to sign transaction

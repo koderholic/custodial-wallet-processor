@@ -53,6 +53,12 @@ type Data struct {
 	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 	SENTRY_ENVIRONMENT          string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
+
+	SupportedAssets map[string]SupportedAsset `mapstructure:"supportedAssets"`
+}
+
+type SupportedAsset struct {
+	MinimumSweep float64 `mapstructure:"minimumSweep"  yaml:"minimumSweep,omitempty"`
 }
 
 //Init : initialize data
