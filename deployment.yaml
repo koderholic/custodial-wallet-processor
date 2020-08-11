@@ -97,6 +97,10 @@ cronJobs:
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+        BTCMINIMUMSWEEP: 'config:crypto-wallet-adapter:BTC_minimumSweep'
+        BNBMINIMUMSWEEP: 'config:crypto-wallet-adapter:BNB_minimumSweep'
+        ETHMINIMUMSWEEP: 'config:crypto-wallet-adapter:ETH_minimumSweep'
+        BUSDMINIMUMSWEEP: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
 
 
 config:
