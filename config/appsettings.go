@@ -49,12 +49,10 @@ type Data struct {
 	DBMigrationPath           string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                 string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 	SENTRY_ENVIRONMENT        string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
-
-	SupportedAssets map[string]SupportedAsset `mapstructure:"supportedAssets"`
-}
-
-type SupportedAsset struct {
-	MinimumSweep float64 `mapstructure:"minimumSweep"  yaml:"minimumSweep,omitempty"`
+	BTC_minimumSweep          float64       `mapstructure:"BTC_minimumSweep"  yaml:"BTC_minimumSweep,omitempty"`
+	BNB_minimumSweep          float64       `mapstructure:"BNB_minimumSweep"  yaml:"BNB_minimumSweep,omitempty"`
+	ETH_minimumSweep          float64       `mapstructure:"ETH_minimumSweep"  yaml:"ETH_minimumSweep,omitempty"`
+	BUSD_minimumSweep         float64       `mapstructure:"BUSD_minimumSweep"  yaml:"BUSD_minimumSweep,omitempty"`
 }
 
 //Init : initialize data

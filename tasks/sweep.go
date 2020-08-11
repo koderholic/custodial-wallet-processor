@@ -146,8 +146,8 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 	//check total sum threshold for this batch
 	totalSweepSum := CalculateSumOfBtcBatch(btcAssetTransactionsToSweep)
-	if totalSweepSum < config.SupportedAssets[utility.COIN_BTC].MinimumSweep {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, utility.COIN_BTC, config.SupportedAssets[utility.COIN_BTC].MinimumSweep, err)
+	if totalSweepSum < config.BTC_minimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, utility.COIN_BTC, config.BTC_minimumSweep, err)
 		return err
 	}
 
@@ -217,8 +217,18 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 	}
 
 	//Check that sweep amount is not below the minimum sweep amount
-	if float64(sum) < config.SupportedAssets[denomination.AssetSymbol].MinimumSweep {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.SupportedAssets[denomination.AssetSymbol].MinimumSweep, err)
+	var minimumSweep float64
+	switch denomination.AssetSymbol {
+	case utility.COIN_ETH:
+		minimumSweep = config.ETH_minimumSweep
+	case utility.COIN_BNB:
+		minimumSweep = config.BNB_minimumSweep
+	case utility.COIN_BUSD:
+		minimumSweep = config.BUSD_minimumSweep
+	}
+
+	if float64(sum) < minimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.BTC_minimumSweep, err)
 		return err
 	}
 
