@@ -77,7 +77,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	btcAddresses = toUniqueAddresses(btcAddresses)
 	//remove btc transactions from list of remaining transactions
 	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
-
+	//Do other Coins apart from BTC
 	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
 	if err != nil {
 		return
