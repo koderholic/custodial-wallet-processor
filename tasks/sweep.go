@@ -108,7 +108,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 }
 
 func calculateSum(repository database.BaseRepository, addressTransactions []model.Transaction, logger *utility.Logger) int64 {
-	recipientAsset, _ := getRepresentativeAssetForOthers(repository, addressTransactions, logger)
+	transactionListInfo, _ := getTransactionListInfo(repository, addressTransactions, logger)
 	//Get total sum to be swept for this assetId address
 	var sum = int64(0)
 	for _, tx := range addressTransactions {
@@ -116,7 +116,7 @@ func calculateSum(repository database.BaseRepository, addressTransactions []mode
 		balance, _ := strconv.ParseFloat(tx.Value, 64)
 		//choose 1st of the address transaction, would have
 		// the same denominationDecimal as the rest
-		denominationDecimal := float64(recipientAsset.Decimal)
+		denominationDecimal := float64(transactionListInfo.Decimal)
 		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
 		sum = sum + scaledBalance
 	}
@@ -190,11 +190,11 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 }
 
 func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum int64, recipientAddress string) error {
-	recipientAsset, e := getRepresentativeAssetForOthers(repository, addressTransactions, logger)
+	transactionListInfo, e := getTransactionListInfo(repository, addressTransactions, logger)
 	if e != nil {
 		return e
 	}
-	floatAccount, err := getFloatDetails(repository, recipientAsset.AssetSymbol, logger)
+	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, logger)
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		ToAddress:   toAddress,
 		Memo:        addressMemo,
 		Amount:      big.NewInt(0),
-		AssetSymbol: recipientAsset.AssetSymbol,
+		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
 	}
@@ -247,16 +247,20 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
-func getRepresentativeAssetForOthers(repository database.BaseRepository, assetTransactions []model.Transaction, logger *utility.Logger) (model.UserAsset, error) {
+func getTransactionListInfo(repository database.BaseRepository, assetTransactions []model.Transaction, logger *utility.Logger) (dto.TransactionListInfo, error) {
 	//need representative Asset to get common things about this list like symbol, Decimals etc
+	var transactionListInfo = dto.TransactionListInfo{}
+
 	recipientAsset := model.UserAsset{}
-	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
+	//all the tx in assetTransactions have the same recipientId so get info from the 0th position
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return model.UserAsset{}, err
+		return dto.TransactionListInfo{}, err
 	}
-	return recipientAsset, nil
+	transactionListInfo.AssetSymbol = recipientAsset.AssetSymbol
+	transactionListInfo.Decimal = recipientAsset.Decimal
+	return transactionListInfo, nil
 }
 
 func GroupTxByAddress(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, error) {
