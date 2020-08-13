@@ -226,7 +226,7 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	}
 	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
 	//send sms
-	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
+	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
 		//lock was successfully acquired
 		services.BuildAndSendSms(assetSymbol, decimalBalance, cache, logger, config, serviceErr)
 	}
