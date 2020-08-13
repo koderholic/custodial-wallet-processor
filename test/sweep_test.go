@@ -115,6 +115,25 @@ func (s *Suite) TestRemoveBTCTx() {
 	}
 }
 
+func (s *Suite) TestUniqueAddress() {
+	var addresses []string
+	address1 := "bc1q94tsgpe25dtwuu7w0k7de4m62mdzjesle4zjex"
+	address2 := "bc1qcg8gqlq84veds0gxe20masexr22f2atjn6g6yj"
+	address3 := "bc1qfaawd7h0axqjuhj8e5wta8jgyqxt96rrwfp6qt"
+
+	addresses = append(addresses, address1)
+	addresses = append(addresses, address2)
+	addresses = append(addresses, address3)
+	addresses = append(addresses, address1)
+	fmt.Println("length before unique operation is ", len(addresses))
+
+	addresses = tasks.ToUniqueAddresses(addresses)
+
+	if len(addresses) != 3 {
+		s.T().Errorf("Didnt succesfully get unique addresses ")
+	}
+}
+
 func (s *Suite) TestGetFloatDeficit() {
 	depositSum := big.NewFloat(5000)
 	withdrawalSum := big.NewFloat(3000)

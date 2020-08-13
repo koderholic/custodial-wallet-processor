@@ -74,7 +74,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			continue
 		}
 	}
-	btcAddresses = toUniqueAddresses(btcAddresses)
+	btcAddresses = ToUniqueAddresses(btcAddresses)
 	//remove btc transactions from list of remaining transactions
 	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
 	//Do other Coins apart from BTC
@@ -307,7 +307,7 @@ func RemoveBTCTransactions(a []model.Transaction, b []model.Transaction) []model
 	return diff
 }
 
-func toUniqueAddresses(addresses []string) []string {
+func ToUniqueAddresses(addresses []string) []string {
 	keys := make(map[string]bool)
 	var list []string
 	for _, entry := range addresses {
