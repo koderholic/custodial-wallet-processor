@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
@@ -238,6 +239,7 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		if err != nil {
 			return err
 		}
+		time.Sleep(time.Second * utility.FUND_SWEEP_FEE_WAIT_TIME)
 	}
 
 	// Calls key-management to sign transaction
