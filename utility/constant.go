@@ -56,6 +56,7 @@ const (
 	ONE_HOUR_MILLISECONDS               = 3600000
 	SIX_HUNDRED_MILLISECONDS            = 600000
 	SEPERATOR                           = "_"
+	FUND_SWEEP_FEE_WAIT_TIME            = 3 // In seconds
 )
 
 var (

@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
@@ -226,10 +227,19 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 	case utility.COIN_BUSD:
 		minimumSweep = config.BUSD_minimumSweep
 	}
-
 	if float64(sum) < minimumSweep {
 		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.BTC_minimumSweep, err)
 		return err
+	}
+
+	//Do this only for BEp-2 tokens and not for BNB itself
+	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != utility.COIN_BNB {
+		//send sweep fee to main address
+		err, _ := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Second * utility.FUND_SWEEP_FEE_WAIT_TIME)
 	}
 
 	// Calls key-management to sign transaction
