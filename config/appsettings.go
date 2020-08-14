@@ -74,6 +74,11 @@ func (c *Data) Init(configDir string) {
 	viper.BindEnv("DB_NAME")
 	viper.BindEnv("SENTRY_ENVIRONMENT")
 
+	viper.BindEnv("BTC_minimumSweep")
+	viper.BindEnv("BNB_minimumSweep")
+	viper.BindEnv("ETH_minimumSweep")
+	viper.BindEnv("BUSD_minimumSweep")
+
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")
 	viper.AddConfigPath(dir)
