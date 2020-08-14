@@ -313,7 +313,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			AssetSymbol: denomination.MainCoinAssetSymbol,
 			//this currently only supports coins that supports Memo, ETH will not be ignored
 			Memo:        utility.SWEEPMEMOBNB,
-			ProcessType: utility.SWEEPPROCESS,
+			ProcessType: utility.FLOATPROCESS,
 		}
 		signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
