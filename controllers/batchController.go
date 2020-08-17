@@ -121,6 +121,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		Origins:       []string{floatAccount},
 		Recipients:    batchedRecipients,
 		ProcessType:   utility.WITHDRAWALPROCESS,
+		Reference:     batch.ID.String(),
 	}
 
 	// Calls key-management to sign batched transactions

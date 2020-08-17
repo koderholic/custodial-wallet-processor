@@ -50,6 +50,7 @@ type BatchBTCRequest struct {
 	Origins       []string          `json:"origins"`
 	Recipients    []BatchRecipients `json:"recipients"`
 	ProcessType   string            `json:"processType"`
+	Reference     string            `json:"reference"`
 }
 
 type BatchRecipients struct {
