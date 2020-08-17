@@ -229,7 +229,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != utility.COIN_BNB {
 		//send sweep fee to main address
-		err, _ := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, recipientAsset, assetTransactions, repository)
+		err, _ := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, addressTransactions, repository)
 		if err != nil {
 			return err
 		}
@@ -245,7 +245,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
-		Reference:   assetTransactions[0].TransactionReference,
+		Reference:   addressTransactions[0].TransactionReference,
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, serviceErr); err != nil {
@@ -330,7 +330,7 @@ func ToUniqueAddresses(addresses []string) []string {
 	return list
 }
 
-func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, recipientAsset model.UserAsset, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
+func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
 
 	request := dto.OnchainBalanceRequest{
 		AssetSymbol: denomination.MainCoinAssetSymbol,
@@ -347,14 +347,14 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			ToAddress:   recipientAddress,
 			Amount:      big.NewInt(denomination.SweepFee),
 			AssetSymbol: denomination.MainCoinAssetSymbol,
-			//this currently only supports coins that supports Memo, ETH will not be ignored
+			//this currently only supports coins that supports Memo, ETH will be ignored
 			Memo:        utility.SWEEPMEMOBNB,
 			ProcessType: utility.FLOATPROCESS,
-			Reference:   fmt.Sprintf("%s-%s", recipientAsset.AssetSymbol, assetTransactions[0].TransactionReference),
+			Reference:   fmt.Sprintf("%s-%s", denomination.MainCoinAssetSymbol, assetTransactions[0].TransactionReference),
 		}
 		signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
-			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+			logger.Error("Error response from Sweep job : %+v while funding sweep fee for  %+v", err, recipientAddress)
 			return err, true
 		}
 		//return immediately after broadcasting sweep fee, this allows for confirmation, next time sweep runs,
@@ -362,7 +362,6 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 		//i.e sweep fee will not be resent to user address
 		return nil, true
 	}
-	// else? i.e. if mainCoinOnChainBalance > floatAccount.SweepFee, then we want to proceed like the general case for non token sweep
 	return nil, false
 }
 
