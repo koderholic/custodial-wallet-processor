@@ -48,21 +48,16 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 
 	logger.Info("Fetched %d sweep candidates", len(transactions))
-	//group transactions by recipientId
-	transactionsPerAssetId := make(map[uuid.UUID][]model.Transaction)
-	for _, tx := range transactions {
-		transactionsPerAssetId[tx.RecipientID] = append(transactionsPerAssetId[tx.RecipientID], tx)
-	}
 
-	var btcAssets []string
+	var btcAddresses []string
 	var btcAssetTransactionsToSweep []model.Transaction
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-	for assetId, assetTransactions := range transactionsPerAssetId {
+	for _, tx := range transactions {
 		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
 		recipientAsset := model.UserAsset{}
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-		if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetId}}, &recipientAsset); err != nil {
+		if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: tx.RecipientID}}, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 				logger.Error("Could not release lock", err)
@@ -71,33 +66,33 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			return
 		}
 		if recipientAsset.AssetSymbol == utility.COIN_BTC {
-			//get recipient address for each transaction
-			transactionsPerRecipientAddress, err := groupTxByAddress(assetTransactions, repository, logger, recipientAsset)
-			if err != nil {
-				return
-			}
-			for address, _ := range transactionsPerRecipientAddress {
-				btcAssets = append(btcAssets, address)
-			}
-			btcAssetTransactionsToSweep = append(btcAssetTransactionsToSweep, assetTransactions...)
+			//get recipient address for transaction
+			chainTransaction := model.ChainTransaction{}
+			_ = getChainTransaction(repository, tx, chainTransaction, logger)
+			btcAddresses = append(btcAddresses, chainTransaction.RecipientAddress)
+			btcAssetTransactionsToSweep = append(btcAssetTransactionsToSweep, tx)
 			//skip futher processing for this asset, will be included a part of batch btc processing
 			continue
 		}
-		transactionsPerRecipientAddress, err := groupTxByAddress(assetTransactions, repository, logger, recipientAsset)
-		if err != nil {
-			return
-		}
-		for address, addressTransactions := range transactionsPerRecipientAddress {
-			sum := calculateSum(addressTransactions, recipientAsset)
-			logger.Info("Sweeping %s with total of %d", address, sum)
-			if err := sweepPerAssetIdPerAddress(cache, logger, config, repository, serviceErr, assetTransactions, sum, address); err != nil {
-				continue
-			}
+	}
+	btcAddresses = ToUniqueAddresses(btcAddresses)
+	//remove btc transactions from list of remaining transactions
+	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
+	//Do other Coins apart from BTC
+	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
+	if err != nil {
+		return
+	}
+	for address, addressTransactions := range transactionsPerAddress {
+		sum := calculateSum(repository, addressTransactions, logger)
+		logger.Info("Sweeping %s with total of %d", address, sum)
+		if err := sweepPerAddress(cache, logger, config, repository, serviceErr, addressTransactions, sum, address); err != nil {
+			continue
 		}
 	}
 	//batch process btc
-	if len(btcAssets) > 0 {
-		if err := sweepBatchTx(cache, logger, config, repository, serviceErr, btcAssets, btcAssetTransactionsToSweep); err != nil {
+	if len(btcAddresses) > 0 {
+		if err := sweepBatchTx(cache, logger, config, repository, serviceErr, btcAddresses, btcAssetTransactionsToSweep); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping batch transactions for BTC", err)
 			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 				logger.Error("Could not release lock", err)
@@ -113,13 +108,16 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	logger.Info("Sweep operation ends successfully, lock released")
 }
 
-func calculateSum(addressTransactions []model.Transaction, recipientAsset model.UserAsset) int64 {
+func calculateSum(repository database.BaseRepository, addressTransactions []model.Transaction, logger *utility.Logger) int64 {
+	transactionListInfo, _ := getTransactionListInfo(repository, addressTransactions, logger)
 	//Get total sum to be swept for this assetId address
 	var sum = int64(0)
 	for _, tx := range addressTransactions {
 		//convert to native units
 		balance, _ := strconv.ParseFloat(tx.Value, 64)
-		denominationDecimal := float64(recipientAsset.Decimal)
+		//choose 1st of the address transaction, would have
+		// the same denominationDecimal as the rest
+		denominationDecimal := float64(transactionListInfo.Decimal)
 		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
 		sum = sum + scaledBalance
 	}
@@ -136,7 +134,7 @@ func CalculateSumOfBtcBatch(addressTransactions []model.Transaction) float64 {
 	return sum
 }
 
-func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, btcAssets []string, btcAssetTransactionsToSweep []model.Transaction) error {
+func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, btcAddresses []string, btcAssetTransactionsToSweep []model.Transaction) error {
 	// Calls key-management to batch sign transaction
 	recipientData := []dto.BatchRecipients{}
 	//get float
@@ -176,7 +174,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		AssetSymbol:   "BTC",
 		ChangeAddress: sweepParam.BrokerageAddress,
 		IsSweep:       true,
-		Origins:       btcAssets,
+		Origins:       btcAddresses,
 		Recipients:    recipientData,
 		ProcessType:   utility.SWEEPPROCESS,
 	}
@@ -192,16 +190,12 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 }
 
-func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, sum int64, recipientAddress string) error {
-	//need recipient Asset to get recipient address
-	recipientAsset := model.UserAsset{}
-	//all the tx in assetTransactions have the same recipientId so just pass the 0th position
-	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
-		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-		return err
+func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum int64, recipientAddress string) error {
+	transactionListInfo, e := getTransactionListInfo(repository, addressTransactions, logger)
+	if e != nil {
+		return e
 	}
-	floatAccount, err := getFloatDetails(repository, recipientAsset.AssetSymbol, logger)
+	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, logger)
 	if err != nil {
 		return err
 	}
@@ -248,50 +242,91 @@ func sweepPerAssetIdPerAddress(cache *utility.MemoryCache, logger *utility.Logge
 		ToAddress:   toAddress,
 		Memo:        addressMemo,
 		Amount:      big.NewInt(0),
-		AssetSymbol: recipientAsset.AssetSymbol,
+		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, serviceErr); err != nil {
-		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)
 		return err
 	}
-	if err := updateSweptStatus(assetTransactions, repository, logger); err != nil {
+	if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
 		return err
 	}
 	return nil
 }
 
-func groupTxByAddress(assetTransactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger, recipientAsset model.UserAsset) (map[string][]model.Transaction, error) {
+func getTransactionListInfo(repository database.BaseRepository, assetTransactions []model.Transaction, logger *utility.Logger) (dto.TransactionListInfo, error) {
+	//need representative Asset to get common things about this list like symbol, Decimals etc
+	var transactionListInfo = dto.TransactionListInfo{}
+
+	recipientAsset := model.UserAsset{}
+	//all the tx in assetTransactions have the same recipientId so get info from the 0th position
+	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+		return dto.TransactionListInfo{}, err
+	}
+	transactionListInfo.AssetSymbol = recipientAsset.AssetSymbol
+	transactionListInfo.Decimal = recipientAsset.Decimal
+	return transactionListInfo, nil
+}
+
+func GroupTxByAddress(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, error) {
 	//loop over assetTransactions, get the chainTx and group by address
 	//group transactions by addresses
 	transactionsPerRecipientAddress := make(map[string][]model.Transaction)
-	for _, tx := range assetTransactions {
+	for _, tx := range transactions {
 		chainTransaction := model.ChainTransaction{}
-		err := repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: tx.OnChainTxId}}, &chainTransaction)
-		if err != nil {
-			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v cant fetch chainTransaction for depsoit tx",
-				err, recipientAsset.ID)
-			return nil, err
+		e := getChainTransaction(repository, tx, chainTransaction, logger)
+		if e != nil {
+			return nil, e
 		}
 		if chainTransaction.RecipientAddress != "" {
 			transactionsPerRecipientAddress[chainTransaction.RecipientAddress] = append(transactionsPerRecipientAddress[chainTransaction.RecipientAddress], tx)
-		} else {
-			//Case when the chainTransaction.RecipientAddress is not set and we need to try to sweep all available address types
-			//get allrecipient address
-			recipientAddresses := []model.UserAddress{}
-			if err := repository.Get(model.UserAddress{AssetID: recipientAsset.ID}, &recipientAddresses); err != nil {
-				logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-				return nil, err
-			}
-			for _, address := range recipientAddresses {
-				transactionsPerRecipientAddress[address.Address] = append(transactionsPerRecipientAddress[address.Address], tx)
-			}
 		}
 
 	}
 	return transactionsPerRecipientAddress, nil
+}
+
+func getChainTransaction(repository database.BaseRepository, tx model.Transaction, chainTransaction model.ChainTransaction, logger *utility.Logger) error {
+	err := repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: tx.OnChainTxId}}, &chainTransaction)
+	if err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v cant fetch chainTransaction for depsoit tx",
+			err)
+		return err
+	}
+	return nil
+}
+
+// RemoveBTCTransactions returns the elements in `a` that aren't in `b`.
+func RemoveBTCTransactions(a []model.Transaction, b []model.Transaction) []model.Transaction {
+
+	mb := make(map[uuid.UUID]struct{}, len(b))
+	for _, x := range b {
+		mb[x.ID] = struct{}{}
+	}
+	var diff []model.Transaction
+	for _, x := range a {
+		if _, found := mb[x.ID]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
+
+func ToUniqueAddresses(addresses []string) []string {
+	keys := make(map[string]bool)
+	var list []string
+	for _, entry := range addresses {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
 
 func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, recipientAsset model.UserAsset, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {

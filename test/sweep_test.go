@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 	"wallet-adapter/database"
@@ -88,6 +89,49 @@ func (s *Suite) TestCalculateSumOfBtcBatch() {
 		s.T().Errorf("Expected sum returned to be greater than  %s, got %f\n", "0.2", sum)
 	}
 
+}
+
+func (s *Suite) TestRemoveBTCTx() {
+	addressTransactions := []model.Transaction{}
+	btcTransactions := []model.Transaction{}
+	transation1 := model.Transaction{
+		BaseModel: model.BaseModel{ID: uuid.NewV1()},
+		Value:     "0.12390554019510966",
+	}
+	transation2 := model.Transaction{
+		BaseModel: model.BaseModel{ID: uuid.NewV1()},
+		Value:     "0.112390554019510966",
+	}
+
+	addressTransactions = append(addressTransactions, transation1)
+	addressTransactions = append(addressTransactions, transation2)
+	btcTransactions = append(btcTransactions, transation1)
+
+	result := tasks.RemoveBTCTransactions(addressTransactions, btcTransactions)
+
+	if len(result) != 1 {
+		fmt.Println(result[0].ID)
+		s.T().Errorf("Didnt succesfully get difference in lists ")
+	}
+}
+
+func (s *Suite) TestUniqueAddress() {
+	var addresses []string
+	address1 := "bc1q94tsgpe25dtwuu7w0k7de4m62mdzjesle4zjex"
+	address2 := "bc1qcg8gqlq84veds0gxe20masexr22f2atjn6g6yj"
+	address3 := "bc1qfaawd7h0axqjuhj8e5wta8jgyqxt96rrwfp6qt"
+
+	addresses = append(addresses, address1)
+	addresses = append(addresses, address2)
+	addresses = append(addresses, address3)
+	addresses = append(addresses, address1)
+	fmt.Println("length before unique operation is ", len(addresses))
+
+	addresses = tasks.ToUniqueAddresses(addresses)
+
+	if len(addresses) != 3 {
+		s.T().Errorf("Didnt succesfully get unique addresses ")
+	}
 }
 
 func (s *Suite) TestGetFloatDeficit() {

@@ -233,3 +233,8 @@ type SendSmsRequest struct {
 type SendSmsResponse struct {
 	SendEmailResponse
 }
+
+type TransactionListInfo struct {
+	Decimal     int
+	AssetSymbol string
+}
