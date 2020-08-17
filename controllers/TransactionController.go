@@ -507,6 +507,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		Memo:        transaction.Memo,
 		AssetSymbol: transaction.AssetSymbol,
 		ProcessType: utility.WITHDRAWALPROCESS,
+		Reference:   transaction.DebitReference,
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {

@@ -245,6 +245,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
+		Reference:   assetTransactions[0].TransactionReference,
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, serviceErr); err != nil {
@@ -349,6 +350,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			//this currently only supports coins that supports Memo, ETH will not be ignored
 			Memo:        utility.SWEEPMEMOBNB,
 			ProcessType: utility.FLOATPROCESS,
+			Reference:   fmt.Sprintf("%s-%s", recipientAsset, assetTransactions[0].TransactionReference),
 		}
 		signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
