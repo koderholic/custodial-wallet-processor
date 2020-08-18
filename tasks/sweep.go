@@ -68,7 +68,13 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		if recipientAsset.AssetSymbol == utility.COIN_BTC {
 			//get recipient address for transaction
 			chainTransaction := model.ChainTransaction{}
-			_ = getChainTransaction(repository, tx, chainTransaction, logger)
+			err = getChainTransaction(repository, tx, chainTransaction, logger)
+			if err != nil {
+				logger.Error("Error response from Sweep job, could not get chain transaction :"+
+					" %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+				continue
+
+			}
 			btcAddresses = append(btcAddresses, chainTransaction.RecipientAddress)
 			btcAssetTransactionsToSweep = append(btcAssetTransactionsToSweep, tx)
 			//skip futher processing for this asset, will be included a part of batch btc processing
@@ -81,12 +87,14 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	//Do other Coins apart from BTC
 	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
 	if err != nil {
+		logger.Error("Error grouping By Address", err)
 		return
 	}
 	for address, addressTransactions := range transactionsPerAddress {
 		sum := calculateSum(repository, addressTransactions, logger)
 		logger.Info("Sweeping %s with total of %d", address, sum)
 		if err := sweepPerAddress(cache, logger, config, repository, serviceErr, addressTransactions, sum, address); err != nil {
+			logger.Error("Error response from Sweep job : %+v while sweepPerAddress for address %s", err, address)
 			continue
 		}
 	}
