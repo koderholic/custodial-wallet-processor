@@ -88,7 +88,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	logger.Info("Calling RemoveBTCTransactions()")
 	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
 	//Do other Coins apart from BTC
-	logger.Info("Calling GroupTxByAddress()")
+	logger.Info("Calling GroupTxByAddress() transactions= %+v ", transactions)
 	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
 	if err != nil {
 		logger.Error("Error grouping By Address", err)
@@ -292,16 +292,24 @@ func GroupTxByAddress(transactions []model.Transaction, repository database.Base
 	//group transactions by addresses
 	transactionsPerRecipientAddress := make(map[string][]model.Transaction)
 	for _, tx := range transactions {
+		logger.Info("GroupByTc - getting chain transaction for  %+v", tx.ID)
 		chainTransaction := model.ChainTransaction{}
 		e := getChainTransaction(repository, tx, chainTransaction, logger)
 		if e != nil {
+			logger.Info("GroupByTc - getting chain transaction FAILED for  %+v", tx.ID)
 			return nil, e
 		}
 		if chainTransaction.RecipientAddress != "" {
+			logger.Info("GroupByTc -  %+v chainTransaction.RecipientAddress =  %s", tx.ID, chainTransaction.RecipientAddress)
 			transactionsPerRecipientAddress[chainTransaction.RecipientAddress] = append(transactionsPerRecipientAddress[chainTransaction.RecipientAddress], tx)
+		} else {
+			logger.Info("GroupByTc -  %+v chainTransaction.RecipientAddress is empty string", tx.ID)
+
 		}
 
 	}
+	logger.Info("GroupByTc -  transactionsPerRecipientAddress is ", transactionsPerRecipientAddress)
+
 	return transactionsPerRecipientAddress, nil
 }
 
