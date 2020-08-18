@@ -52,7 +52,6 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	var btcAddresses []string
 	var btcAssetTransactionsToSweep []model.Transaction
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-	logger.Info("Begin BTC filter")
 	for _, tx := range transactions {
 		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
@@ -82,13 +81,10 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			continue
 		}
 	}
-	logger.Info("Calling ToUniqueAddresses()")
 	btcAddresses = ToUniqueAddresses(btcAddresses)
 	//remove btc transactions from list of remaining transactions
-	logger.Info("Calling RemoveBTCTransactions()")
 	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
 	//Do other Coins apart from BTC
-	logger.Info("Calling GroupTxByAddress() transactions= %+v ", transactions)
 	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
 	if err != nil {
 		logger.Error("Error grouping By Address", err)
@@ -292,20 +288,16 @@ func GroupTxByAddress(transactions []model.Transaction, repository database.Base
 	//group transactions by addresses
 	transactionsPerRecipientAddress := make(map[string][]model.Transaction)
 	for _, tx := range transactions {
-		logger.Info("GroupByTc - getting chain transaction for  %+v", tx.ID)
+		logger.Info("GroupByTx - getting chain transaction for  %+v", tx.ID)
 		chainTransaction := model.ChainTransaction{}
 		e := getChainTransaction(repository, tx, &chainTransaction, logger)
-		logger.Info("GroupByTc - chaintx is  %+v", chainTransaction)
+		logger.Info("GroupByTx - chaintx is  %+v", chainTransaction)
 		if e != nil {
-			logger.Info("GroupByTc - getting chain transaction FAILED for  %+v", tx.ID)
+			logger.Info("GroupByTx - getting chain transaction FAILED for  %+v", tx.ID)
 			return nil, e
 		}
 		if chainTransaction.RecipientAddress != "" {
-			logger.Info("GroupByTc -  %+v chainTransaction.RecipientAddress =  %s", tx.ID, chainTransaction.RecipientAddress)
 			transactionsPerRecipientAddress[chainTransaction.RecipientAddress] = append(transactionsPerRecipientAddress[chainTransaction.RecipientAddress], tx)
-		} else {
-			logger.Info("GroupByTc -  %+v chainTransaction.RecipientAddress is empty string", tx.ID)
-
 		}
 
 	}
