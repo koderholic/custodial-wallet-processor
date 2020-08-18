@@ -52,6 +52,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	var btcAddresses []string
 	var btcAssetTransactionsToSweep []model.Transaction
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+	logger.Info("Begin BTC filter")
 	for _, tx := range transactions {
 		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
@@ -81,16 +82,20 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			continue
 		}
 	}
+	logger.Info("Calling ToUniqueAddresses()")
 	btcAddresses = ToUniqueAddresses(btcAddresses)
 	//remove btc transactions from list of remaining transactions
+	logger.Info("Calling RemoveBTCTransactions()")
 	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
 	//Do other Coins apart from BTC
+	logger.Info("Calling GroupTxByAddress()")
 	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
 	if err != nil {
 		logger.Error("Error grouping By Address", err)
 		return
 	}
 	for address, addressTransactions := range transactionsPerAddress {
+		logger.Info("Calling calculateSum()")
 		sum := calculateSum(repository, addressTransactions, logger)
 		logger.Info("Sweeping %s with total of %d", address, sum)
 		if err := sweepPerAddress(cache, logger, config, repository, serviceErr, addressTransactions, sum, address); err != nil {
