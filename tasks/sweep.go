@@ -69,7 +69,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		if recipientAsset.AssetSymbol == utility.COIN_BTC {
 			//get recipient address for transaction
 			chainTransaction := model.ChainTransaction{}
-			err = getChainTransaction(repository, tx, chainTransaction, logger)
+			err = getChainTransaction(repository, tx, &chainTransaction, logger)
 			if err != nil {
 				logger.Error("Error response from Sweep job, could not get chain transaction :"+
 					" %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
@@ -294,7 +294,8 @@ func GroupTxByAddress(transactions []model.Transaction, repository database.Base
 	for _, tx := range transactions {
 		logger.Info("GroupByTc - getting chain transaction for  %+v", tx.ID)
 		chainTransaction := model.ChainTransaction{}
-		e := getChainTransaction(repository, tx, chainTransaction, logger)
+		e := getChainTransaction(repository, tx, &chainTransaction, logger)
+		logger.Info("GroupByTc - chaintx is  %+v", chainTransaction)
 		if e != nil {
 			logger.Info("GroupByTc - getting chain transaction FAILED for  %+v", tx.ID)
 			return nil, e
@@ -313,8 +314,8 @@ func GroupTxByAddress(transactions []model.Transaction, repository database.Base
 	return transactionsPerRecipientAddress, nil
 }
 
-func getChainTransaction(repository database.BaseRepository, tx model.Transaction, chainTransaction model.ChainTransaction, logger *utility.Logger) error {
-	err := repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: tx.OnChainTxId}}, &chainTransaction)
+func getChainTransaction(repository database.BaseRepository, tx model.Transaction, chainTransaction *model.ChainTransaction, logger *utility.Logger) error {
+	err := repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: tx.OnChainTxId}}, chainTransaction)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v cant fetch chainTransaction for depsoit tx",
 			err)
