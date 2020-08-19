@@ -28,11 +28,12 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 	})
 	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
-		status := serviceErr.(*dto.ServicesRequestErr)
-		status.StatusCode = APIResponse.StatusCode
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
@@ -88,11 +89,12 @@ func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, confi
 	})
 	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
-		status := serviceErr.(*dto.ServicesRequestErr)
-		status.StatusCode = APIResponse.StatusCode
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 

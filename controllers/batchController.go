@@ -127,19 +127,25 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	// Calls key-management to sign batched transactions
 	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ServicesRequestErr{}
-	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, serviceErr); err != nil {
-		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
-		if serviceErr.Code == "INSUFFICIENT_FUNDS" {
-			total := int64(0)
-			for _, value := range signTransactionRequest.Recipients {
-				total += value.Value
+	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
+		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
+		if serviceErr.StatusCode == http.StatusBadRequest {
+			if serviceErr.Code == "INSUFFICIENT_FUNDS" {
+				total := int64(0)
+				for _, value := range signTransactionRequest.Recipients {
+					total += value.Value
+				}
+				if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total)); err != nil {
+					processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
+				}
+				return err
 			}
-			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total)); err != nil {
-				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
+			if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.TERMINATED); err != nil {
+				return err
 			}
 			return err
 		}
-		if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.TERMINATED); err != nil {
+		if err := processor.retryBatchProcessing(batch); err != nil {
 			return err
 		}
 		return err
@@ -152,6 +158,9 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
+		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.RETRY_MODE); err != nil {
+			return err
+		}
 		return err
 	}
 
@@ -228,10 +237,6 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 			}
 			return nil
 		}
-		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.START_MODE); err != nil {
-			return err
-		}
-		return nil
 	}
 
 	return nil

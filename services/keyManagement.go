@@ -123,11 +123,14 @@ func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config 
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
@@ -151,11 +154,14 @@ func SignTransactionAndBroadcast(cache *utility.MemoryCache, logger *utility.Log
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
@@ -180,11 +186,14 @@ func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, l
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
@@ -210,11 +219,14 @@ func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.Me
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
