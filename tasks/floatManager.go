@@ -14,6 +14,8 @@ import (
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
+	"wallet-adapter/errorcode"
+
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
 )
@@ -226,7 +228,7 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	}
 	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
 	//send sms
-	if _, err := AcquireLock(utility.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
+	if _, err := AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
 		//lock was successfully acquired
 		services.BuildAndSendSms(assetSymbol, decimalBalance, cache, logger, config, serviceErr)
 	}
@@ -498,7 +500,7 @@ func GetMaxFloatBalance(floatManagerParams model.FloatManagerParam, logger *util
 func IsSentColdWalletMail(repository database.BaseRepository, deficit *big.Float, assetSymbol string) (bool, error) {
 	floatManager := []model.FloatManager{}
 	if err := repository.FetchByLastRunDate(assetSymbol, time.Now().Format("2006-01-02"), &floatManager); err != nil {
-		if utility.SQL_404 == err.Error() {
+		if errorcode.SQL_404 == err.Error() {
 			return true, nil
 		}
 		return false, err

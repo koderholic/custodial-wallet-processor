@@ -9,6 +9,7 @@ import (
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/utility"
 )
 
@@ -64,7 +65,7 @@ func (m *Middleware) Timeout(duration time.Duration) *Middleware {
 		case <-nextRequestCompleted:
 			break
 		case <-ctx.Done():
-			json.NewEncoder(responseWriter).Encode(response.PlainError("TIMEOUT_ERR", utility.TIMEOUT_ERR))
+			json.NewEncoder(responseWriter).Encode(response.PlainError("TIMEOUT_ERR", errorcode.TIMEOUT_ERR))
 			m.logger.Warning("Request Timeout: [duration = %f seconds.]", duration.Seconds())
 			return
 		}
@@ -88,10 +89,10 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 		tokenClaims := dto.TokenClaims{}
 
 		if authToken == "" {
-			m.logger.Error(fmt.Sprintf("Authentication token validation error %s", utility.EMPTY_AUTH_KEY))
+			m.logger.Error(fmt.Sprintf("Authentication token validation error %s", errorcode.EMPTY_AUTH_KEY))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(responseWriter).Encode(response.PlainError("EMPTY_AUTH_KEY", utility.EMPTY_AUTH_KEY))
+			json.NewEncoder(responseWriter).Encode(response.PlainError("EMPTY_AUTH_KEY", errorcode.EMPTY_AUTH_KEY))
 			return
 		}
 
@@ -99,7 +100,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", err))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.INVALID_AUTH_TOKEN))
+			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", errorcode.INVALID_AUTH_TOKEN))
 			return
 		}
 
@@ -107,7 +108,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Resource not accessible by non-service token type"))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.INVALID_TOKENTYPE))
+			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", errorcode.INVALID_TOKENTYPE))
 			return
 		}
 
@@ -115,7 +116,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Unknown Token Issuer"))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", utility.UNKNOWN_ISSUER))
+			json.NewEncoder(responseWriter).Encode(response.PlainError("INVALID_AUTH_TOKEN", errorcode.UNKNOWN_ISSUER))
 			return
 		}
 
@@ -131,7 +132,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 		m.logger.Error(fmt.Sprintf("Authentication token validation error : %s", "Service does not have the required permission"))
 		responseWriter.Header().Set("Content-Type", "application/json")
 		responseWriter.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(responseWriter).Encode(response.Error("FORBIDDEN_ERR", utility.INVALID_PERMISSIONS, map[string]string{"permission": fmt.Sprintf("svcs.%s.%s", m.config.ServiceName, requiredPermission)}))
+		json.NewEncoder(responseWriter).Encode(response.Error("FORBIDDEN_ERR", errorcode.INVALID_PERMISSIONS, map[string]string{"permission": fmt.Sprintf("svcs.%s.%s", m.config.ServiceName, requiredPermission)}))
 		return
 
 	})
