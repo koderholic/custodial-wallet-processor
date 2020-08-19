@@ -94,7 +94,6 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	for addressAndAssetSymbol, addressTransactions := range transactionsPerAddressPerAssetSymbol {
 		stringSlice := strings.Split(addressAndAssetSymbol, utility.SWEEP_GROUPING_SEPERATOR)
 		var address = stringSlice[0]
-		logger.Info("Calling calculateSum()")
 		sum := calculateSum(repository, addressTransactions, logger)
 		logger.Info("Sweeping %s with total of %d", address, sum)
 		if err := sweepPerAddress(cache, logger, config, repository, serviceErr, addressTransactions, sum, address); err != nil {
