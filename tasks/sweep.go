@@ -92,7 +92,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		return
 	}
 	for addressAndAssetSymbol, addressTransactions := range transactionsPerAddressPerAssetSymbol {
-		stringSlice := strings.Split(addressAndAssetSymbol, "|")
+		stringSlice := strings.Split(addressAndAssetSymbol, utility.SWEEP_GROUPING_SEPERATOR)
 		var address = stringSlice[0]
 		logger.Info("Calling calculateSum()")
 		sum := calculateSum(repository, addressTransactions, logger)
