@@ -10,6 +10,7 @@ import (
 	"wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
@@ -130,7 +131,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
 		if serviceErr.StatusCode == http.StatusBadRequest {
-			if serviceErr.Code == utility.CODE_INSUFFICIENT_FUNDS {
+			if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
 				total := int64(0)
 				for _, value := range signTransactionRequest.Recipients {
 					total += value.Value

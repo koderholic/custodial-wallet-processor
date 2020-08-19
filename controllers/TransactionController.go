@@ -12,6 +12,7 @@ import (
 	"wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
@@ -44,7 +45,7 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 	if err := controller.Repository.GetByFieldName(&model.Transaction{TransactionReference: transactionRef}, &transaction); err != nil {
 		controller.Logger.Error("Outgoing response to GetTransaction request %+v", err)
 		responseWriter.Header().Set("Content-Type", "application/json")
-		if err.Error() == utility.SQL_404 {
+		if err.Error() == errorcode.SQL_404 {
 			responseWriter.WriteHeader(http.StatusNotFound)
 		} else {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -72,7 +73,7 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		ReturnError(responseWriter, "GetTransactionsByAssetId", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetTransactionsByAssetId", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetTransactionsByAssetId : assetID : %+v", assetID)
@@ -143,7 +144,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -160,7 +161,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 
 	// Checks to ensure the transaction status of debitReference is completed
 	if debitReferenceTransaction.TransactionStatus != model.TransactionStatus.COMPLETED {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, utility.INVALID_DEBIT, apiResponse.PlainError("INVALID_DEBIT", utility.INVALID_DEBIT), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.INVALID_DEBIT, apiResponse.PlainError("INVALID_DEBIT", errorcode.INVALID_DEBIT), controller.Logger)
 		return
 	}
 
@@ -168,11 +169,11 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	value := decimal.NewFromFloat(requestData.Value)
 	debitValue, err := decimal.NewFromString(debitReferenceTransaction.Value)
 	if err != nil {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 		return
 	}
 	if value.GreaterThan(debitValue) {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, utility.INVALID_DEBIT_AMOUNT, apiResponse.PlainError("INVALID_DEBIT_AMOUNT", utility.INVALID_DEBIT_AMOUNT), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.INVALID_DEBIT_AMOUNT, apiResponse.PlainError("INVALID_DEBIT_AMOUNT", errorcode.INVALID_DEBIT_AMOUNT), controller.Logger)
 		return
 	}
 
@@ -186,7 +187,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// Ensure transaction value is above minimum send to chain
 	minimumSpendable := decimal.NewFromFloat(utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
 	if value.Cmp(minimumSpendable) <= 0 {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, utility.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %d", utility.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %d", errorcode.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
 		return
 	}
 
@@ -195,7 +196,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	if debitReferenceAsset.AssetSymbol == utility.COIN_BTC {
 		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.COIN_BTC)
 		if err != nil {
-			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 			return
 		}
 
@@ -228,7 +229,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		}
 	}()
 	if err := tx.Error; err != nil {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 		return
 	}
 
@@ -290,7 +291,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -313,7 +314,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError(utility.SVCS_CRYPTOADAPTER_ERR, serviceErr.Message), controller.Logger)
 			return
 		}
-		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", utility.SYSTEM_ERR, err.Error())), controller.Logger)
+		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", errorcode.SYSTEM_ERR, err.Error())), controller.Logger)
 		return
 	}
 
@@ -512,7 +513,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error occured while signing and broadcast transaction : %+v", serviceErr)
-		if serviceErr.Code == utility.CODE_INSUFFICIENT_FUNDS {
+		if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
 		}
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {

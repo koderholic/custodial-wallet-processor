@@ -3,6 +3,7 @@ package services
 import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
@@ -20,7 +21,7 @@ func InitSharedAddress(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.
 	var err error
 
 	if err := DB.Order("is_token asc").Where(&model.Denomination{RequiresMemo: true}).Find(&supportedAssets).Error; err != nil {
-		if err.Error() != utility.SQL_404 {
+		if err.Error() != errorcode.SQL_404 {
 			return err
 		}
 	}
@@ -55,7 +56,7 @@ func GetSharedAddressFor(cache *utility.MemoryCache, DB *gorm.DB, logger *utilit
 	sharedAddress := model.SharedAddress{}
 
 	if err := DB.Where(model.SharedAddress{AssetSymbol: asseSymbol}).First(&sharedAddress).Error; err != nil {
-		if err.Error() != utility.SQL_404 {
+		if err.Error() != errorcode.SQL_404 {
 			return "", err
 		}
 		return "", nil

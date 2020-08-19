@@ -1,4 +1,4 @@
-package utility
+package errorcode
 
 const (
 	INPUT_ERR                           = "Invalid Input Supplied. See documentation"
@@ -13,7 +13,7 @@ const (
 	UNKNOWN_ISSUER                      = "Access forbidden for unknown token issuer"
 	NON_MATCHING_DENOMINATION           = "Non matching asset denomination, ensure initiator and recipient has same denomination"
 	TRANSFER_TO_SELF                    = "Transfer to self not allowed"
-	INSUFFICIENT_FUNDS                  = "User asset do not have sufficient balance for this transaction"
+	INSUFFICIENT_FUNDS_ERR              = "User asset do not have sufficient balance for this transaction"
 	SQL_404                             = "record not found"
 	INVALID_DEBIT                       = "Debit reference provided was not successful."
 	INVALID_DEBIT_AMOUNT                = "Value in debit reference does not match value provided."
@@ -22,4 +22,5 @@ const (
 	MINIMUM_SPENDABLE_ERR               = "Transfer amount is lower than the minimum allowed"
 	EMPTY_MEMO_ERR                      = "Memo is required"
 	INSUFFICIENT_BALANCE_FLOAT_SEND_SMS = "INSUFFICIENT_BALANCE_FLOAT_SEND_SMS"
+	INSUFFICIENT_FUNDS                  = "INSUFFICIENT_FUNDS"
 )

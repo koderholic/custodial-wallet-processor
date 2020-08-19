@@ -37,5 +37,4 @@ const (
 	SEPERATOR                    = "_"
 	FUND_SWEEP_FEE_WAIT_TIME     = 3 // In seconds
 	SWEEP_GROUPING_SEPERATOR     = "|"
-	CODE_INSUFFICIENT_FUNDS      = "INSUFFICIENT_FUNDS"
 )

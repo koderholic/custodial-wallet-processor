@@ -6,6 +6,7 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
@@ -23,7 +24,7 @@ func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, confi
 		if externalServiceErr.Code != "" {
 			return v1Address, errors.New(externalServiceErr.Message)
 		}
-		return v1Address, errors.New(utility.SYSTEM_ERR)
+		return v1Address, errors.New(errorcode.SYSTEM_ERR)
 	}
 
 	return v1Address, nil
@@ -33,7 +34,7 @@ func GenerateV2AddressWithMemo(repository database.IUserAssetRepository, logger 
 	v2Address, err := GetSharedAddressFor(cache, repository.Db(), logger, config, userAsset.AssetSymbol)
 	if err != nil || v2Address == "" {
 		logger.Error("Error response from shared address service : %s ", err)
-		return errors.New(utility.SYSTEM_ERR)
+		return errors.New(errorcode.SYSTEM_ERR)
 	}
 	addressWithMemo.Address = v2Address
 	addressWithMemo.Memo, err = GenerateMemo(repository, userAsset.UserID)
@@ -81,7 +82,7 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 	var addressType string
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddress)
-	if (err != nil && err.Error() == utility.SQL_404) || (err == nil && userAddress.Address == "") {
+	if (err != nil && err.Error() == errorcode.SQL_404) || (err == nil && userAddress.Address == "") {
 		isExist, err := CheckCoinTypeAddressExist(repository, logger, userAsset, &assetAddress)
 		if err != nil {
 			return "", err
@@ -120,7 +121,7 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 	var assetAddress dto.AssetAddress
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddress)
-	if (err != nil && err.Error() == utility.SQL_404) || (err == nil && userAddress.V2Address == "") {
+	if (err != nil && err.Error() == errorcode.SQL_404) || (err == nil && userAddress.V2Address == "") {
 		if err := GenerateV2AddressWithMemo(repository, logger, cache, config, userAsset, &assetAddress); err != nil {
 			return dto.AssetAddress{}, err
 		}
@@ -159,7 +160,7 @@ func CheckV2Address(repository database.IUserAssetRepository, address string) (b
 	sharedAddress := model.SharedAddress{}
 
 	if err := repository.GetByFieldName(&model.SharedAddress{Address: address}, &sharedAddress); err != nil {
-		if err.Error() == utility.SQL_404 {
+		if err.Error() == errorcode.SQL_404 {
 			return false, nil
 		}
 		return false, err
