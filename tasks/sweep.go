@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"strings"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -85,12 +86,14 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	//remove btc transactions from list of remaining transactions
 	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
 	//Do other Coins apart from BTC
-	transactionsPerAddress, err := GroupTxByAddress(transactions, repository, logger)
+	transactionsPerAddressPerAssetSymbol, err := GroupTxByAddressByAssetSymbol(transactions, repository, logger)
 	if err != nil {
 		logger.Error("Error grouping By Address", err)
 		return
 	}
-	for address, addressTransactions := range transactionsPerAddress {
+	for addressAndAssetSymbol, addressTransactions := range transactionsPerAddressPerAssetSymbol {
+		stringSlice := strings.Split(addressAndAssetSymbol, "|")
+		var address = stringSlice[0]
 		logger.Info("Calling calculateSum()")
 		sum := calculateSum(repository, addressTransactions, logger)
 		logger.Info("Sweeping %s with total of %d", address, sum)
@@ -283,7 +286,7 @@ func getTransactionListInfo(repository database.BaseRepository, assetTransaction
 	return transactionListInfo, nil
 }
 
-func GroupTxByAddress(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, error) {
+func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, error) {
 	//loop over assetTransactions, get the chainTx and group by address
 	//group transactions by addresses
 	transactionsPerRecipientAddress := make(map[string][]model.Transaction)
@@ -297,11 +300,12 @@ func GroupTxByAddress(transactions []model.Transaction, repository database.Base
 			return nil, e
 		}
 		if chainTransaction.RecipientAddress != "" {
-			transactionsPerRecipientAddress[chainTransaction.RecipientAddress] = append(transactionsPerRecipientAddress[chainTransaction.RecipientAddress], tx)
+			key := chainTransaction.RecipientAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol
+			transactionsPerRecipientAddress[key] = append(transactionsPerRecipientAddress[key], tx)
 		}
 
 	}
-	logger.Info("GroupByTc -  transactionsPerRecipientAddress is ", transactionsPerRecipientAddress)
+	logger.Info("GroupByTx -  transactionsPerRecipientAddress is ", transactionsPerRecipientAddress)
 
 	return transactionsPerRecipientAddress, nil
 }
