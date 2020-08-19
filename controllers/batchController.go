@@ -130,7 +130,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
 		if serviceErr.StatusCode == http.StatusBadRequest {
-			if serviceErr.Code == "INSUFFICIENT_FUNDS" {
+			if serviceErr.Code == utility.BALANCE_INSUFFICIENT_FUNDS {
 				total := int64(0)
 				for _, value := range signTransactionRequest.Recipients {
 					total += value.Value
