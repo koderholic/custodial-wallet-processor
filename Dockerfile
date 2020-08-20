@@ -10,6 +10,8 @@ COPY ./ /src
 RUN go build -o /build/service
 RUN go build -o /build/float_manager cronjobs/float_manager/entry.go
 RUN go build -o /build/sweep_job cronjobs/sweep_job/entry.go
+RUN go get -u github.com/kisielk/errcheck && go get github.com/golangci/govet
+RUN /go/bin/errcheck -verbose -exclude /build/checkIgnore ./... && go vet ./...
 
 
 FROM debian:latest
