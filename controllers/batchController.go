@@ -10,6 +10,7 @@ import (
 	"wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
@@ -108,7 +109,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	for _, transaction := range queuedBatchedTransactions {
 		recipient := dto.BatchRecipients{
 			Address: transaction.Recipient,
-			Value:   transaction.Value.BigInt(),
+			Value:   transaction.Value.BigInt().Int64(),
 		}
 		batchedRecipients = append(batchedRecipients, recipient)
 		batchedTransactionsIds = append(batchedTransactionsIds, transaction.TransactionId)
@@ -120,49 +121,47 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		ChangeAddress: floatAccount,
 		Origins:       []string{floatAccount},
 		Recipients:    batchedRecipients,
+		ProcessType:   utility.WITHDRAWALPROCESS,
+		Reference:     batch.ID.String(),
 	}
 
 	// Calls key-management to sign batched transactions
-	signTransactionResponse := dto.SignTransactionResponse{}
+	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ServicesRequestErr{}
-	if err := services.SignBatchBTCTransaction(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
-		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
-		if serviceErr.Code == "INSUFFICIENT_BALANCE" {
-			total := big.NewInt(0)
-			for _, value := range signTransactionRequest.Recipients {
-				total.Add(total, value.Value)
+	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
+		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
+		if serviceErr.StatusCode == http.StatusBadRequest {
+			if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
+				total := int64(0)
+				for _, value := range signTransactionRequest.Recipients {
+					total += value.Value
+				}
+				if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total)); err != nil {
+					processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
+				}
+				return err
 			}
-			if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total.Int64())); err != nil {
-				processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while calling ProcessBatchTxnWithInsufficientFloat", err)
+			if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.TERMINATED); err != nil {
+				return err
 			}
+			return err
 		}
-		return err
-	}
-
-	if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.RETRY_MODE); err != nil {
-		return err
-	}
-
-	// Send the signed data to crypto adapter to send to chain
-	broadcastToChainRequest := dto.BroadcastToChainRequest{
-		SignedData:  signTransactionResponse.SignedData,
-		AssetSymbol: batch.AssetSymbol,
-		Reference:   batch.ID.String(),
-		ProcessType: utility.WITHDRAWALPROCESS,
-	}
-	broadcastToChainResponse := dto.BroadcastToChainResponse{}
-	if err := services.BroadcastToChain(processor.Cache, processor.Logger, processor.Config, broadcastToChainRequest, &broadcastToChainResponse, serviceErr); err != nil {
-		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while broadcasting to chain", err)
+		if err := processor.retryBatchProcessing(batch); err != nil {
+			return err
+		}
 		return err
 	}
 
 	// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash: broadcastToChainResponse.TransactionHash,
+		TransactionHash: SignBatchTransactionAndBroadcastResponse.TransactionHash,
 		BatchID:         batch.ID,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
+		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.RETRY_MODE); err != nil {
+			return err
+		}
 		return err
 	}
 
@@ -239,10 +238,6 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 			}
 			return nil
 		}
-		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.START_MODE); err != nil {
-			return err
-		}
-		return nil
 	}
 
 	return nil
@@ -317,7 +312,6 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 		processor.SweepTriggered = true
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
 	}
-
 	return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, sweep operation in progress."))
 }
 

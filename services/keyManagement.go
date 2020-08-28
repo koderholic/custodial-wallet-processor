@@ -20,7 +20,7 @@ func (service BaseService) GenerateAddress(userID uuid.UUID, symbol string, coin
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, []string{generatedAddress}, coinType); err != nil {
+	if err := service.subscribeAddress(serviceErr, []string{generatedAddress}, userID, coinType); err != nil {
 		return "", err
 	}
 
@@ -99,7 +99,7 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, addressArray, coinType); err != nil {
+	if err := service.subscribeAddress(serviceErr, addressArray, userID, coinType); err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
 
@@ -123,18 +123,52 @@ func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config 
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
 	return nil
 }
 
-func SignBatchBTCTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
+// SignTransaction ... Calls key-management service with a transaction object to sign
+func SignTransactionAndBroadcast(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SignTransactionRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+
+	authToken, err := GetAuthToken(cache, logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("signAndBroadcastTransaction", config)
+
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
+		return err
+	}
+
+	return nil
+}
+
+func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
@@ -152,11 +186,14 @@ func SignBatchBTCTransaction(httpClient *http.Client, cache *utility.MemoryCache
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
@@ -164,28 +201,68 @@ func SignBatchBTCTransaction(httpClient *http.Client, cache *utility.MemoryCache
 
 }
 
-func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray []string, coinType int64) error {
+func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+	authToken, err := GetAuthToken(cache, logger, config)
+	if err != nil {
+		return err
+	}
+	metaData := utility.GetRequestMetaData("signBatchTransactionAndbroadcast", config)
 
-	subscriptionRequestData := dto.SubscriptionRequest{}
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	if httpClient != nil {
+		APIClient.httpClient = httpClient
+	}
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
+	if err != nil {
+		return err
+	}
+	APIClient.AddHeader(APIRequest, map[string]string{
+		"x-auth-token": authToken,
+	})
+	APIResponse, err := APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+			return err
+		}
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
+		return err
+	}
+
+	return nil
+
+}
+
+//does v1 and v2 address subscriptions
+func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray []string, userID uuid.UUID, coinType int64) error {
+
+	subscriptionRequestData := dto.SubscriptionRequestV1{}
+	subscriptionRequestDataV2 := dto.SubscriptionRequestV2{}
 	subscriptionRequestData.Subscriptions = make(map[string][]string)
+	subscriptionRequestDataV2.Subscriptions = make(map[string][]string)
 	switch coinType {
 	case 0:
 		subscriptionRequestData.Subscriptions[service.Config.BtcSlipValue] = addressArray
+		subscriptionRequestDataV2.Subscriptions[service.Config.BtcSlipValue] = addressArray
 		break
 	case 60:
 		subscriptionRequestData.Subscriptions[service.Config.EthSlipValue] = addressArray
+		subscriptionRequestDataV2.Subscriptions[service.Config.EthSlipValue] = addressArray
 		break
 	case 714:
 		subscriptionRequestData.Subscriptions[service.Config.BnbSlipValue] = addressArray
+		subscriptionRequestDataV2.Subscriptions[service.Config.BnbSlipValue] = addressArray
 		break
 	}
 	subscriptionRequestData.Webhook = service.Config.DepositWebhookURL
+	subscriptionRequestDataV2.UserId = userID
 
 	subscriptionResponseData := dto.SubscriptionResponse{}
-
-	if err := SubscribeAddress(service.Cache, service.Logger, service.Config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
+	if err := SubscribeAddressV1(service.Cache, service.Logger, service.Config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
 		service.Logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)
 		return err
 	}
+
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/utility"
 
 	validation "gopkg.in/go-playground/validator.v9"
@@ -105,7 +106,7 @@ func ReturnError(responseWriter http.ResponseWriter, executingMethod string, sta
 
 	switch err.(type) {
 	case error:
-		if err.(error).Error() == utility.SQL_404 {
+		if err.(error).Error() == errorcode.SQL_404 {
 			status = http.StatusNotFound
 		}
 	}

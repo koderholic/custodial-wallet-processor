@@ -3,6 +3,7 @@ package services
 import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
@@ -20,7 +21,7 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 	var err error
 
 	if err := DB.Order("created_at", true).Find(&supportedAssets).Error; err != nil {
-		if err.Error() != utility.SQL_404 {
+		if err.Error() != errorcode.SQL_404 {
 			return err
 		}
 	}
@@ -63,7 +64,7 @@ func GetHotWalletAddressFor(cache *utility.MemoryCache, DB *gorm.DB, logger *uti
 	hotWallet := model.HotWalletAsset{}
 
 	if err := DB.Where(model.HotWalletAsset{AssetSymbol: asseSymbol}).First(&hotWallet).Error; err != nil {
-		if err.Error() != utility.SQL_404 {
+		if err.Error() != errorcode.SQL_404 {
 			return "", err
 		}
 		return "", nil

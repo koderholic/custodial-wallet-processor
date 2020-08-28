@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
@@ -30,7 +31,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "CreateUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "CreateUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -40,7 +41,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		denomination := model.Denomination{}
 
 		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
-			if err.Error() == utility.SQL_404 {
+			if err.Error() == errorcode.SQL_404 {
 				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
 				return
 			}
@@ -78,7 +79,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	routeParams := mux.Vars(requestReader)
 	userID, err := uuid.FromString(routeParams["userId"])
 	if err != nil {
-		ReturnError(responseWriter, "GetUserAssets", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssets", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssets : userID : %+v", userID)
@@ -119,7 +120,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		ReturnError(responseWriter, "GetUserAssetById", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetById", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetUserAssetById : assetID : %+v", assetID)
@@ -164,7 +165,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	// Check if asset is supported
 	denomination := model.Denomination{}
 	if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		if err.Error() == utility.SQL_404 {
+		if err.Error() == errorcode.SQL_404 {
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)), controller.Logger)
 			return
 		}
@@ -175,30 +176,31 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	// Ensure Memos are provided for v2_addresses
 	IsV2Address, err := services.CheckV2Address(controller.Repository, address)
 	if err != nil {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 		return
 	}
 
 	if IsV2Address {
 		if userAssetMemo == "" {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.EMPTY_MEMO_ERR), controller.Logger)
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.EMPTY_MEMO_ERR), controller.Logger)
 			return
 		}
-		userAsset, err = services.GetAssetForV2Address(controller.Repository, address, assetSymbol, userAssetMemo)
+		userAsset, err = services.GetAssetForV2Address(controller.Repository, controller.Logger, address, assetSymbol, userAssetMemo)
 		if err != nil {
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 			return
 		}
 	} else {
-		userAsset, err = services.GetAssetForV1Address(controller.Repository, address, assetSymbol)
+		userAsset, err = services.GetAssetForV1Address(controller.Repository, controller.Logger, address, assetSymbol)
 		if err != nil {
 			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 			return
 		}
 	}
+	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address %+v", userAsset)
 
 	if userAsset.AssetSymbol == "" {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, utility.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, errorcode.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAsset)
@@ -227,7 +229,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "CreditUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
@@ -319,7 +321,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -438,7 +440,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -460,13 +462,13 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 
 	// Ensure transfer cannot be done to self
 	if requestData.InitiatorAssetId == requestData.RecipientAssetId {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.NON_MATCHING_DENOMINATION, apiResponse.PlainError("INPUT_ERR", utility.TRANSFER_TO_SELF), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, errorcode.NON_MATCHING_DENOMINATION, apiResponse.PlainError("INPUT_ERR", errorcode.TRANSFER_TO_SELF), controller.Logger)
 		return
 	}
 
 	// Check if the denomination in the transction request is same for initiator and recipient
 	if initiatorAssetDetails.DenominationID != recipientAssetDetails.DenominationID {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.NON_MATCHING_DENOMINATION, apiResponse.PlainError("INPUT_ERR", utility.NON_MATCHING_DENOMINATION), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, errorcode.NON_MATCHING_DENOMINATION, apiResponse.PlainError("INPUT_ERR", errorcode.NON_MATCHING_DENOMINATION), controller.Logger)
 		return
 	}
 
@@ -477,7 +479,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 
 	// Checks if initiator has enough value to transfer
 	if !utility.IsGreater(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal) {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("INPUT_ERR", utility.INSUFFICIENT_FUNDS), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, errorcode.INSUFFICIENT_FUNDS_ERR, apiResponse.PlainError("INPUT_ERR", errorcode.INSUFFICIENT_FUNDS_ERR), controller.Logger)
 		return
 	}
 
@@ -488,7 +490,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		}
 	}()
 	if err := tx.Error; err != nil {
-		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.SYSTEM_ERR), controller.Logger)
+		ReturnError(responseWriter, "InternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 		return
 	}
 
@@ -562,7 +564,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", utility.INPUT_ERR, validationErr), controller.Logger)
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, validationErr, apiResponse.Error("INPUT_ERR", errorcode.INPUT_ERR, validationErr), controller.Logger)
 		return
 	}
 
@@ -583,7 +585,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 
 	// Checks if user asset has enough value to for the transaction
 	if !utility.IsGreater(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal) {
-		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, utility.INSUFFICIENT_FUNDS, apiResponse.PlainError("INSUFFICIENT_FUNDS", utility.INSUFFICIENT_FUNDS), controller.Logger)
+		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, errorcode.INSUFFICIENT_FUNDS_ERR, apiResponse.PlainError("INSUFFICIENT_FUNDS_ERR", errorcode.INSUFFICIENT_FUNDS_ERR), controller.Logger)
 		return
 	}
 

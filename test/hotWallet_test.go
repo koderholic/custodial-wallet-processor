@@ -1,9 +1,9 @@
 package test
 
 import (
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
-	"wallet-adapter/utility"
 
 	"github.com/stretchr/testify/require"
 
@@ -39,7 +39,7 @@ func (s *Suite) Test_BUSDHotWalletCreation() {
 	}
 
 	if err := s.DB.Where(model.HotWalletAsset{AssetSymbol: "BUSD"}).First(&hotWallet).Error; err != nil {
-		if err.Error() != utility.SQL_404 {
+		if err.Error() != errorcode.SQL_404 {
 			require.NoError(s.T(), err)
 		}
 		s.T().Errorf("Expected BUSD hot wallet account to be created, got %d", 404)

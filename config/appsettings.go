@@ -12,45 +12,47 @@ import (
 
 //Data : config data
 type Data struct {
-	AppPort                     string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
-	ServiceName                 string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
-	DBHost                      string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
-	DBUser                      string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
-	DBPassword                  string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
-	DBName                      string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
-	BasePath                    string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
-	ServiceID                   string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"AUTHENTICATION_SERVICE_SERVICE_ID,omitempty"`
-	ServiceKey                  string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"AUTHENTICATION_SERVICE_TOKEN,omitempty"`
-	AuthenticatorKey            string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
-	AuthenticationService       string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
-	KeyManagementService        string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
-	CryptoAdapterService        string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
-	LockerService               string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
-	LockerPrefix                string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
-	DepositWebhookURL           string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
-	WithdrawToHotWalletUrl      string        `mapstructure:"withdrawToHotWalletUrl"  yaml:"withdrawToHotWalletUrl,omitempty"`
-	NotificationServiceUrl      string        `mapstructure:"notificationServiceUrl"  yaml:"notificationServiceUrl,omitempty"`
-	ColdWalletEmail             string        `mapstructure:"coldWalletEmail"  yaml:"coldWalletEmail,omitempty"`
-	ColdWalletSmsNumber         string        `mapstructure:"coldWalletSmsNumber"  yaml:"coldWalletSmsNumber,omitempty"`
-	ColdWalletEmailTemplateId   string        `mapstructure:"coldWalletEmailTemplateId"  yaml:"coldWalletEmailTemplateId,omitempty"`
-	BtcSlipValue                string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
-	BnbSlipValue                string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
-	EthSlipValue                string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
-	PurgeCacheInterval          time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
-	RequestTimeout              time.Duration `mapstructure:"requestTimeout"  yaml:"requestTimeout,omitempty"`
-	ExpireCacheDuration         time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
-	SweepFeePercentageThreshold int64         `mapstructure:"sweepFeePercentageThreshold"  yaml:"sweepFeePercentageThreshold,omitempty"`
-	SweepBtcBatchMinimum        float64       `mapstructure:"sweepBtcBatchMinimum"  yaml:"sweepBtcBatchMinimum,omitempty"`
-	MaxIdleConns                int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
-	MaxOpenConns                int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
-	ConnMaxLifetime             int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
-	FloatPercentage             int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
-	EnableFloatManager          bool          `mapstructure:"enableFloatManager"  yaml:"enableFloatManager,omitempty"`
-	SweepCronInterval           string        `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
-	FloatCronInterval           string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
-	DBMigrationPath             string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
-	SentryDsn                   string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
-	SENTRY_ENVIRONMENT          string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
+	AppPort                   string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
+	ServiceName               string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
+	DBHost                    string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
+	DBUser                    string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
+	DBPassword                string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`
+	DBName                    string        `mapstructure:"DB_NAME"  yaml:"DB_NAME,omitempty"`
+	BasePath                  string        `mapstructure:"basePath"  yaml:"basePath,omitempty"`
+	ServiceID                 string        `mapstructure:"AUTHENTICATION_SERVICE_SERVICE_ID"  yaml:"AUTHENTICATION_SERVICE_SERVICE_ID,omitempty"`
+	ServiceKey                string        `mapstructure:"AUTHENTICATION_SERVICE_TOKEN"  yaml:"AUTHENTICATION_SERVICE_TOKEN,omitempty"`
+	AuthenticatorKey          string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
+	AuthenticationService     string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
+	KeyManagementService      string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
+	CryptoAdapterService      string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
+	LockerService             string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
+	LockerPrefix              string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
+	DepositWebhookURL         string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
+	WithdrawToHotWalletUrl    string        `mapstructure:"withdrawToHotWalletUrl"  yaml:"withdrawToHotWalletUrl,omitempty"`
+	NotificationServiceUrl    string        `mapstructure:"notificationServiceUrl"  yaml:"notificationServiceUrl,omitempty"`
+	ColdWalletEmail           string        `mapstructure:"coldWalletEmail"  yaml:"coldWalletEmail,omitempty"`
+	ColdWalletSmsNumber       string        `mapstructure:"coldWalletSmsNumber"  yaml:"coldWalletSmsNumber,omitempty"`
+	ColdWalletEmailTemplateId string        `mapstructure:"coldWalletEmailTemplateId"  yaml:"coldWalletEmailTemplateId,omitempty"`
+	BtcSlipValue              string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
+	BnbSlipValue              string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
+	EthSlipValue              string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
+	PurgeCacheInterval        time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
+	RequestTimeout            time.Duration `mapstructure:"requestTimeout"  yaml:"requestTimeout,omitempty"`
+	ExpireCacheDuration       time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
+	MaxIdleConns              int           `mapstructure:"maxIdleConns"  yaml:"maxIdleConns,omitempty"`
+	MaxOpenConns              int           `mapstructure:"maxOpenConns"  yaml:"maxOpenConns,omitempty"`
+	ConnMaxLifetime           int           `mapstructure:"connMaxLifetime"  yaml:"connMaxLifetime,omitempty"`
+	FloatPercentage           int           `mapstructure:"floatPercentage"  yaml:"floatPercentage,omitempty"`
+	EnableFloatManager        bool          `mapstructure:"enableFloatManager"  yaml:"enableFloatManager,omitempty"`
+	SweepCronInterval         string        `mapstructure:"sweepCronInterval"  yaml:"sweepCronInterval,omitempty"`
+	FloatCronInterval         string        `mapstructure:"floatCronInterval"  yaml:"floatCronInterval,omitempty"`
+	DBMigrationPath           string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
+	SentryDsn                 string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
+	SENTRY_ENVIRONMENT        string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
+	BTC_minimumSweep          float64       `mapstructure:"BTC_minimumSweep"  yaml:"BTC_minimumSweep,omitempty"`
+	BNB_minimumSweep          float64       `mapstructure:"BNB_minimumSweep"  yaml:"BNB_minimumSweep,omitempty"`
+	ETH_minimumSweep          float64       `mapstructure:"ETH_minimumSweep"  yaml:"ETH_minimumSweep,omitempty"`
+	BUSD_minimumSweep         float64       `mapstructure:"BUSD_minimumSweep"  yaml:"BUSD_minimumSweep,omitempty"`
 }
 
 //Init : initialize data
@@ -71,6 +73,11 @@ func (c *Data) Init(configDir string) {
 	viper.BindEnv("DB_PASSWORD")
 	viper.BindEnv("DB_NAME")
 	viper.BindEnv("SENTRY_ENVIRONMENT")
+
+	viper.BindEnv("BTC_minimumSweep")
+	viper.BindEnv("BNB_minimumSweep")
+	viper.BindEnv("ETH_minimumSweep")
+	viper.BindEnv("BUSD_minimumSweep")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")

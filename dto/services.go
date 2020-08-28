@@ -1,8 +1,9 @@
 package dto
 
 import (
-	uuid "github.com/satori/go.uuid"
 	"math/big"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 // GenerateAddressRequest ... Request definition for generate address , key-management service
@@ -36,6 +37,8 @@ type SignTransactionRequest struct {
 	Amount      *big.Int `json:"amount"`
 	AssetSymbol string   `json:"assetSymbol"`
 	IsSweep     bool     `json:"isSweep"`
+	ProcessType string   `json:"processType"`
+	Reference   string   `json:"reference"`
 }
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
@@ -53,13 +56,18 @@ type BroadcastToChainRequest struct {
 }
 
 // BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
-type BroadcastToChainResponse struct {
+type SignAndBroadcastResponse struct {
 	TransactionHash string `json:"transactionHash"`
 }
 
-type SubscriptionRequest struct {
+type SubscriptionRequestV1 struct {
 	Subscriptions map[string][]string `json:"subscriptions"`
 	Webhook       string              `json:"webhook"`
+}
+
+type SubscriptionRequestV2 struct {
+	Subscriptions map[string][]string `json:"subscriptions"`
+	UserId        uuid.UUID           `json:"userId"`
 }
 
 type SubscriptionResponse struct {
@@ -225,4 +233,9 @@ type SendSmsRequest struct {
 
 type SendSmsResponse struct {
 	SendEmailResponse
+}
+
+type TransactionListInfo struct {
+	Decimal     int
+	AssetSymbol string
 }

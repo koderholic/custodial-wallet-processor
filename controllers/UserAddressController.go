@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
@@ -25,7 +26,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		ReturnError(responseWriter, "GetAssetAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetAssetAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
@@ -39,7 +40,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 		v2Address, err := services.GetV2AddressWithMemo(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 		if err != nil {
 			controller.Logger.Info("Error from GetV2AddressWithMemo service : %s", err)
-			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
+			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
 			return
 		}
 		address = v2Address.Address
@@ -48,7 +49,7 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 		address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 		if err != nil {
 			controller.Logger.Info("Error from GetV1Address service : %s", err)
-			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
+			ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
 			return
 		}
 	}
@@ -72,7 +73,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 	routeParams := mux.Vars(requestReader)
 	assetID, err := uuid.FromString(routeParams["assetId"])
 	if err != nil {
-		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", utility.UUID_CAST_ERR), controller.Logger)
+		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
 		return
 	}
 	controller.Logger.Info("Incoming request details for GetAllAssetAddresses : assetID : %+v", assetID)
@@ -86,7 +87,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		v2Address, err := services.GetV2AddressWithMemo(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 		if err != nil {
 			controller.Logger.Info("Error from GetV2AddressWithMemo service : %s", err)
-			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
+			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
 			return
 		}
 		responseData.Addresses = append(responseData.Addresses, dto.AssetAddress{
@@ -108,7 +109,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		}
 
 		if err != nil {
-			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", utility.SYSTEM_ERR), controller.Logger)
+			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
 			return
 		}
 	}

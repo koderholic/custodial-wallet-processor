@@ -10,7 +10,7 @@ import (
 )
 
 // broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BroadcastToChainRequest, responseData *dto.BroadcastToChainResponse, serviceErr interface{}) error {
+func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BroadcastToChainRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -28,19 +28,20 @@ func BroadcastToChain(cache *utility.MemoryCache, logger *utility.Logger, config
 	})
 	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
-		status := serviceErr.(*dto.ServicesRequestErr)
-		status.StatusCode = APIResponse.StatusCode
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 
 	return nil
 }
 
-func SubscribeAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SubscriptionRequest, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
-	metaData := utility.GetRequestMetaData("subscribeAddress", config)
+func SubscribeAddressV1(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SubscriptionRequestV1, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
+	metaData := utility.GetRequestMetaData("subscribeAddressV1", config)
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
@@ -88,11 +89,12 @@ func TransactionStatus(cache *utility.MemoryCache, logger *utility.Logger, confi
 	})
 	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
 			return err
 		}
-		status := serviceErr.(*dto.ServicesRequestErr)
-		status.StatusCode = APIResponse.StatusCode
+		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
+		errWithStatus.StatusCode = APIResponse.StatusCode
+		serviceErr = errWithStatus
 		return err
 	}
 

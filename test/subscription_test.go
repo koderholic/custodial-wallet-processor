@@ -28,13 +28,13 @@ func TestSubscribeAddress(t *testing.T) {
 	subs := make(map[string][]string)
 	addressArray := []string{"bc1qq65rn0wzjnmcwqz4jp0cx48lvj7ynectmw60jj"}
 	subs[configTest.BtcSlipValue] = addressArray
-	requestData := dto.SubscriptionRequest{
+	requestData := dto.SubscriptionRequestV1{
 		Subscriptions: subs,
 		Webhook:       configTest.DepositWebhookURL,
 	}
 	subscriptionResponseData := dto.SubscriptionResponse{}
 	serviceErr := dto.ServicesRequestErr{}
 
-	services.SubscribeAddress(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
+	services.SubscribeAddressV1(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
 
 }
