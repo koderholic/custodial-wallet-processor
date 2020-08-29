@@ -216,12 +216,9 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 
 	//Check that sweep amount is not below the minimum sweep amount
-	isAmountSufficient := CheckSweepMinimum(denomination, config, sum, logger)
+	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
 	if !isAmountSufficient {
-		return utility.AppError{
-			ErrType: utility.SWEEP_ERROR_INSUFFICIENT,
-			Err:     errors.New(utility.SWEEP_ERROR_INSUFFICIENT),
-		}
+		return err
 	}
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != utility.COIN_BNB {
@@ -255,21 +252,30 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
-func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) bool {
+func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) (bool, error) {
 	var minimumSweep float64
 	switch denomination.AssetSymbol {
 	case utility.COIN_ETH:
 		minimumSweep = config.ETH_minimumSweep
+
 	case utility.COIN_BNB:
 		minimumSweep = config.BNB_minimumSweep
 	case utility.COIN_BUSD:
 		minimumSweep = config.BUSD_minimumSweep
+	default:
+		return false, utility.AppError{
+			ErrType: utility.SWEEP_ERROR_ASSET_NOT_SUPPORTED,
+			Err:     errors.New(utility.SWEEP_ERROR_ASSET_NOT_SUPPORTED),
+		}
 	}
 	if sum < minimumSweep {
 		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, minimumSweep)
-		return false
+		return false, utility.AppError{
+			ErrType: utility.SWEEP_ERROR_INSUFFICIENT,
+			Err:     errors.New(utility.SWEEP_ERROR_INSUFFICIENT),
+		}
 	}
-	return true
+	return true, nil
 }
 
 func getTransactionListInfo(repository database.BaseRepository, assetTransactions []model.Transaction, logger *utility.Logger) (dto.TransactionListInfo, error) {
