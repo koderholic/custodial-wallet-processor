@@ -3,7 +3,6 @@ package tasks
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"strconv"
 	"strings"
@@ -94,7 +93,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	for addressAndAssetSymbol, addressTransactions := range transactionsPerAddressPerAssetSymbol {
 		stringSlice := strings.Split(addressAndAssetSymbol, utility.SWEEP_GROUPING_SEPERATOR)
 		var address = stringSlice[0]
-		sum := calculateSum(repository, addressTransactions, logger)
+		sum := CalculateSum(addressTransactions)
 		logger.Info("Sweeping %s with total of %d", address, sum)
 		if err := sweepPerAddress(cache, logger, config, repository, serviceErr, addressTransactions, sum, address); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweepPerAddress for address %s", err, address)
@@ -119,18 +118,13 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	logger.Info("Sweep operation ends successfully, lock released")
 }
 
-func calculateSum(repository database.BaseRepository, addressTransactions []model.Transaction, logger *utility.Logger) int64 {
-	transactionListInfo, _ := getTransactionListInfo(repository, addressTransactions, logger)
+func CalculateSum(addressTransactions []model.Transaction) *big.Float {
 	//Get total sum to be swept for this assetId address
-	var sum = int64(0)
+	sum := new(big.Float)
 	for _, tx := range addressTransactions {
-		//convert to native units
 		balance, _ := strconv.ParseFloat(tx.Value, 64)
-		//choose 1st of the address transaction, would have
-		// the same denominationDecimal as the rest
-		denominationDecimal := float64(transactionListInfo.Decimal)
-		scaledBalance := int64(balance * math.Pow(10, denominationDecimal))
-		sum = sum + scaledBalance
+		balanceAsBigFloat := big.NewFloat(balance)
+		sum = sum.Add(sum, balanceAsBigFloat)
 	}
 	return sum
 }
@@ -201,7 +195,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 }
 
-func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum int64, recipientAddress string) error {
+func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum *big.Float, recipientAddress string) error {
 	transactionListInfo, e := getTransactionListInfo(repository, addressTransactions, logger)
 	if e != nil {
 		return e
@@ -223,20 +217,13 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 
 	//Check that sweep amount is not below the minimum sweep amount
-	var minimumSweep float64
-	switch denomination.AssetSymbol {
-	case utility.COIN_ETH:
-		minimumSweep = config.ETH_minimumSweep
-	case utility.COIN_BNB:
-		minimumSweep = config.BNB_minimumSweep
-	case utility.COIN_BUSD:
-		minimumSweep = config.BUSD_minimumSweep
+	isAmountSufficient := CheckSweepMinimum(denomination, config, sum, logger)
+	if !isAmountSufficient {
+		return utility.AppError{
+			ErrType: "Sweep amount is inssuficient",
+			Err:     nil,
+		}
 	}
-	if float64(sum) < minimumSweep {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.BTC_minimumSweep, err)
-		return err
-	}
-
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != utility.COIN_BNB {
 		//send sweep fee to main address
@@ -267,6 +254,24 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 	return nil
+}
+
+func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum *big.Float, logger *utility.Logger) bool {
+	var minimumSweep float64
+	switch denomination.AssetSymbol {
+	case utility.COIN_ETH:
+		minimumSweep = config.ETH_minimumSweep
+	case utility.COIN_BNB:
+		minimumSweep = config.BNB_minimumSweep
+	case utility.COIN_BUSD:
+		minimumSweep = config.BUSD_minimumSweep
+	}
+	minimumSweepAsBigFloat := big.NewFloat(minimumSweep)
+	if sum.Cmp(minimumSweepAsBigFloat) < 0 {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.BTC_minimumSweep)
+		return false
+	}
+	return true
 }
 
 func getTransactionListInfo(repository database.BaseRepository, assetTransactions []model.Transaction, logger *utility.Logger) (dto.TransactionListInfo, error) {
