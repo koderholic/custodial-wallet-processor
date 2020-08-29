@@ -220,7 +220,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	if !isAmountSufficient {
 		return utility.AppError{
 			ErrType: utility.SWEEP_ERROR_INSUFFICIENT,
-			Err:     nil,
+			Err:     errors.New(utility.SWEEP_ERROR_INSUFFICIENT),
 		}
 	}
 	//Do this only for BEp-2 tokens and not for BNB itself
