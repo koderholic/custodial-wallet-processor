@@ -220,14 +220,14 @@ func (s *Suite) TestSumSweepTx() {
 
 	sum := tasks.CalculateSum(transactions)
 
-	assert.Equal(s.T(), sum, big.NewFloat(0.5), "Sum should be equal to 0.5")
+	assert.Equal(s.T(), sum, float64(0.5), "Sum should be equal to 0.5")
 }
 
 func (s *Suite) TestCheckSweepMinimum() {
 	denomination := model.Denomination{
 		AssetSymbol: "ETH",
 	}
-	sum := big.NewFloat(0.5)
+	sum := float64(0.5)
 	s.Config.ETH_minimumSweep = 0.9
 	isAmountSufficient := tasks.CheckSweepMinimum(denomination, s.Config, sum, s.Logger)
 

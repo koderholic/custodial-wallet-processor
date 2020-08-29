@@ -118,13 +118,12 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	logger.Info("Sweep operation ends successfully, lock released")
 }
 
-func CalculateSum(addressTransactions []model.Transaction) *big.Float {
+func CalculateSum(addressTransactions []model.Transaction) float64 {
 	//Get total sum to be swept for this assetId address
-	sum := new(big.Float)
+	var sum float64
 	for _, tx := range addressTransactions {
 		balance, _ := strconv.ParseFloat(tx.Value, 64)
-		balanceAsBigFloat := big.NewFloat(balance)
-		sum = sum.Add(sum, balanceAsBigFloat)
+		sum = sum + balance
 	}
 	return sum
 }
@@ -195,7 +194,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 }
 
-func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum *big.Float, recipientAddress string) error {
+func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum float64, recipientAddress string) error {
 	transactionListInfo, e := getTransactionListInfo(repository, addressTransactions, logger)
 	if e != nil {
 		return e
@@ -220,7 +219,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	isAmountSufficient := CheckSweepMinimum(denomination, config, sum, logger)
 	if !isAmountSufficient {
 		return utility.AppError{
-			ErrType: "Sweep amount is inssuficient",
+			ErrType: utility.SWEEP_ERROR_INSUFFICIENT,
 			Err:     nil,
 		}
 	}
@@ -256,7 +255,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
-func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum *big.Float, logger *utility.Logger) bool {
+func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) bool {
 	var minimumSweep float64
 	switch denomination.AssetSymbol {
 	case utility.COIN_ETH:
@@ -266,9 +265,8 @@ func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum 
 	case utility.COIN_BUSD:
 		minimumSweep = config.BUSD_minimumSweep
 	}
-	minimumSweepAsBigFloat := big.NewFloat(minimumSweep)
-	if sum.Cmp(minimumSweepAsBigFloat) < 0 {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, config.BTC_minimumSweep)
+	if sum < minimumSweep {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, minimumSweep)
 		return false
 	}
 	return true
