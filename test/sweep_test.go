@@ -206,3 +206,30 @@ func (s *Suite) TestGetSweepPercentageValues() {
 	assert.Equal(s.T(), floatPercent, int64(20), "float percent is invalid")
 	assert.Equal(s.T(), brokeragePercent, int64(80), "brokerage percent is invalid")
 }
+
+func (s *Suite) TestSumSweepTx() {
+	transactions := []model.Transaction{}
+	transaction1 := model.Transaction{
+		Value: "0.2",
+	}
+	transaction2 := model.Transaction{
+		Value: "0.3",
+	}
+	transactions = append(transactions, transaction1)
+	transactions = append(transactions, transaction2)
+
+	sum := tasks.CalculateSum(transactions)
+
+	assert.Equal(s.T(), sum, float64(0.5), "Sum should be equal to 0.5")
+}
+
+func (s *Suite) TestCheckSweepMinimum() {
+	denomination := model.Denomination{
+		AssetSymbol: "ETH",
+	}
+	sum := float64(0.5)
+	s.Config.ETH_minimumSweep = 0.9
+	isAmountSufficient, _ := tasks.CheckSweepMinimum(denomination, s.Config, sum, s.Logger)
+
+	assert.Equal(s.T(), isAmountSufficient, false, "Sum should not be sufficient")
+}

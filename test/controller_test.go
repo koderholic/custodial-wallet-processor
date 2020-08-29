@@ -128,6 +128,7 @@ func (s *Suite) SetupSuite() {
 		MaxOpenConns:           50,
 		ConnMaxLifetime:        300,
 		LockerPrefix:           "Wallet-Adapter-Lock-",
+		ETH_minimumSweep:       0.9,
 	}
 
 	Database := database.Database{
