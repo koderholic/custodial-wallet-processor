@@ -513,21 +513,22 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		processor.Logger.Error("Error occured while signing and broadcast queued transaction %+v : %+v", transaction.ID, serviceErr)
-		if serviceErr.StatusCode == http.StatusBadRequest {
-			if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
-				_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
-				if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
-					processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
-					return err
-				}
-				return nil
+		if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
+			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+				processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
+				return err
 			}
+			return nil
+		}
+		if serviceErr.Code == errorcode.BROADCAST_ERR {
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
 				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
 				return err
 			}
 			return nil
 		}
+
 		return err
 	}
 
