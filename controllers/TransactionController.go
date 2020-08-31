@@ -187,7 +187,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	// Ensure transaction value is above minimum send to chain
 	minimumSpendable := decimal.NewFromFloat(utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
 	if value.Cmp(minimumSpendable) <= 0 {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %d", errorcode.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %v", errorcode.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
 		return
 	}
 
@@ -329,12 +329,12 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	switch transactionStatusResponse.Status {
 	case utility.SUCCESSFUL:
 		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.COMPLETED); err != nil {
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating trnasactions tied to chain transaction with id %+v to COMPLETED", err.Error(), chainTransaction.ID)), controller.Logger)
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("error : %s while updating trnasactions tied to chain transaction with id %+v to COMPLETED", err.Error(), chainTransaction.ID)), controller.Logger)
 			return
 		}
 	case utility.FAILED:
 		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.TERMINATED); err != nil {
-			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s : %s", "Error while updating trnasactions tied to chain transaction with id %+v to TERMINATED", err.Error(), chainTransaction.ID)), controller.Logger)
+			ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("error : %s while updating trnasactions tied to chain transaction with id %+v to TERMINATED", err.Error(), chainTransaction.ID)), controller.Logger)
 			return
 		}
 	default:
@@ -512,15 +512,24 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
-		processor.Logger.Error("Error occured while signing and broadcast transaction : %+v", serviceErr)
-		if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
+		processor.Logger.Error("Error occured while signing and broadcast queued transaction %+v : %+v", transaction.ID, serviceErr)
+		switch serviceErr.Code {
+		case errorcode.INSUFFICIENT_FUNDS:
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
-		}
-		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
-			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+				processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
+				return err
+			}
+			return nil
+		case errorcode.BROADCAST_ERR:
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
+				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
+				return err
+			}
+			return nil
+		default:
 			return err
 		}
-		return nil
 	}
 
 	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter
