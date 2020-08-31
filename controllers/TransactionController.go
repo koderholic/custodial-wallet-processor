@@ -421,7 +421,7 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 				if !txnExist {
 					// Revert the transaction status back to pending, as transaction has not been broadcasted
-					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
+					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 						controller.Logger.Error("Error occured while updating transaction %+v to PENDING : %+v; %s", transaction.TransactionId, serviceErr, err)
 						_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 						continue
