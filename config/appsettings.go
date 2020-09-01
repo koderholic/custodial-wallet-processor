@@ -30,6 +30,7 @@ type Data struct {
 	DepositWebhookURL         string        `mapstructure:"depositWebhookURL"  yaml:"depositWebhookURL,omitempty"`
 	WithdrawToHotWalletUrl    string        `mapstructure:"withdrawToHotWalletUrl"  yaml:"withdrawToHotWalletUrl,omitempty"`
 	NotificationServiceUrl    string        `mapstructure:"notificationServiceUrl"  yaml:"notificationServiceUrl,omitempty"`
+	RateServiceUrl            string        `mapstructure:"rateServiceUrl"  yaml:"rateServiceUrl,omitempty"`
 	ColdWalletEmail           string        `mapstructure:"coldWalletEmail"  yaml:"coldWalletEmail,omitempty"`
 	ColdWalletSmsNumber       string        `mapstructure:"coldWalletSmsNumber"  yaml:"coldWalletSmsNumber,omitempty"`
 	ColdWalletEmailTemplateId string        `mapstructure:"coldWalletEmailTemplateId"  yaml:"coldWalletEmailTemplateId,omitempty"`

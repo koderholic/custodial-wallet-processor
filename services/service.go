@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 	Config "wallet-adapter/config"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
@@ -20,6 +21,7 @@ type BaseService struct {
 	Cache  *utility.MemoryCache
 	Logger *utility.Logger
 	Config Config.Data
+	Error  *dto.ServicesRequestErr
 }
 
 type Client struct {
@@ -41,6 +43,15 @@ func NewClient(httpClient *http.Client, logger *utility.Logger, config Config.Da
 	c.BaseURL, _ = url.Parse(baseURL)
 
 	return c
+}
+
+func NewService(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) *BaseService {
+	baseService := BaseService{
+		Logger: logger,
+		Cache:  cache,
+		Config: config,
+	}
+	return &baseService
 }
 
 func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {

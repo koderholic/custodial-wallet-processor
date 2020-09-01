@@ -132,6 +132,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.KeyManagementService,
 			Action:   "/address/create-all-versions",
 		}
+	case "getAssetDenominations":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.RateServiceUrl,
+			Action:   "/denominations",
+		}
 	default:
 		return MetaData{}
 	}
