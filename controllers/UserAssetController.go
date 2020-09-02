@@ -154,7 +154,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
 	userAssetMemo := requestReader.URL.Query().Get("userAssetMemo")
 
-	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v", address)
+	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v", address, userAssetMemo)
 
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
@@ -197,7 +197,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 			return
 		}
 	}
-	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address %+v", userAsset)
+	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v and memo : %v, asset : %+v", address, userAssetMemo, userAsset)
 
 	if userAsset.AssetSymbol == "" {
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, errorcode.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)

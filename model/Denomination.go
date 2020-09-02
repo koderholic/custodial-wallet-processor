@@ -16,4 +16,8 @@ type Denomination struct {
 	IsToken             bool           `gorm:"default:0" json:"is_token"`
 	MainCoinAssetSymbol string         `json:"main_coin_asset_symbol"`
 	SweepFee            int64          `json:"sweep_fee"`
+	TradeActivity       string         `json:"tradeActivity"`
+	DepositActivity     string         `json:"depositActivity"`
+	WithdrawActivity    string         `json:"withdrawActivity"`
+	TransferActivity    string         `json:"transferActivity"`
 }
