@@ -3,6 +3,7 @@ package services
 import (
 	"strings"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -84,4 +85,17 @@ func getAssetSweepFee(coinType int64) int64 {
 	default:
 		return 0
 	}
+}
+
+func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	if !strings.EqualFold(denomination.WithdrawActivity, utility.ACTIVE) {
+		return false, nil
+	}
+
+	return true, nil
 }
