@@ -18,3 +18,9 @@ type AssetDenomination struct {
 	RequiresMemo     bool   `json:"requiresMemo"`
 	Enabled          bool   `json:"enabled"`
 }
+
+type TWDenomination struct {
+	Name   string `json:"name"`
+	Symbol string `json:"symbol"`
+	CoinId int64  `json:"coinId"`
+}

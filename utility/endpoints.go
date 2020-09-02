@@ -138,6 +138,12 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.RateServiceUrl,
 			Action:   "/denominations",
 		}
+	case "getTWDenominations":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.TWServiceUrl,
+			Action:   "/wallet-core/master/coins.json",
+		}
 	default:
 		return MetaData{}
 	}

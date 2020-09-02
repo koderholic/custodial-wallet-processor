@@ -1,6 +1,7 @@
 package services
 
 import (
+	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
@@ -12,13 +13,18 @@ import (
 func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
 
 	// Get assets from rate service
-	rateService := NewService(cache, logger, config)
-	assetDenominations, err := rateService.GetAssetDenominations()
+	denominationService := NewService(cache, logger, config)
+	assetDenominations, err := denominationService.GetAssetDenominations()
 	if err != nil {
 		logger.Fatal("Supported assets could not be seeded, err : %s", err)
 	}
 
-	assets := normalizeAsset(assetDenominations.Denominations)
+	TWDenominations, err := denominationService.GetTWDenominations()
+	if err != nil {
+		logger.Fatal("Supported assets could not be seeded, err : %s", err)
+	}
+
+	assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
 
 	for _, asset := range assets {
 		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
@@ -28,14 +34,14 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 	logger.Info("Supported assets seeded successfully")
 }
 
-func normalizeAsset(denominations []dto.AssetDenomination) []model.Denomination {
+func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
 
 	normalizedAssets := []model.Denomination{}
 
 	for _, denom := range denominations {
 		var isToken bool
 
-		if denom.TokenType != "NATIVE" {
+		if strings.EqualFold(denom.TokenType, "NATIVE") {
 			isToken = true
 		}
 
@@ -47,7 +53,7 @@ func normalizeAsset(denominations []dto.AssetDenomination) []model.Denomination 
 			Decimal:             denom.NativeDecimals,
 			IsEnabled:           denom.Enabled,
 			IsToken:             isToken,
-			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType),
+			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
 			SweepFee:            getAssetSweepFee(denom.CoinType),
 			TradeActivity:       denom.TradeActivity,
 			DepositActivity:     denom.DepositActivity,
@@ -61,17 +67,14 @@ func normalizeAsset(denominations []dto.AssetDenomination) []model.Denomination 
 
 }
 
-func getMainCoinAssetSymbol(coinType int64) string {
-	switch coinType {
-	case 0:
-		return utility.COIN_BTC
-	case 60:
-		return utility.COIN_ETH
-	case 714:
-		return utility.COIN_BNB
-	default:
-		return ""
+func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination) string {
+
+	for _, denom := range TWDenominations {
+		if denom.CoinId == coinType {
+			return denom.Symbol
+		}
 	}
+	return ""
 }
 
 func getAssetSweepFee(coinType int64) int64 {

@@ -29,7 +29,31 @@ func (service BaseService) GetAssetDenominations() (dto.AssetDenominations, erro
 		return responseData, errors.New(service.Error.Message)
 	}
 
-	logger.Info("Response from GenerateAddress : %+v", responseData)
+	logger.Info("Response from GetAssetDenominations : %+v", responseData)
+	return responseData, nil
+
+}
+
+// GetTWDenominations, returns all coins with detailed info
+func (service BaseService) GetTWDenominations() ([]dto.TWDenomination, error) {
+
+	responseData := []dto.TWDenomination{}
+	metaData := utility.GetRequestMetaData("getTWDenominations", service.Config)
+
+	APIClient := NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
+	if err != nil {
+		return responseData, err
+	}
+	_, err = APIClient.Do(APIRequest, &responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+			return responseData, err
+		}
+		return responseData, errors.New(service.Error.Message)
+	}
+
+	logger.Info("Response from GetTWDenominations : %+v", responseData)
 	return responseData, nil
 
 }
