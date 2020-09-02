@@ -82,7 +82,7 @@ func SubscribeAddressV2(cache *utility.MemoryCache, logger *utility.Logger, conf
 
 	if responseData.Status == false {
 		err := utility.AppError{
-			ErrType: "Could not subscribe address",
+			ErrType: utility.COULD_NOT_SUBSCRIBE_ADDRESS,
 			Err:     nil,
 		}
 		return err
