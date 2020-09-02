@@ -67,7 +67,6 @@ type SubscriptionRequestV1 struct {
 
 type SubscriptionRequestV2 struct {
 	Subscriptions map[string][]string `json:"subscriptions"`
-	UserId        uuid.UUID           `json:"userId"`
 }
 
 type SubscriptionResponse struct {
