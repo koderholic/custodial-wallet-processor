@@ -34,7 +34,7 @@ func (service BaseService) GetAssetDenominations() (dto.AssetDenominations, erro
 
 }
 
-// GetTWDenominations, returns all coins with detailed info
+// GetTWDenominations, returns all coins and their info from TW
 func (service BaseService) GetTWDenominations() ([]dto.TWDenomination, error) {
 
 	responseData := []dto.TWDenomination{}
