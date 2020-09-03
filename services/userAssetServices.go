@@ -99,3 +99,16 @@ func (service BaseService) IsWithdrawalActive(assetSymbol string, repository dat
 
 	return true, nil
 }
+
+func (service BaseService) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	if !strings.EqualFold(denomination.DepositActivity, utility.ACTIVE) {
+		return false, nil
+	}
+
+	return true, nil
+}
