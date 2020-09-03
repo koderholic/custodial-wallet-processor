@@ -24,4 +24,6 @@ const (
 	INSUFFICIENT_BALANCE_FLOAT_SEND_SMS = "INSUFFICIENT_BALANCE_FLOAT_SEND_SMS"
 	INSUFFICIENT_FUNDS                  = "INSUFFICIENT_FUNDS"
 	BROADCAST_ERR                       = "TRANSACTION_BROADCAST_FAILED"
+	WITHDRAWAL_NOT_ACTIVE               = "Withdrawal operation is currently not available for this asset"
+	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
 )
