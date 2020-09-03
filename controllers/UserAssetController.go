@@ -154,7 +154,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
 	userAssetMemo := requestReader.URL.Query().Get("userAssetMemo")
 
-	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v", address, userAssetMemo)
+	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v, symbol : %s", address, userAssetMemo, assetSymbol)
 
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
