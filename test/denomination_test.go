@@ -18,7 +18,7 @@ import (
 
 func (s *Suite) Test_GetAddressForNonActiveAsset() {
 
-	createAssetInputData := []byte(`{"assets" : ["LINK","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetInputData := []byte(`{"assets" : ["LINK"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
 	createAssetRequest.Header.Set("x-auth-token", authToken)
 
@@ -32,24 +32,20 @@ func (s *Suite) Test_GetAddressForNonActiveAsset() {
 	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 
-	if response.Code != http.StatusCreated || len(createAssetResponse.Assets) != 3 {
-		s.T().Errorf("Expected response code to be %d and length of assets returned to be %d. Got responseCode of %d and assets length of %d\n", 201, 3, response.Code, len(createAssetResponse.Assets))
-	}
-
 	// First time call to get address
 	getNewAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
 	getNewAssetAddressRequest.Header.Set("x-auth-token", authToken)
 
-	getAssetResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(response, getNewAssetAddressRequest)
-	resBody, err = ioutil.ReadAll(getAssetResponse.Body)
+	getAddressResponse := httptest.NewRecorder()
+	s.Router.ServeHTTP(getAddressResponse, getNewAssetAddressRequest)
+	resBody, err = ioutil.ReadAll(getAddressResponse.Body)
 	if err != nil {
 		require.NoError(s.T(), err)
 	}
 	getNewAssetAddressResponse := map[string]string{}
 	err = json.Unmarshal(resBody, &getNewAssetAddressResponse)
 
-	assert.Equal(s.T(), http.StatusBadRequest, getAssetResponse.Code, "Expected request to fail with 400 error")
+	assert.Equal(s.T(), http.StatusBadRequest, getAddressResponse.Code, "Expected request to fail with 400 error")
 }
 
 func (s *Suite) Test_ExternalTransferForNonActiveAsset() {

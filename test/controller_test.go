@@ -129,6 +129,9 @@ func (s *Suite) SetupSuite() {
 		ConnMaxLifetime:        300,
 		LockerPrefix:           "Wallet-Adapter-Lock-",
 		ETH_minimumSweep:       0.9,
+		BnbSlipValue:           "714",
+		BtcSlipValue:           "0",
+		EthSlipValue:           "60",
 	}
 
 	Database := database.Database{
@@ -201,7 +204,7 @@ func (s *Suite) DBSeeder() {
 		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: true, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
 		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: false, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
 		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8, IsEnabled: true, IsToken: false, MainCoinAssetSymbol: "BTC", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "ChainLink", AssetSymbol: "LINK", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: true, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "NONE", TransferActivity: "NONE"},
+		{Name: "ChainLink", AssetSymbol: "LINK", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: true, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "NONE", WithdrawActivity: "NONE", TransferActivity: "NONE"},
 	}
 
 	for _, asset := range assets {
