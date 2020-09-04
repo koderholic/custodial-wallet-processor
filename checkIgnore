@@ -1,0 +1,16 @@
+viper.Unmarshal
+github.com/spf13/viper.Unmarshal
+github.com/spf13/viper.BindEnv
+(*encoding/json.Encoder).Encode
+(*encoding/json.Decoder).Decode
+(*github.com/jinzhu/gorm.DB).Close
+(*database/sql.DB).Close
+(io.Closer).Close
+encoding/json.Unmarshal
+github.com/ethereum/go-ethereum/rlp.DecodeBytes
+(*encoding/gob.Decoder).Decode
+github.com/pressly/goose.SetDialect
+(*os.File).Close  
+(*github.com/robfig/cron/v3.Cron).AddFunc
+(*os.File).Close 
+file.Close()

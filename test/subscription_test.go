@@ -35,6 +35,6 @@ func TestSubscribeAddress(t *testing.T) {
 	subscriptionResponseData := dto.SubscriptionResponse{}
 	serviceErr := dto.ServicesRequestErr{}
 
-	services.SubscribeAddressV1(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
+	_ = services.SubscribeAddressV1(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
 
 }

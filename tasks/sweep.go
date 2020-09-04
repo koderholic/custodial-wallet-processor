@@ -363,7 +363,10 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 		Address:     recipientAddress,
 	}
 	mainCoinOnChainBalanceResponse := dto.OnchainBalanceResponse{}
-	services.GetOnchainBalance(cache, logger, config, request, &mainCoinOnChainBalanceResponse, serviceErr)
+	if err := services.GetOnchainBalance(cache, logger, config, request, &mainCoinOnChainBalanceResponse, serviceErr); err != nil {
+		logger.Error("Error response from Sweep job : %+v while getting on-chain balance for %+v", err, recipientAddress)
+		return err, true
+	}
 	mainCoinOnChainBalance, _ := strconv.ParseUint(mainCoinOnChainBalanceResponse.Balance, 10, 64)
 	//check if onchain balance in main coin asset is less than floatAccount.SweepFee
 	if int64(mainCoinOnChainBalance) < denomination.SweepFee {
@@ -410,7 +413,10 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 		Address:     floatAccount.Address,
 	}
 	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
-	services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
+	if err := services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr); err != nil {
+		logger.Error("Error response from Sweep job : %+v while getting float on-chain balance for %+v", err, floatAccount.AssetSymbol)
+		return sweepParam, err
+	}
 	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 	logger.Info("SWEEP_OPERATION : Float on-chain balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
@@ -554,7 +560,10 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 		Address:     floatAccount.Address,
 	}
 	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
-	services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
+	if err := services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr); err != nil {
+		logger.Error("SWEEP_OPERATION, err : %+v while getting float on-chain balance for %+v", err, floatAccount.AssetSymbol)
+		return "", "", err
+	}
 	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 	logger.Info("SWEEP_OPERATION : Float on-chain balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
