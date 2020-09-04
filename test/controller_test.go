@@ -198,13 +198,15 @@ func (s *Suite) RunMigration() {
 
 // DBSeeder .. This seeds supported assets into the database for testing
 func (s *Suite) DBSeeder() {
+	isToken := true
+	isNonNative := false
 
 	assets := []model.Denomination{
-		{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: false, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: true, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: false, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8, IsEnabled: true, IsToken: false, MainCoinAssetSymbol: "BTC", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "ChainLink", AssetSymbol: "LINK", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: true, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "NONE", WithdrawActivity: "NONE", TransferActivity: "NONE"},
+		{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: &isToken, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "BTC", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "ChainLink", AssetSymbol: "LINK", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: &isToken, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "NONE", WithdrawActivity: "NONE", TransferActivity: "NONE"},
 	}
 
 	for _, asset := range assets {

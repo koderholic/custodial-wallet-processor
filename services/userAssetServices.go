@@ -40,7 +40,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 	normalizedAssets := []model.Denomination{}
 
 	for _, denom := range denominations {
-		var isToken bool
+		isToken := false
 
 		if !strings.EqualFold(denom.TokenType, "NATIVE") {
 			isToken = true
@@ -53,7 +53,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			RequiresMemo:        denom.RequiresMemo,
 			Decimal:             denom.NativeDecimals,
 			IsEnabled:           denom.Enabled,
-			IsToken:             isToken,
+			IsToken:             &isToken,
 			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
 			SweepFee:            getAssetSweepFee(denom.CoinType),
 			TradeActivity:       denom.TradeActivity,
