@@ -42,7 +42,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 	for _, denom := range denominations {
 		var isToken bool
 
-		if strings.EqualFold(denom.TokenType, "NATIVE") {
+		if !strings.EqualFold(denom.TokenType, "NATIVE") {
 			isToken = true
 		}
 
