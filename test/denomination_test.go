@@ -32,7 +32,6 @@ func (s *Suite) Test_GetAddressForNonActiveAsset() {
 	createAssetResponse := dto.UserAssetResponse{}
 	err = json.Unmarshal(resBody, &createAssetResponse)
 
-	// First time call to get address
 	getNewAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
 	getNewAssetAddressRequest.Header.Set("x-auth-token", authToken)
 

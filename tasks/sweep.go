@@ -485,7 +485,7 @@ func GetBrokerAccountFor(assetSymbol string, repository database.BaseRepository,
 		return brokerageAccountResponse, err
 	}
 
-	if denomination.IsToken {
+	if *denomination.IsToken {
 		err = services.GetDepositAddress(cache, logger, config, assetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, assetSymbol, "", &brokerageAccountResponse, serviceErr)
@@ -565,7 +565,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 		return "", "", err
 	}
 
-	if denomination.IsToken {
+	if *denomination.IsToken {
 		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)

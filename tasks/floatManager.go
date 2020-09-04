@@ -166,7 +166,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 				continue
 			}
-			if denomination.IsToken {
+			if *denomination.IsToken {
 				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr)
 			} else {
 				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
