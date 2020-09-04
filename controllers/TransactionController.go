@@ -159,6 +159,18 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	// Check if withdrawal is ACTIVE on this asset
+	userAssetService := services.NewService(controller.Cache, controller.Logger, batchService.Config)
+	isActive, err := userAssetService.IsWithdrawalActive(debitReferenceTransaction.AssetSymbol, controller.Repository)
+	if err != nil {
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
+		return
+	}
+	if !isActive {
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.WITHDRAWAL_NOT_ACTIVE, apiResponse.PlainError("INPUT_ERR", errorcode.WITHDRAWAL_NOT_ACTIVE), controller.Logger)
+		return
+	}
+
 	// Checks to ensure the transaction status of debitReference is completed
 	if debitReferenceTransaction.TransactionStatus != model.TransactionStatus.COMPLETED {
 		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.INVALID_DEBIT, apiResponse.PlainError("INVALID_DEBIT", errorcode.INVALID_DEBIT), controller.Logger)
@@ -512,15 +524,24 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
-		processor.Logger.Error("Error occured while signing and broadcast transaction : %+v", serviceErr)
-		if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
+		processor.Logger.Error("Error occured while signing and broadcast queued transaction %+v : %+v", transaction.ID, serviceErr)
+		switch serviceErr.Code {
+		case errorcode.INSUFFICIENT_FUNDS:
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
-		}
-		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
-			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+				processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
+				return err
+			}
+			return nil
+		case errorcode.BROADCAST_ERR:
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
+				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
+				return err
+			}
+			return nil
+		default:
 			return err
 		}
-		return nil
 	}
 
 	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter

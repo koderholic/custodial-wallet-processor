@@ -190,7 +190,7 @@ func GetAssetForV2Address(repository database.IUserAssetRepository, logger *util
 	if err := repository.FetchByFieldName(&model.UserAddress{V2Address: address, Memo: memo}, &userAddresses); err != nil {
 		return model.UserAsset{}, err
 	}
-	logger.Info("GetAssetForV2Address logs : Response from FetchByFieldName %+v", userAsset)
+	logger.Info("GetAssetForV2Address logs : address : %s and memo : %s, assest : %+v", address, memo, userAddresses)
 
 	userAsset = findMatchingAsset(repository, logger, userAddresses, assetSymbol)
 
@@ -202,6 +202,7 @@ func findMatchingAsset(repository database.IUserAssetRepository, logger *utility
 	for _, userAddress := range userAddresses {
 		asset := model.UserAsset{}
 		if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &asset); err != nil {
+			logger.Info("error getting asset details for id : %+v and assetSymbol : %s. error : %s", userAddress.AssetID, assetSymbol, err)
 			continue
 		}
 		if asset.AssetSymbol == assetSymbol {
@@ -209,7 +210,7 @@ func findMatchingAsset(repository database.IUserAssetRepository, logger *utility
 			break
 		}
 	}
-	logger.Info("findMatchingAsset logs : matching asset %+v", userAsset)
+	logger.Info("findMatchingAsset logs : assetSymbol : %s, assest : %+v", assetSymbol, userAsset)
 
 	return userAsset
 }

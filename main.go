@@ -42,7 +42,7 @@ func main() {
 	cacheDuration := config.ExpireCacheDuration * time.Second
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 
-	services.SeedSupportedAssets(Database.DB, logger)
+	services.SeedSupportedAssets(Database.DB, logger, config, authCache)
 	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
 		logger.Error("Error with InitHotWallet %s", err)
 	}

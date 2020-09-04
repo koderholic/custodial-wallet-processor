@@ -168,10 +168,8 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 				continue
 			}
-			if denomination.IsToken {
-				if err := services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr); err != nil {
-					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)
-				}
+			if *denomination.IsToken {
+				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr)
 			} else {
 				if err := services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr); err != nil {
 					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)

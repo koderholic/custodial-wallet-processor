@@ -32,7 +32,19 @@ func (controller UserAssetController) GetAssetAddress(responseWriter http.Respon
 	controller.Logger.Info("Incoming request details for GetAssetAddress : assetID : %+v", assetID)
 
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetID}}, &userAsset); err != nil {
-		ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAsset with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
+		ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get asset address with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
+		return
+	}
+
+	// Check if deposit is ACTIVE on this asset
+	userAssetService := services.NewService(controller.Cache, controller.Logger, controller.Config)
+	isActive, err := userAssetService.IsDepositActive(userAsset.AssetSymbol, controller.Repository)
+	if err != nil {
+		ReturnError(responseWriter, "GetAssetAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s, for get asset address with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
+		return
+	}
+	if !isActive {
+		ReturnError(responseWriter, "GetAssetAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get asset address with id = %s", errorcode.DEPOSIT_NOT_ACTIVE, assetID)), controller.Logger)
 		return
 	}
 
@@ -80,6 +92,18 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetID}}, &userAsset); err != nil {
 		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAsset with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
+		return
+	}
+
+	// Check if deposit is ACTIVE on this asset
+	userAssetService := services.NewService(controller.Cache, controller.Logger, controller.Config)
+	isActive, err := userAssetService.IsDepositActive(userAsset.AssetSymbol, controller.Repository)
+	if err != nil {
+		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s, for get asset address with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
+		return
+	}
+	if !isActive {
+		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get asset address with id = %s", errorcode.DEPOSIT_NOT_ACTIVE, assetID)), controller.Logger)
 		return
 	}
 
