@@ -162,17 +162,6 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
-	// Check if asset is supported
-	denomination := model.Denomination{}
-	if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		if err.Error() == errorcode.SQL_404 {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)), controller.Logger)
-			return
-		}
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s, for get denomination with assetSymbol = %s", utility.GetSQLErr(err.(utility.AppError)), assetSymbol)), controller.Logger)
-		return
-	}
-
 	// Ensure Memos are provided for v2_addresses
 	IsV2Address, err := services.CheckV2Address(controller.Repository, address)
 	if err != nil {
@@ -181,29 +170,21 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	}
 
 	if IsV2Address {
-		if userAssetMemo == "" {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.EMPTY_MEMO_ERR), controller.Logger)
-			return
-		}
 		userAsset, err = services.GetAssetForV2Address(controller.Repository, controller.Logger, address, assetSymbol, userAssetMemo)
-		if err != nil {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
-			return
-		}
 	} else {
 		userAsset, err = services.GetAssetForV1Address(controller.Repository, controller.Logger, address, assetSymbol)
-		if err != nil {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+	}
+
+	if err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 			return
 		}
-	}
-	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v and memo : %v, asset : %+v", address, userAssetMemo, userAsset)
-
-	if userAsset.AssetSymbol == "" {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, errorcode.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAsset)
+
+	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, userAssetMemo, assetSymbol, userAsset)
 
 	responseData.ID = userAsset.ID
 	responseData.UserID = userAsset.UserID

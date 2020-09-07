@@ -18,6 +18,8 @@ type IUserAssetRepository interface {
 	UpdateAssetBalByID(amount, model interface{}) error
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
+	GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error
+	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -130,6 +132,28 @@ func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (floa
 	}
 	availableBalance, _ := strconv.ParseFloat(maxUserBalance.AvailableBalance, 64)
 	return availableBalance, nil
+}
+
+// GetAssetByAddressAndSymbol... Get user asset matching the given condition
+func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.address, user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").Where("address = ? && asset_symbol = ?", address, assetSymbol).Find(model).Error; err != nil {
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// GetAssetByAddressAndMemo...  Get user asset matching the given condition
+func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").Where("v2_address = ? && memo = ? && asset_symbol = ?", address, memo, assetSymbol).Find(model).Error; err != nil {
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
 }
 
 func (repo *UserAssetRepository) Db() *gorm.DB {

@@ -172,47 +172,24 @@ func CheckV2Address(repository database.IUserAssetRepository, address string) (b
 
 func GetAssetForV1Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string) (model.UserAsset, error) {
 	var userAsset model.UserAsset
-	var userAddresses []model.UserAddress
 
-	if err := repository.FetchByFieldName(&model.UserAddress{Address: address}, &userAddresses); err != nil {
+	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
 		return model.UserAsset{}, err
 	}
-
-	userAsset = findMatchingAsset(repository, logger, userAddresses, assetSymbol)
+	logger.Info("GetAssetForV2Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
 
 	return userAsset, nil
 }
 
 func GetAssetForV2Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string, memo string) (model.UserAsset, error) {
 	var userAsset model.UserAsset
-	var userAddresses []model.UserAddress
 
-	if err := repository.FetchByFieldName(&model.UserAddress{V2Address: address, Memo: memo}, &userAddresses); err != nil {
+	if err := repository.GetAssetByAddressAndMemo(address, memo, assetSymbol, &userAsset); err != nil {
 		return model.UserAsset{}, err
 	}
-	logger.Info("GetAssetForV2Address logs : address : %s and memo : %s, assest : %+v", address, memo, userAddresses)
-
-	userAsset = findMatchingAsset(repository, logger, userAddresses, assetSymbol)
+	logger.Info("GetAssetForV2Address logs : address : %s and memo : %s, assetSymbol : %s, assest : %+v", address, memo, assetSymbol, userAsset)
 
 	return userAsset, nil
-}
-
-func findMatchingAsset(repository database.IUserAssetRepository, logger *utility.Logger, userAddresses []model.UserAddress, assetSymbol string) model.UserAsset {
-	userAsset := model.UserAsset{}
-	for _, userAddress := range userAddresses {
-		asset := model.UserAsset{}
-		if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: userAddress.AssetID}}, &asset); err != nil {
-			logger.Info("error getting asset details for id : %+v and assetSymbol : %s. error : %s", userAddress.AssetID, assetSymbol, err)
-			continue
-		}
-		if asset.AssetSymbol == assetSymbol {
-			userAsset = asset
-			break
-		}
-	}
-	logger.Info("findMatchingAsset logs : assetSymbol : %s, assest : %+v", assetSymbol, userAsset)
-
-	return userAsset
 }
 
 func (service BaseService) GetBTCAddresses(repository database.IUserAssetRepository, userAsset model.UserAsset) ([]dto.AssetAddress, error) {

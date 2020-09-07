@@ -197,10 +197,11 @@ func (s *Suite) RunMigration() {
 func (s *Suite) DBSeeder() {
 
 	assets := []model.Denomination{
-		model.Denomination{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8},
-		model.Denomination{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8},
-		model.Denomination{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18},
-		model.Denomination{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8},
+
+		{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8},
+		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8},
+		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18},
+		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8},
 	}
 
 	for _, asset := range assets {
