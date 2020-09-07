@@ -129,6 +129,9 @@ func (s *Suite) SetupSuite() {
 		ConnMaxLifetime:        300,
 		LockerPrefix:           "Wallet-Adapter-Lock-",
 		ETH_minimumSweep:       0.9,
+		BnbSlipValue:           "714",
+		BtcSlipValue:           "0",
+		EthSlipValue:           "60",
 	}
 
 	Database := database.Database{
@@ -195,13 +198,15 @@ func (s *Suite) RunMigration() {
 
 // DBSeeder .. This seeds supported assets into the database for testing
 func (s *Suite) DBSeeder() {
+	isToken := true
+	isNonNative := false
 
 	assets := []model.Denomination{
-
-		{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8},
-		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8},
-		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18},
-		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8},
+		{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: &isToken, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "BTC", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "ChainLink", AssetSymbol: "LINK", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: &isToken, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "NONE", WithdrawActivity: "NONE", TransferActivity: "NONE"},
 	}
 
 	for _, asset := range assets {
@@ -214,7 +219,7 @@ func (s *Suite) DBSeeder() {
 
 func (s *Suite) Test_CreateUserAsset() {
 
-	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetInputData := []byte(`{"assets" : ["LINK","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
 	createAssetRequest.Header.Set("x-auth-token", authToken)
 

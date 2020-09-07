@@ -66,7 +66,7 @@ type Transaction struct {
 	BatchID              uuid.UUID    `gorm:"type:VARCHAR(36);" json:"batch_id,omitempty"`
 	TransactionStartDate time.Time    `json:"transaction_start_date,omitempty"`
 	TransactionEndDate   time.Time    `json:"transaction_end_date,omitempty"`
-	SweptStatus          bool         `gorm:"not null;default:false" json:"swept_status,omitempty`
+	SweptStatus          bool         `gorm:"not null;default:false" json:"swept_status,omitempty"`
 	Batch                BatchRequest `sql:"-" json:"omitempty"`
 	AssetSymbol          string       `gorm:"type:VARCHAR(36);not null;" json:"asset_symbol,omitempty"`
 }

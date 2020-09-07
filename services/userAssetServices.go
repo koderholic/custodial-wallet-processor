@@ -3,6 +3,7 @@ package services
 import (
 	"strings"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
@@ -39,9 +40,9 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 	normalizedAssets := []model.Denomination{}
 
 	for _, denom := range denominations {
-		var isToken bool
+		isToken := false
 
-		if strings.EqualFold(denom.TokenType, "NATIVE") {
+		if !strings.EqualFold(denom.TokenType, "NATIVE") {
 			isToken = true
 		}
 
@@ -52,7 +53,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			RequiresMemo:        denom.RequiresMemo,
 			Decimal:             denom.NativeDecimals,
 			IsEnabled:           denom.Enabled,
-			IsToken:             isToken,
+			IsToken:             &isToken,
 			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
 			SweepFee:            getAssetSweepFee(denom.CoinType),
 			TradeActivity:       denom.TradeActivity,
@@ -84,4 +85,30 @@ func getAssetSweepFee(coinType int64) int64 {
 	default:
 		return 0
 	}
+}
+
+func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	if !strings.EqualFold(denomination.WithdrawActivity, utility.ACTIVE) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (service BaseService) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	if !strings.EqualFold(denomination.DepositActivity, utility.ACTIVE) {
+		return false, nil
+	}
+
+	return true, nil
 }
