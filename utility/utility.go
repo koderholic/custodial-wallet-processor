@@ -102,3 +102,10 @@ func MinFloat(a, b *big.Float) *big.Float {
 	}
 	return b
 }
+
+func IsExceedWaitTime(startTime, minDuration time.Duration) bool {
+	if startTime > minDuration {
+		return true
+	}
+	return false
+}

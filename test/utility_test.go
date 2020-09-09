@@ -88,3 +88,8 @@ func TestDecimalsOperations(t *testing.T) {
 	assert.Equal(t, utility.Add(0.004, "0.0100415", 18), "0.0140415")
 
 }
+
+func TestIsExceedWaitTime(t *testing.T) {
+	assert.Equal(t, utility.IsExceedWaitTime(time.Duration(150), time.Duration(120)), true)
+	assert.Equal(t, utility.IsExceedWaitTime(time.Duration(40), time.Duration(120)), false)
+}

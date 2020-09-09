@@ -763,7 +763,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 	}
 
 	if !txnExist {
-		if time.Since(transactionQueue.CreatedAt) > time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING) {
+		if utility.IsExceedWaitTime(time.Since(transactionQueue.CreatedAt), time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING)) {
 			// Revert the transaction status back to pending, as transaction has not been broadcasted
 			if err := controller.updateTransactions(transactionQueue.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 				controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
