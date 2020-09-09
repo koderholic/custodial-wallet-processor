@@ -773,7 +773,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 		return "", err
 	}
 
-	// Get the chain transaction for the request hash
+	// Get the chain transaction for the broadcasted txn hash
 	chainTransaction := model.ChainTransaction{}
 	err = controller.Repository.Get(&model.ChainTransaction{TransactionHash: broadcastedTX.TransactionHash}, &chainTransaction)
 	if err != nil {
@@ -790,7 +790,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
 			return "", err
 		}
-		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.COMPLETED); err != nil {
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to COMPLETED : %s", transactionQueue.ID, err)
 			return "", err
 		}
@@ -801,7 +801,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
 			return "", err
 		}
-		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.TERMINATED); err != nil {
+		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.TERMINATED); err != nil {
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to TERMINTATED : %s", transactionQueue.ID, err)
 			return "", err
 		}
