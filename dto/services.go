@@ -155,7 +155,7 @@ type Money struct {
 }
 
 type WitdrawToHotWalletResponse struct {
-	id     string `json:"id"`
+	Id     string `json:"id"`
 	Status string `json:"status"`
 }
 

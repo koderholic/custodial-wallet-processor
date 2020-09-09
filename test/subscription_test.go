@@ -35,7 +35,7 @@ func TestSubscribeV1Address(t *testing.T) {
 	subscriptionResponseData := dto.SubscriptionResponse{}
 	serviceErr := dto.ServicesRequestErr{}
 
-	services.SubscribeAddressV1(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
+	_ = services.SubscribeAddressV1(authCache, logger, configTest, requestData, &subscriptionResponseData, serviceErr)
 	if subscriptionResponseData.Status == false {
 		t.Errorf("Expected supscription to pass, got %t\n", subscriptionResponseData.Status)
 	}

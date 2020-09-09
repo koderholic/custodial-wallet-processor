@@ -13,7 +13,11 @@ type Denomination struct {
 	BatchRequests       []BatchRequest `json:"batch_requests,omitempty"`
 	UserAddresses       []UserAddress  `json:"user_addresses,omitempty"`
 	UserAssets          []UserAsset    `gorm:"foreignkey:asset_id" json:"user_balances,omitempty"`
-	IsToken             bool           `gorm:"default:0" json:"is_token"`
+	IsToken             *bool          `gorm:"default:0" json:"is_token"`
 	MainCoinAssetSymbol string         `json:"main_coin_asset_symbol"`
 	SweepFee            int64          `json:"sweep_fee"`
+	TradeActivity       string         `json:"tradeActivity"`
+	DepositActivity     string         `json:"depositActivity"`
+	WithdrawActivity    string         `json:"withdrawActivity"`
+	TransferActivity    string         `json:"transferActivity"`
 }

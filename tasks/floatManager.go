@@ -48,7 +48,9 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			Address:     floatAccount.Address,
 		}
 		floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
-		services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr)
+		if err := services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr); err != nil {
+			logger.Error(fmt.Sprintf("error with getting float on-chain balance for %+v is %+v", floatAccount.AssetSymbol, err))
+		}
 		floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
@@ -166,10 +168,14 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 				continue
 			}
-			if denomination.IsToken {
-				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr)
+			if *denomination.IsToken {
+				if err := services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr); err != nil {
+					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)
+				}
 			} else {
-				services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr)
+				if err := services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr); err != nil {
+					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)
+				}
 			}
 
 			// Sign and broadcast transaction

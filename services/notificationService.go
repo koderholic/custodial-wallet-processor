@@ -79,5 +79,7 @@ func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.Memor
 		Country:     utility.NOTIFICATION_SMS_COUNTRY,
 	}
 	sendSmsResponse := dto.SendSmsResponse{}
-	SendSmsNotification(cache, logger, config, sendSmsRequest, &sendSmsResponse, serviceErr)
+	if err := SendSmsNotification(cache, logger, config, sendSmsRequest, &sendSmsResponse, serviceErr); err != nil {
+		logger.Error(fmt.Sprintf("error with sending sms notification for asset %s : %s", assetSymbol, err))
+	}
 }

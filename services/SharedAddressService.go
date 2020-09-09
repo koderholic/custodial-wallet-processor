@@ -1,6 +1,7 @@
 package services
 
 import (
+	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
 	"wallet-adapter/errorcode"
@@ -27,22 +28,23 @@ func InitSharedAddress(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.
 	}
 
 	for _, asset := range supportedAssets {
-
-		address, err = GetSharedAddressFor(cache, DB, logger, config, asset.AssetSymbol)
-		if err != nil {
-			logger.Error("Error with getting shared address for %s : %s", asset.AssetSymbol, err)
-			return err
-		}
-
-		if address == "" {
-			AddressService := BaseService{Config: config, Cache: cache, Logger: logger}
-			address, err = AddressService.GenerateAddress(userID, asset.AssetSymbol, asset.CoinType, &externalServiceErr)
+		if strings.EqualFold(asset.DepositActivity, utility.ACTIVE) {
+			address, err = GetSharedAddressFor(cache, DB, logger, config, asset.AssetSymbol)
 			if err != nil {
+				logger.Error("Error with getting shared address for %s : %s", asset.AssetSymbol, err)
 				return err
 			}
 
-			if err := DB.Create(&model.SharedAddress{UserId: userID, Address: address, AssetSymbol: asset.AssetSymbol, CoinType: asset.CoinType}).Error; err != nil {
-				logger.Error("Error with creating shared address for asset %s : %s", asset.AssetSymbol, err)
+			if address == "" {
+				AddressService := BaseService{Config: config, Cache: cache, Logger: logger}
+				address, err = AddressService.GenerateAddress(userID, asset.AssetSymbol, asset.CoinType, &externalServiceErr)
+				if err != nil {
+					return err
+				}
+
+				if err := DB.Create(&model.SharedAddress{UserId: userID, Address: address, AssetSymbol: asset.AssetSymbol, CoinType: asset.CoinType}).Error; err != nil {
+					logger.Error("Error with creating shared address for asset %s : %s", asset.AssetSymbol, err)
+				}
 			}
 		}
 	}
