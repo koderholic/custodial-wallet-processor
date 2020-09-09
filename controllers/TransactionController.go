@@ -32,7 +32,7 @@ type TransactionProccessor struct {
 }
 
 // GetTransaction ... Retrieves the transaction details of the reference sent
-func (controller BaseController) GetTransaction(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller UserAssetController) GetTransaction(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData dto.TransactionResponse
 	var transaction model.Transaction
@@ -54,6 +54,13 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 		return
 	}
 
+	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING {
+		status, _ := controller.verifyTransactionStatus(transaction.ID)
+		if status != "" {
+			transaction.TransactionStatus = status
+		}
+	}
+
 	transaction.Map(&responseData)
 	controller.populateChainData(transaction, &responseData, apiResponse, responseWriter)
 	controller.Logger.Info("Outgoing response to GetTransaction request %+v", responseData)
@@ -63,7 +70,7 @@ func (controller BaseController) GetTransaction(responseWriter http.ResponseWrit
 }
 
 // GetTransactionsByAssetId ... Retrieves all transactions relating to an asset
-func (controller BaseController) GetTransactionsByAssetId(responseWriter http.ResponseWriter, requestReader *http.Request) {
+func (controller UserAssetController) GetTransactionsByAssetId(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	var responseData dto.TransactionListResponse
 	var initiatorTransactions []model.Transaction
@@ -90,6 +97,12 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 		transaction := initiatorTransactions[i]
 		tx := dto.TransactionResponse{}
 		transaction.Map(&tx)
+		if initiatorTransactions[i].TransactionStatus == model.TransactionStatus.PROCESSING {
+			status, _ := controller.verifyTransactionStatus(initiatorTransactions[i].ID)
+			if status != "" {
+				initiatorTransactions[i].TransactionStatus = status
+			}
+		}
 		controller.populateChainData(transaction, &tx, apiResponse, responseWriter)
 		responseData.Transactions = append(responseData.Transactions, tx)
 	}
@@ -97,6 +110,12 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 		receipientTransaction := recipientTransactions[i]
 		txRecipient := dto.TransactionResponse{}
 		receipientTransaction.Map(&txRecipient)
+		if recipientTransactions[i].TransactionStatus == model.TransactionStatus.PROCESSING {
+			status, _ := controller.verifyTransactionStatus(recipientTransactions[i].ID)
+			if status != "" {
+				recipientTransactions[i].TransactionStatus = status
+			}
+		}
 		controller.populateChainData(receipientTransaction, &txRecipient, apiResponse, responseWriter)
 		responseData.Transactions = append(responseData.Transactions, txRecipient)
 	}
@@ -111,7 +130,7 @@ func (controller BaseController) GetTransactionsByAssetId(responseWriter http.Re
 
 }
 
-func (controller BaseController) populateChainData(transaction model.Transaction, txResponse *dto.TransactionResponse, apiResponse utility.ResponseResultObj, responseWriter http.ResponseWriter) {
+func (controller UserAssetController) populateChainData(transaction model.Transaction, txResponse *dto.TransactionResponse, apiResponse utility.ResponseResultObj, responseWriter http.ResponseWriter) {
 	//get and populate chain transaction if exists, if this call fails, log error but proceed on
 	chainTransaction := model.ChainTransaction{}
 	chainData := dto.ChainData{}
@@ -642,7 +661,7 @@ func (processor TransactionProccessor) updateTransactions(transactionId uuid.UUI
 			tx.Rollback()
 		}
 	}()
-	// Updates the transaction status to PROCESSING
+
 	transactionDetails := model.Transaction{}
 	if err := processor.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, &transactionDetails); err != nil {
 		return err
@@ -650,7 +669,6 @@ func (processor TransactionProccessor) updateTransactions(transactionId uuid.UUI
 	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
 		return err
 	}
-	// Update transactionQueue to PROCESSING
 	transactionQueueDetails := model.TransactionQueue{}
 	if err := processor.Repository.Get(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueueDetails); err != nil {
 		return err
@@ -675,8 +693,81 @@ func (processor TransactionProccessor) releaseLock(identifier string, lockerserv
 	}
 	lockReleaseResponse := dto.ServicesRequestSuccess{}
 	if err := services.ReleaseLock(processor.Cache, processor.Logger, processor.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
-		processor.Logger.Error("Error occured while releasing lock for (%+v) : %+v; %s", identifier, serviceErr, err)
+		processor.Logger.Error("verifyTransactionStatus logs :Error occured while releasing lock for (%+v) : %+v; %s", identifier, serviceErr, err)
 		return err
 	}
 	return nil
+}
+
+func (controller UserAssetController) verifyTransactionStatus(transactionId uuid.UUID) (string, error) {
+
+	// Get queued transaction for transactionId
+	var transactionQueue model.TransactionQueue
+	if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueue); err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs : Error response from ProcessTransactions job : %+v", err)
+		return "", err
+	}
+
+	broadcastTXRef := transactionQueue.DebitReference
+	serviceErr := dto.ServicesRequestErr{}
+
+	// Check if the transaction belongs to a batch and return batch
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
+	batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transactionQueue.BatchID)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs :Error occured while checking if transaction is batched : %s", err)
+		return "", err
+	}
+	if batchExist {
+		broadcastTXRef = transactionQueue.BatchID.String()
+	}
+
+	// Get status of the TXN
+	txnExist, _, err := services.GetBroadcastedTXNDetailsByRef(broadcastTXRef, transactionQueue.AssetSymbol, controller.Cache, controller.Logger, controller.Config)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs :Error checking if queued transaction (%+v) has been broadcasted already, leaving status as ONGOING : %s", transactionQueue.ID, err)
+		return "", err
+	}
+
+	if !txnExist {
+		// Revert the transaction status back to pending, as transaction has not been broadcasted
+		if err := controller.updateTransactions(transactionQueue.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
+			return "", err
+		}
+		return model.TransactionStatus.PENDING, err
+	}
+
+	return "", nil
+}
+
+func (controller UserAssetController) updateTransactions(transactionId uuid.UUID, status string, chainTransaction model.ChainTransaction) error {
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	transactionDetails := model.Transaction{}
+	if err := controller.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, &transactionDetails); err != nil {
+		return err
+	}
+	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+		return err
+	}
+	transactionQueueDetails := model.TransactionQueue{}
+	if err := controller.Repository.Get(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueueDetails); err != nil {
+		return err
+	}
+	if err := tx.Model(&transactionQueueDetails).Updates(&model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+
 }
