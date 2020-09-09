@@ -731,3 +731,113 @@ func (controller UserAssetController) populateChainData(transaction model.Transa
 	}
 
 }
+
+func (controller UserAssetController) verifyTransactionStatus(transactionId uuid.UUID) (string, error) {
+
+	// Get queued transaction for transactionId
+	var transactionQueue model.TransactionQueue
+	if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueue); err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs : Error response from ProcessTransactions job : %+v", err)
+		return "", err
+	}
+
+	broadcastTXRef := transactionQueue.DebitReference
+	serviceErr := dto.ServicesRequestErr{}
+
+	// Check if the transaction belongs to a batch and return batch
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
+	batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transactionQueue.BatchID)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs :Error occured while checking if transaction is batched : %s", err)
+		return "", err
+	}
+	if batchExist {
+		broadcastTXRef = transactionQueue.BatchID.String()
+	}
+
+	// Get status of the TXN
+	txnExist, broadcastedTX, err := services.GetBroadcastedTXNDetailsByRef(broadcastTXRef, transactionQueue.AssetSymbol, controller.Cache, controller.Logger, controller.Config)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs :Error checking if queued transaction (%+v) has been broadcasted already, leaving status as ONGOING : %s", transactionQueue.ID, err)
+		return "", err
+	}
+
+	if !txnExist {
+		if time.Since(transactionQueue.CreatedAt) > time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING) {
+			// Revert the transaction status back to pending, as transaction has not been broadcasted
+			if err := controller.updateTransactions(transactionQueue.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+				controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
+				return "", err
+			}
+		}
+		return "", err
+	}
+
+	// Get the chain transaction for the request hash
+	chainTransaction := model.ChainTransaction{}
+	err = controller.Repository.Get(&model.ChainTransaction{TransactionHash: broadcastedTX.TransactionHash}, &chainTransaction)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+		return "", err
+	}
+	blockHeight, err := strconv.Atoi(broadcastedTX.BlockHeight)
+
+	// Update the transactions on the transaction table and on queue tied to the chain transaction as well as the batch status,if it is a batch transaction
+	switch broadcastedTX.Status {
+	case utility.SUCCESSFUL:
+		chainTransactionUpdate := model.ChainTransaction{Status: true, TransactionFee: broadcastedTX.TransactionFee, BlockHeight: int64(blockHeight)}
+		if err := controller.Repository.Update(&chainTransaction, chainTransactionUpdate); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.COMPLETED); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to COMPLETED : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		return model.TransactionStatus.COMPLETED, err
+	case utility.FAILED:
+		chainTransactionUpdate := model.ChainTransaction{Status: false, TransactionFee: broadcastedTX.TransactionFee, BlockHeight: int64(blockHeight)}
+		if err := controller.Repository.Update(&chainTransaction, chainTransactionUpdate); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		if err := controller.confirmTransactions(chainTransaction, model.BatchStatus.TERMINATED); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to TERMINTATED : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		return model.TransactionStatus.TERMINATED, err
+	}
+
+	return "", nil
+}
+
+func (controller UserAssetController) updateTransactions(transactionId uuid.UUID, status string, chainTransaction model.ChainTransaction) error {
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	transactionDetails := model.Transaction{}
+	if err := controller.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, &transactionDetails); err != nil {
+		return err
+	}
+	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+		return err
+	}
+	transactionQueueDetails := model.TransactionQueue{}
+	if err := controller.Repository.Get(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueueDetails); err != nil {
+		return err
+	}
+	if err := tx.Model(&transactionQueueDetails).Updates(&model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+
+}
