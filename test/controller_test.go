@@ -18,7 +18,6 @@ import (
 	"wallet-adapter/dto"
 	"wallet-adapter/middlewares"
 	"wallet-adapter/model"
-	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
 	"github.com/stretchr/testify/require"
@@ -165,7 +164,6 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		baseRepository := database.BaseRepository{Database: s.Database}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-		controller := controllers.NewController(authCache, s.Logger, s.Config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(authCache, s.Logger, s.Config, validator, &userAssetRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
@@ -182,8 +180,8 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetUserAssetById).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(utility.Permissions["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetAssetAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, s.Config, controller.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, s.Config, controller.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetTransaction).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(logger, s.Config, userAssetController.GetTransactionsByAssetId).ValidateAuthToken(utility.Permissions["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transfer-external", middlewares.NewMiddleware(logger, s.Config, userAssetController.ExternalTransfer).ValidateAuthToken(utility.Permissions["ExternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/confirm-transaction", middlewares.NewMiddleware(logger, s.Config, userAssetController.ConfirmTransaction).ValidateAuthToken(utility.Permissions["ConfirmTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, s.Config, userAssetController.ProcessTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
@@ -315,142 +313,6 @@ func (s *Suite) Test_GetUserAssetById() {
 		s.T().Errorf("Expected response code to be %d and userId not empty. Got responseCode of %d and %s\n", http.StatusOK, response.Code, getAssetResponse.UserID.String())
 	}
 }
-func (s *Suite) Test_GetUserAssetAddress() {
-	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
-	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", authToken)
-	createResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(createResponse, createAssetRequest)
-	resBody, err := ioutil.ReadAll(createResponse.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	createAssetResponse := dto.UserAssetResponse{}
-	err = json.Unmarshal(resBody, &createAssetResponse)
-	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
-		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
-	}
-	// First time call to get address
-	getNewAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
-	getNewAssetAddressRequest.Header.Set("x-auth-token", authToken)
-
-	response := httptest.NewRecorder()
-	s.Router.ServeHTTP(response, getNewAssetAddressRequest)
-	resBody, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getNewAssetAddressResponse := map[string]string{}
-	err = json.Unmarshal(resBody, &getNewAssetAddressResponse)
-	//  Second time call to get address
-	getOldAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
-	getOldAssetAddressRequest.Header.Set("x-auth-token", authToken)
-	response2 := httptest.NewRecorder()
-	s.Router.ServeHTTP(response2, getOldAssetAddressRequest)
-	resBody2, err := ioutil.ReadAll(response2.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getOldAssetAddressResponse := map[string]string{}
-	err = json.Unmarshal(resBody2, &getOldAssetAddressResponse)
-
-	if response.Code != http.StatusOK || response2.Code != http.StatusOK || getNewAssetAddressResponse["address"] == "" || getNewAssetAddressResponse["address"] != getOldAssetAddressResponse["address"] {
-		s.T().Errorf("Expected response code to be %d and asset address to not be empty and the two calls to get address to return same address. Got responseCode of %d and address of %s and the equality of both address to be %t\n", http.StatusOK, response.Code, getNewAssetAddressResponse["address"], getNewAssetAddressResponse["address"] == getOldAssetAddressResponse["address"])
-	}
-}
-
-func (s *Suite) Test_GetUserAssetAddrReturnsSameAddrForSameCoinType() {
-	if err := services.InitHotWallet(authCache, s.DB, s.Logger, s.Config); err != nil {
-		require.NoError(s.T(), err)
-	}
-
-	createAssetInputData := []byte(`{"assets" : ["BNB","BUSD"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
-	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", authToken)
-	createResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(createResponse, createAssetRequest)
-	resBody, err := ioutil.ReadAll(createResponse.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	createAssetResponse := dto.UserAssetResponse{}
-	err = json.Unmarshal(resBody, &createAssetResponse)
-	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
-		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
-	}
-	// call to get address for asset 1
-	getAsset1AddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
-	getAsset1AddressRequest.Header.Set("x-auth-token", authToken)
-
-	response := httptest.NewRecorder()
-	s.Router.ServeHTTP(response, getAsset1AddressRequest)
-	resBody, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getAsset1AddressResponse := map[string]string{}
-	err = json.Unmarshal(resBody, &getAsset1AddressResponse)
-	fmt.Printf("getAsset1AddressResponse >> %+v", getAsset1AddressResponse)
-	//  call to get address for asset 2
-	getAsset2AddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address", createAssetResponse.Assets[1].ID), bytes.NewBuffer([]byte("")))
-	getAsset2AddressRequest.Header.Set("x-auth-token", authToken)
-	response2 := httptest.NewRecorder()
-	s.Router.ServeHTTP(response2, getAsset2AddressRequest)
-	resBody2, err := ioutil.ReadAll(response2.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getAsset2AddressResponse := map[string]string{}
-	err = json.Unmarshal(resBody2, &getAsset2AddressResponse)
-	fmt.Printf("getAsset2AddressResponse >> %+v", getAsset2AddressResponse)
-
-	if response.Code != http.StatusOK || response2.Code != http.StatusOK || getAsset1AddressResponse["address"] == "" || getAsset1AddressResponse["address"] != getAsset2AddressResponse["address"] {
-		s.T().Errorf("Expected response code to be %d and asset address to not be empty and the address of same coinType to be the same. Got responseCode of %d and address of %s and the equality of both address to be %t\n", http.StatusOK, response.Code, getAsset1AddressResponse["address"], getAsset1AddressResponse["address"] == getAsset2AddressResponse["address"])
-	}
-}
-
-func (s *Suite) Test_GetUserAssetByAddress() {
-	createAssetInputData := []byte(`{"assets" : ["BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
-	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", authToken)
-	createResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(createResponse, createAssetRequest)
-	resBody, err := ioutil.ReadAll(createResponse.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	createAssetResponse := dto.UserAssetResponse{}
-	err = json.Unmarshal(resBody, &createAssetResponse)
-	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
-		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
-	}
-	// First time call to get address
-	getAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address?assetSymbol=BNB", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
-	getAssetAddressRequest.Header.Set("x-auth-token", authToken)
-	responseAddress := httptest.NewRecorder()
-	s.Router.ServeHTTP(responseAddress, getAssetAddressRequest)
-	resBody, err = ioutil.ReadAll(responseAddress.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getAssetAddressResponse := map[string]string{}
-	err = json.Unmarshal(resBody, &getAssetAddressResponse)
-
-	getAssetRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-address/%s?assetSymbol=BNB", getAssetAddressResponse["address"]), bytes.NewBuffer([]byte("")))
-	getAssetRequest.Header.Set("x-auth-token", authToken)
-	response := httptest.NewRecorder()
-	s.Router.ServeHTTP(response, getAssetRequest)
-	resBody, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getAssetResponse := dto.Asset{}
-	err = json.Unmarshal(resBody, &getAssetResponse)
-
-	if response.Code != http.StatusOK {
-		s.T().Errorf("Expected response code to be %d. Got responseCode of %d\n", http.StatusOK, response.Code)
-	}
-}
 func (s *Suite) Test_CreditUserAsset() {
 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
@@ -573,7 +435,7 @@ func (s *Suite) Test_ExternalTransfer() {
 	if debitAssetResponse.Code != http.StatusOK {
 		require.NoError(s.T(), errors.New("Expected debit asset to not error"))
 	}
-	println("!!!!!!!!!!!!!!!!!!!!!!")
+
 	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516"}`)
 	externalTransferRequest, _ := http.NewRequest("POST", test.TransferExternalEndpoint, bytes.NewBuffer(externalTransferInputData))
 	externalTransferRequest.Header.Set("x-auth-token", authToken)
@@ -859,48 +721,5 @@ func (s *Suite) Test_GetTransactionsByUserId() {
 
 	if response.Code != http.StatusOK || len(getAssetTransactionsResponse.Transactions) < 1 {
 		s.T().Errorf("Expected statusCode to be %d and transaction length to be %d. Got %d and %d\n", http.StatusOK, 1, response.Code, len(getAssetTransactionsResponse.Transactions))
-	}
-}
-
-func (s *Suite) Test_GetUserAssetByV2Address() {
-	createAssetInputData := []byte(`{"assets" : ["BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
-	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", authToken)
-	createResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(createResponse, createAssetRequest)
-	resBody, err := ioutil.ReadAll(createResponse.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	createAssetResponse := dto.UserAssetResponse{}
-	err = json.Unmarshal(resBody, &createAssetResponse)
-	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
-		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
-	}
-	// First time call to get address
-	getAssetAddressRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/%s/address?addressVersion=VERSION_2", createAssetResponse.Assets[0].ID), bytes.NewBuffer([]byte("")))
-	getAssetAddressRequest.Header.Set("x-auth-token", authToken)
-	responseAddress := httptest.NewRecorder()
-	s.Router.ServeHTTP(responseAddress, getAssetAddressRequest)
-	resBody, err = ioutil.ReadAll(responseAddress.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getAssetAddressResponse := map[string]string{}
-	err = json.Unmarshal(resBody, &getAssetAddressResponse)
-
-	getAssetRequest, _ := http.NewRequest("GET", fmt.Sprintf("/assets/by-address/%s?assetSymbol=BNB&userAssetMemo=%s", getAssetAddressResponse["address"], getAssetAddressResponse["memo"]), bytes.NewBuffer([]byte("")))
-	getAssetRequest.Header.Set("x-auth-token", authToken)
-	response := httptest.NewRecorder()
-	s.Router.ServeHTTP(response, getAssetRequest)
-	resBody, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	getAssetResponse := dto.Asset{}
-	err = json.Unmarshal(resBody, &getAssetResponse)
-
-	if response.Code != http.StatusBadRequest && getAssetResponse.ID != createAssetResponse.Assets[0].ID {
-		s.T().Errorf("Expected response code to be %d and asset to match. Got responseCode of %d and asset matching is %+v\n", http.StatusOK, response.Code, getAssetResponse.ID == createAssetResponse.Assets[0].ID)
 	}
 }

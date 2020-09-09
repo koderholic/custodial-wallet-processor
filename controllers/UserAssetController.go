@@ -162,17 +162,6 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
-	// Check if asset is supported
-	denomination := model.Denomination{}
-	if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		if err.Error() == errorcode.SQL_404 {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)), controller.Logger)
-			return
-		}
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("%s, for get denomination with assetSymbol = %s", utility.GetSQLErr(err.(utility.AppError)), assetSymbol)), controller.Logger)
-		return
-	}
-
 	// Ensure Memos are provided for v2_addresses
 	IsV2Address, err := services.CheckV2Address(controller.Repository, address)
 	if err != nil {
@@ -181,29 +170,21 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	}
 
 	if IsV2Address {
-		if userAssetMemo == "" {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.EMPTY_MEMO_ERR), controller.Logger)
-			return
-		}
 		userAsset, err = services.GetAssetForV2Address(controller.Repository, controller.Logger, address, assetSymbol, userAssetMemo)
-		if err != nil {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
-			return
-		}
 	} else {
 		userAsset, err = services.GetAssetForV1Address(controller.Repository, controller.Logger, address, assetSymbol)
-		if err != nil {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+	}
+
+	if err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 			return
 		}
-	}
-	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v and memo : %v, asset : %+v", address, userAssetMemo, userAsset)
-
-	if userAsset.AssetSymbol == "" {
-		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, errorcode.SQL_404, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for asset address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Outgoing response to GetUserAssetByAddress request %+v", userAsset)
+
+	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, userAssetMemo, assetSymbol, userAsset)
 
 	responseData.ID = userAsset.ID
 	responseData.UserID = userAsset.UserID
@@ -642,5 +623,221 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
+// GetTransaction ... Retrieves the transaction details of the reference sent
+func (controller UserAssetController) GetTransaction(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	var responseData dto.TransactionResponse
+	var transaction model.Transaction
+	apiResponse := utility.NewResponse()
+
+	routeParams := mux.Vars(requestReader)
+	transactionRef := routeParams["reference"]
+	controller.Logger.Info("Incoming request details for GetTransaction : transaction reference : %+v", transactionRef)
+
+	if err := controller.Repository.GetByFieldName(&model.Transaction{TransactionReference: transactionRef}, &transaction); err != nil {
+		controller.Logger.Error("Outgoing response to GetTransaction request %+v", err)
+		responseWriter.Header().Set("Content-Type", "application/json")
+		if err.Error() == errorcode.SQL_404 {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
+		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transaction with transactionReference = %s", utility.GetSQLErr(err), transactionRef)))
+		return
+	}
+
+	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN {
+		status, _ := controller.verifyTransactionStatus(transaction.ID)
+		if status != "" {
+			transaction.TransactionStatus = status
+		}
+	}
+
+	transaction.Map(&responseData)
+	controller.populateChainData(transaction, &responseData, apiResponse, responseWriter)
+	controller.Logger.Info("Outgoing response to GetTransaction request %+v", responseData)
+	responseWriter.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
+// GetTransactionsByAssetId ... Retrieves all transactions relating to an asset
+func (controller UserAssetController) GetTransactionsByAssetId(responseWriter http.ResponseWriter, requestReader *http.Request) {
+
+	var responseData dto.TransactionListResponse
+	var initiatorTransactions []model.Transaction
+	var recipientTransactions []model.Transaction
+	apiResponse := utility.NewResponse()
+
+	routeParams := mux.Vars(requestReader)
+	assetID, err := uuid.FromString(routeParams["assetId"])
+	if err != nil {
+		ReturnError(responseWriter, "GetTransactionsByAssetId", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
+		return
+	}
+	controller.Logger.Info("Incoming request details for GetTransactionsByAssetId : assetID : %+v", assetID)
+	if err := controller.Repository.FetchByFieldName(&model.Transaction{InitiatorID: assetID}, &initiatorTransactions); err != nil {
+		ReturnError(responseWriter, "GetTransactionsByAssetId", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		return
+	}
+	if err := controller.Repository.FetchByFieldName(&model.Transaction{RecipientID: assetID}, &recipientTransactions); err != nil {
+		ReturnError(responseWriter, "GetTransactionsByAssetId", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+		return
+	}
+
+	for i := 0; i < len(initiatorTransactions); i++ {
+		transaction := initiatorTransactions[i]
+		tx := dto.TransactionResponse{}
+		transaction.Map(&tx)
+		controller.populateChainData(transaction, &tx, apiResponse, responseWriter)
+		responseData.Transactions = append(responseData.Transactions, tx)
+	}
+	for i := 0; i < len(recipientTransactions); i++ {
+		receipientTransaction := recipientTransactions[i]
+		txRecipient := dto.TransactionResponse{}
+		receipientTransaction.Map(&txRecipient)
+		controller.populateChainData(receipientTransaction, &txRecipient, apiResponse, responseWriter)
+		responseData.Transactions = append(responseData.Transactions, txRecipient)
+	}
+
+	if len(responseData.Transactions) <= 0 {
+		responseData.Transactions = []dto.TransactionResponse{}
+	}
+
+	controller.Logger.Info("Outgoing response to GetTransactionsByAssetId request %+v", responseData)
+	responseWriter.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(responseWriter).Encode(responseData)
+
+}
+
+func (controller UserAssetController) populateChainData(transaction model.Transaction, txResponse *dto.TransactionResponse, apiResponse utility.ResponseResultObj, responseWriter http.ResponseWriter) {
+	//get and populate chain transaction if exists, if this call fails, log error but proceed on
+	chainTransaction := model.ChainTransaction{}
+	chainData := dto.ChainData{}
+	if transaction.TransactionType == "ONCHAIN" && transaction.OnChainTxId != uuid.Nil {
+		err := controller.Repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: transaction.OnChainTxId}}, &chainTransaction)
+		if err != nil {
+			ReturnError(responseWriter, "GetTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err)), controller.Logger)
+			txResponse.ChainData = nil
+		} else {
+			chainTransaction.MaptoDto(&chainData)
+			txResponse.ChainData = &chainData
+		}
+	} else {
+		txResponse.ChainData = nil
+	}
+
+}
+
+func (controller UserAssetController) verifyTransactionStatus(transactionId uuid.UUID) (string, error) {
+
+	// Get queued transaction for transactionId
+	var transactionQueue model.TransactionQueue
+	if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueue); err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs : Error response from ProcessTransactions job : %+v", err)
+		return "", err
+	}
+
+	broadcastTXRef := transactionQueue.DebitReference
+	serviceErr := dto.ServicesRequestErr{}
+
+	// Check if the transaction belongs to a batch and return batch
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
+	batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transactionQueue.BatchID)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs :Error occured while checking if transaction is batched : %s", err)
+		return "", err
+	}
+	if batchExist {
+		broadcastTXRef = transactionQueue.BatchID.String()
+	}
+
+	// Get status of the TXN
+	txnExist, broadcastedTX, err := services.GetBroadcastedTXNDetailsByRef(broadcastTXRef, transactionQueue.AssetSymbol, controller.Cache, controller.Logger, controller.Config)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs :Error checking if queued transaction (%+v) has been broadcasted already, leaving status as ONGOING : %s", transactionQueue.ID, err)
+		return "", err
+	}
+
+	if !txnExist {
+		if utility.IsExceedWaitTime(time.Since(transactionQueue.CreatedAt), time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING)) {
+			// Revert the transaction status back to pending, as transaction has not been broadcasted
+			if err := controller.updateTransactions(transactionQueue.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+				controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
+				return "", err
+			}
+		}
+		return "", err
+	}
+
+	// Get the chain transaction for the broadcasted txn hash
+	chainTransaction := model.ChainTransaction{}
+	err = controller.Repository.Get(&model.ChainTransaction{TransactionHash: broadcastedTX.TransactionHash}, &chainTransaction)
+	if err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+		return "", err
+	}
+	blockHeight, err := strconv.Atoi(broadcastedTX.BlockHeight)
+
+	// Update the transactions on the transaction table and on queue tied to the chain transaction as well as the batch status,if it is a batch transaction
+	switch broadcastedTX.Status {
+	case utility.SUCCESSFUL:
+		chainTransactionUpdate := model.ChainTransaction{Status: true, TransactionFee: broadcastedTX.TransactionFee, BlockHeight: int64(blockHeight)}
+		if err := controller.Repository.Update(&chainTransaction, chainTransactionUpdate); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.COMPLETED); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to COMPLETED : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		return model.TransactionStatus.COMPLETED, err
+	case utility.FAILED:
+		chainTransactionUpdate := model.ChainTransaction{Status: false, TransactionFee: broadcastedTX.TransactionFee, BlockHeight: int64(blockHeight)}
+		if err := controller.Repository.Update(&chainTransaction, chainTransactionUpdate); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.TERMINATED); err != nil {
+			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to TERMINTATED : %s", transactionQueue.ID, err)
+			return "", err
+		}
+		return model.TransactionStatus.TERMINATED, err
+	}
+
+	return "", nil
+}
+
+func (controller UserAssetController) updateTransactions(transactionId uuid.UUID, status string, chainTransaction model.ChainTransaction) error {
+
+	tx := controller.Repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	transactionDetails := model.Transaction{}
+	if err := controller.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, &transactionDetails); err != nil {
+		return err
+	}
+	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+		return err
+	}
+	transactionQueueDetails := model.TransactionQueue{}
+	if err := controller.Repository.Get(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueueDetails); err != nil {
+		return err
+	}
+	if err := tx.Model(&transactionQueueDetails).Updates(&model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 
 }
