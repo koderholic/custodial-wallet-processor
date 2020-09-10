@@ -1,114 +1,48 @@
 package services
 
 import (
-	"strings"
-	Config "wallet-adapter/config"
-	"wallet-adapter/database"
+	"fmt"
+	"net/http"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
-	"github.com/jinzhu/gorm"
+	"github.com/shopspring/decimal"
 )
 
-func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
+type IServiceRepository interface {
+}
 
-	// Get assets from rate service
-	denominationService := NewService(cache, logger, config)
-	assetDenominations, err := denominationService.GetAssetDenominations()
-	if err != nil {
-		logger.Fatal("Supported assets could not be seeded, err : %s", err)
-	}
+func CreateAsset(repository IRepository, denominations []string) {
 
-	TWDenominations, err := denominationService.GetTWDenominations()
-	if err != nil {
-		logger.Fatal("Supported assets could not be seeded, err : %s", err)
-	}
+	// Create user asset record for each given denomination
+	for i := 0; i < len(denominations); i++ {
+		denominationSymbol := requestData.Assets[i]
+		denomination := model.Denomination{}
 
-	assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
-
-	for _, asset := range assets {
-		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
-			logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
+			if err.Error() == errorcode.SQL_404 {
+				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
+				return
+			}
+			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+			return
 		}
+		balance, _ := decimal.NewFromString("0.00")
+		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
+		_ = controller.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetmodel)
+
+		responseData.Assets = append(responseData.Assets, userAsset)
 	}
-	logger.Info("Supported assets seeded successfully")
-}
-
-func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
-
-	normalizedAssets := []model.Denomination{}
-
-	for _, denom := range denominations {
-		isToken := false
-
-		if !strings.EqualFold(denom.TokenType, "NATIVE") {
-			isToken = true
-		}
-
-		normalizedAsset := model.Denomination{
-			Name:                denom.Name,
-			AssetSymbol:         denom.Symbol,
-			CoinType:            denom.CoinType,
-			RequiresMemo:        denom.RequiresMemo,
-			Decimal:             denom.NativeDecimals,
-			IsEnabled:           denom.Enabled,
-			IsToken:             &isToken,
-			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
-			SweepFee:            getAssetSweepFee(denom.CoinType),
-			TradeActivity:       denom.TradeActivity,
-			DepositActivity:     denom.DepositActivity,
-			WithdrawActivity:    denom.WithdrawActivity,
-			TransferActivity:    denom.TransferActivity,
-		}
-		normalizedAssets = append(normalizedAssets, normalizedAsset)
-	}
-
-	return normalizedAssets
 
 }
 
-func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination) string {
-
-	for _, denom := range TWDenominations {
-		if denom.CoinId == coinType {
-			return denom.Symbol
-		}
-	}
-	return ""
-}
-
-func getAssetSweepFee(coinType int64) int64 {
-	switch coinType {
-	case 714:
-		return 37500
-	default:
-		return 0
-	}
-}
-
-func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return false, err
-	}
-
-	if !strings.EqualFold(denomination.WithdrawActivity, utility.ACTIVE) {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (service BaseService) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return false, err
-	}
-
-	if !strings.EqualFold(denomination.DepositActivity, utility.ACTIVE) {
-		return false, nil
-	}
-
-	return true, nil
+func normalizeAsset() {
+	userAsset := dto.Asset{}
+	userAsset.ID = userAssetmodel.ID
+	userAsset.UserID = userAssetmodel.UserID
+	userAsset.AssetSymbol = userAssetmodel.AssetSymbol
+	userAsset.AvailableBalance = userAssetmodel.AvailableBalance
+	userAsset.Decimal = userAssetmodel.Decimal
 }

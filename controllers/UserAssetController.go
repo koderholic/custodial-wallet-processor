@@ -16,7 +16,6 @@ import (
 
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
-	"github.com/shopspring/decimal"
 )
 
 // CreateUserAssets ... Creates all supported crypto asset record on the given user account
@@ -35,32 +34,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		return
 	}
 
-	// Create user asset record for each given denomination
-	for i := 0; i < len(requestData.Assets); i++ {
-		denominationSymbol := requestData.Assets[i]
-		denomination := model.Denomination{}
-
-		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
-			if err.Error() == errorcode.SQL_404 {
-				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
-				return
-			}
-			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
-			return
-		}
-		balance, _ := decimal.NewFromString("0.00")
-		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetmodel)
-
-		userAsset := dto.Asset{}
-		userAsset.ID = userAssetmodel.ID
-		userAsset.UserID = userAssetmodel.UserID
-		userAsset.AssetSymbol = userAssetmodel.AssetSymbol
-		userAsset.AvailableBalance = userAssetmodel.AvailableBalance
-		userAsset.Decimal = userAssetmodel.Decimal
-
-		responseData.Assets = append(responseData.Assets, userAsset)
-	}
+	// Call userAssetService
 
 	controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
