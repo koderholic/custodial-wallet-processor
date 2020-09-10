@@ -40,5 +40,6 @@ const (
 	SWEEP_ERROR_INSUFFICIENT        = "Sweep amount is insufficient"
 	SWEEP_ERROR_ASSET_NOT_SUPPORTED = "Sweep checkInsufficient sum asset not supported"
 	ACTIVE                          = "ACTIVE"
+	MIN_WAIT_TIME_IN_PROCESSING     = 120
 	COULD_NOT_SUBSCRIBE_ADDRESS     = "COULD_NOT_SUBSCRIBE_ADDRESS"
 )

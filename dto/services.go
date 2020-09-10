@@ -94,9 +94,12 @@ type TransactionStatusRequest struct {
 
 // TransactionStatusResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
 type TransactionStatusResponse struct {
-	TransactionHash string `json:"transactionHash"`
-	Status          string `json:"status"`
-	AssetSymbol     string `json:"assetSymbol"`
+	TransactionHash       string `json:"transactionHash"`
+	Status                string `json:"status"`
+	AssetSymbol           string `json:"assetSymbol"`
+	TransactionFee        string `json:"fee"`
+	BlockHeight           string `json:"height"`
+	LastTimeStatusFetched string `json:"lastTimeStatusFetched"`
 }
 
 // LockerServiceRequest ... Request definition for  acquire or renew lock, locker service
