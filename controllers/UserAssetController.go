@@ -648,9 +648,8 @@ func (controller UserAssetController) GetTransaction(responseWriter http.Respons
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transaction with transactionReference = %s", utility.GetSQLErr(err), transactionRef)))
 		return
 	}
-
 	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN {
-		status, _ := controller.verifyTransactionStatus(transaction.ID)
+		status, _ := controller.verifyTransactionStatus(transaction)
 		if status != "" {
 			transaction.TransactionStatus = status
 		}
@@ -732,12 +731,12 @@ func (controller UserAssetController) populateChainData(transaction model.Transa
 
 }
 
-func (controller UserAssetController) verifyTransactionStatus(transactionId uuid.UUID) (string, error) {
+func (controller UserAssetController) verifyTransactionStatus(transaction model.Transaction) (string, error) {
 
 	// Get queued transaction for transactionId
 	var transactionQueue model.TransactionQueue
-	if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueue); err != nil {
-		controller.Logger.Error("verifyTransactionStatus logs : Error response from ProcessTransactions job : %+v", err)
+	if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionId: transaction.ID}, &transactionQueue); err != nil {
+		controller.Logger.Error("verifyTransactionStatus logs : Error while fetching corresponding queued transaction for transaction (%v) : %s", transaction.ID, err)
 		return "", err
 	}
 
@@ -758,7 +757,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 	// Get status of the TXN
 	txnExist, broadcastedTX, err := services.GetBroadcastedTXNDetailsByRef(broadcastTXRef, transactionQueue.AssetSymbol, controller.Cache, controller.Logger, controller.Config)
 	if err != nil {
-		controller.Logger.Error("verifyTransactionStatus logs :Error checking if queued transaction (%+v) has been broadcasted already, leaving status as ONGOING : %s", transactionQueue.ID, err)
+		controller.Logger.Error("verifyTransactionStatus logs : Error checking the broadcasted state for queued transaction (%+v) : %s", transactionQueue.ID, err)
 		return "", err
 	}
 
@@ -776,7 +775,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 
 	// Get the chain transaction for the broadcasted txn hash
 	chainTransaction := model.ChainTransaction{}
-	err = controller.Repository.Get(&model.ChainTransaction{TransactionHash: broadcastedTX.TransactionHash}, &chainTransaction)
+	err = controller.Repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: transaction.OnChainTxId}}, &chainTransaction)
 	if err != nil {
 		controller.Logger.Error("verifyTransactionStatus logs : Error fetching chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
 		return "", err
@@ -797,11 +796,6 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 		}
 		return model.TransactionStatus.COMPLETED, err
 	case utility.FAILED:
-		chainTransactionUpdate := model.ChainTransaction{Status: false, TransactionFee: broadcastedTX.TransactionFee, BlockHeight: int64(blockHeight)}
-		if err := controller.Repository.Update(&chainTransaction, chainTransactionUpdate); err != nil {
-			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
-			return "", err
-		}
 		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.TERMINATED); err != nil {
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to TERMINTATED : %s", transactionQueue.ID, err)
 			return "", err
