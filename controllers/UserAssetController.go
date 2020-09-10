@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -810,33 +809,9 @@ func (controller UserAssetController) verifyTransactionStatus(transaction model.
 func (controller UserAssetController) updateTransactions(transaction model.TransactionQueue, status string, chainTransaction model.ChainTransaction) error {
 
 	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
-
-	// Check if chain transaction belongs to a batch and update batch
 	batchExist, batch, err := batchService.CheckBatchExistAndReturn(controller.Repository, transaction.BatchID)
 	if err != nil {
 		return err
-	}
-
-	transactions := []model.Transaction{}
-	if batchExist {
-		if err := controller.Repository.FetchByFieldName(&model.Transaction{BatchID: batch.ID}, &transactions); err != nil {
-			return err
-		}
-		if len(transactions) == 0 {
-			return errors.New(fmt.Sprintf("No transactions found to update for batch id %v", batch.ID))
-		}
-	} else {
-		singleTransaction := model.Transaction{}
-		if err := controller.Repository.FetchByFieldName(&model.Transaction{BaseModel: model.BaseModel{ID: transaction.TransactionId}}, &singleTransaction); err != nil {
-			return err
-		}
-		transactions = append(transactions, singleTransaction)
-	}
-
-	transactionsIds := []uuid.UUID{}
-
-	for _, transaction := range transactions {
-		transactionsIds = append(transactionsIds, transaction.ID)
 	}
 
 	tx := controller.Repository.Db().Begin()
@@ -846,31 +821,40 @@ func (controller UserAssetController) updateTransactions(transaction model.Trans
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Error response from confirmTransactions : %+v while creating db transaction", err)
-		return err
-	}
-
-	if err := tx.Model(&model.Transaction{}).Where("id IN (?)", transactionsIds).Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
-		tx.Rollback()
-		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction records tied to chain transaction : %+v", err, chainTransaction.ID)
-		return err
-	}
-
-	if err := tx.Model(&model.TransactionQueue{}).Where("transaction_id IN (?)", transactionsIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
-		tx.Rollback()
-		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
+		controller.Logger.Error("Error response from updateTransactions : %+v while creating db transaction", err)
 		return err
 	}
 
 	if batchExist {
+		if err := tx.Model(&model.Transaction{}).Where("batch_id = ?", transaction.BatchID).Updates(model.Transaction{TransactionStatus: status}).Error; err != nil {
+			tx.Rollback()
+			controller.Logger.Error("Error response from updateTransactions : %+v while updating transactions with batchId : %+v", err, transaction.BatchID)
+			return err
+		}
+		if err := tx.Model(&model.TransactionQueue{}).Where("batch_id = ?", transaction.BatchID).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+			tx.Rollback()
+			controller.Logger.Error("Error response from updateTransactions : %+v while updating queued transactions with batchId  : %+v", err, transaction.ID)
+			return err
+		}
 		dateCompleted := time.Now()
 		if err := tx.Model(&batch).Updates(model.BatchRequest{Status: status, DateCompleted: &dateCompleted}).Error; err != nil {
+			return err
+		}
+	} else {
+		if err := tx.Model(&model.Transaction{}).Where("id = ?", transaction.TransactionId).Updates(model.Transaction{TransactionStatus: status}).Error; err != nil {
+			tx.Rollback()
+			controller.Logger.Error("Error response from updateTransactions : %+v while updating transaction with id : %+v", err, transaction.TransactionId)
+			return err
+		}
+		if err := tx.Model(&model.TransactionQueue{}).Where("id = ?", transaction.ID).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+			tx.Rollback()
+			controller.Logger.Error("Error response from updateTransactions : %+v while updating queued transaction with id  : %v", err, transaction.ID)
 			return err
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		controller.Logger.Error("Error response from confirmTransactions : %+v while commiting db transaction", err)
+		controller.Logger.Error("Error response from updateTransactions : %+v while commiting db transaction", err)
 		return err
 	}
 	return nil
