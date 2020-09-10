@@ -648,8 +648,9 @@ func (controller UserAssetController) GetTransaction(responseWriter http.Respons
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transaction with transactionReference = %s", utility.GetSQLErr(err), transactionRef)))
 		return
 	}
-
+	fmt.Printf("transaction >>> !!! : %+v", transaction)
 	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN {
+		println("Came here !!!!!!!!!!!!!!! ")
 		status, _ := controller.verifyTransactionStatus(transaction.ID)
 		if status != "" {
 			transaction.TransactionStatus = status
@@ -769,6 +770,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 				controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
 				return "", err
 			}
+			return model.TransactionStatus.PENDING, err
 		}
 		return "", err
 	}
