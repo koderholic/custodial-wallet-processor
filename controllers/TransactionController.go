@@ -433,7 +433,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 				return err
 			}
 			return nil
-		case errorcode.BROADCAST_ERR:
+		case errorcode.BROADCAST_FAILED_ERR, errorcode.BROADCAST_REJECTED_ERR:
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
 				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
 				return err

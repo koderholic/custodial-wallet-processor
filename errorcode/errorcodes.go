@@ -23,7 +23,8 @@ const (
 	EMPTY_MEMO_ERR                      = "Memo is required"
 	INSUFFICIENT_BALANCE_FLOAT_SEND_SMS = "INSUFFICIENT_BALANCE_FLOAT_SEND_SMS"
 	INSUFFICIENT_FUNDS                  = "INSUFFICIENT_FUNDS"
-	BROADCAST_ERR                       = "TRANSACTION_BROADCAST_FAILED"
+	BROADCAST_FAILED_ERR                = "TRANSACTION_BROADCAST_FAILED"
+	BROADCAST_REJECTED_ERR              = "TRANSACTION_REJECTED_ON_BROADCAST"
 	WITHDRAWAL_NOT_ACTIVE               = "Withdrawal operation is currently not available for this asset"
 	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
 )
