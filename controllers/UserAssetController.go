@@ -778,7 +778,7 @@ func (controller UserAssetController) verifyTransactionStatus(transactionId uuid
 	chainTransaction := model.ChainTransaction{}
 	err = controller.Repository.Get(&model.ChainTransaction{TransactionHash: broadcastedTX.TransactionHash}, &chainTransaction)
 	if err != nil {
-		controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
+		controller.Logger.Error("verifyTransactionStatus logs : Error fetching chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
 		return "", err
 	}
 	blockHeight, err := strconv.Atoi(broadcastedTX.BlockHeight)
