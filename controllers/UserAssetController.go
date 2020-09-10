@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -764,7 +765,7 @@ func (controller UserAssetController) verifyTransactionStatus(transaction model.
 	if !txnExist {
 		if utility.IsExceedWaitTime(time.Since(transactionQueue.CreatedAt), time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING)) {
 			// Revert the transaction status back to pending, as transaction has not been broadcasted
-			if err := controller.updateTransactions(transactionQueue.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
+			if err := controller.updateTransactions(transactionQueue, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 				controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
 				return "", err
 			}
@@ -790,13 +791,13 @@ func (controller UserAssetController) verifyTransactionStatus(transaction model.
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating chain transaction for transaction (%+v) : %s", transactionQueue.ID, err)
 			return "", err
 		}
-		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.COMPLETED); err != nil {
+		if err := controller.updateTransactions(transactionQueue, model.TransactionStatus.COMPLETED, chainTransaction); err != nil {
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to COMPLETED : %s", transactionQueue.ID, err)
 			return "", err
 		}
 		return model.TransactionStatus.COMPLETED, err
 	case utility.FAILED:
-		if err := controller.confirmTransactions(chainTransaction, model.TransactionStatus.TERMINATED); err != nil {
+		if err := controller.updateTransactions(transactionQueue, model.TransactionStatus.TERMINATED, chainTransaction); err != nil {
 			controller.Logger.Error("verifyTransactionStatus logs : Error updating transaction (%+v) to TERMINTATED : %s", transactionQueue.ID, err)
 			return "", err
 		}
@@ -806,7 +807,37 @@ func (controller UserAssetController) verifyTransactionStatus(transaction model.
 	return "", nil
 }
 
-func (controller UserAssetController) updateTransactions(transactionId uuid.UUID, status string, chainTransaction model.ChainTransaction) error {
+func (controller UserAssetController) updateTransactions(transaction model.TransactionQueue, status string, chainTransaction model.ChainTransaction) error {
+
+	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
+
+	// Check if chain transaction belongs to a batch and update batch
+	batchExist, batch, err := batchService.CheckBatchExistAndReturn(controller.Repository, transaction.BatchID)
+	if err != nil {
+		return err
+	}
+
+	transactions := []model.Transaction{}
+	if batchExist {
+		if err := controller.Repository.FetchByFieldName(&model.Transaction{BatchID: batch.ID}, &transactions); err != nil {
+			return err
+		}
+		if len(transactions) == 0 {
+			return errors.New(fmt.Sprintf("No transactions found to update for batch id %v", batch.ID))
+		}
+	} else {
+		singleTransaction := model.Transaction{}
+		if err := controller.Repository.FetchByFieldName(&model.Transaction{BaseModel: model.BaseModel{ID: transaction.TransactionId}}, &singleTransaction); err != nil {
+			return err
+		}
+		transactions = append(transactions, singleTransaction)
+	}
+
+	transactionsIds := []uuid.UUID{}
+
+	for _, transaction := range transactions {
+		transactionsIds = append(transactionsIds, transaction.ID)
+	}
 
 	tx := controller.Repository.Db().Begin()
 	defer func() {
@@ -814,25 +845,34 @@ func (controller UserAssetController) updateTransactions(transactionId uuid.UUID
 			tx.Rollback()
 		}
 	}()
+	if err := tx.Error; err != nil {
+		controller.Logger.Error("Error response from confirmTransactions : %+v while creating db transaction", err)
+		return err
+	}
 
-	transactionDetails := model.Transaction{}
-	if err := controller.Repository.Get(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, &transactionDetails); err != nil {
+	if err := tx.Model(&model.Transaction{}).Where("id IN (?)", transactionsIds).Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction records tied to chain transaction : %+v", err, chainTransaction.ID)
 		return err
 	}
-	if err := tx.Model(&transactionDetails).Updates(&model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+
+	if err := tx.Model(&model.TransactionQueue{}).Where("transaction_id IN (?)", transactionsIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
+		tx.Rollback()
+		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
 		return err
 	}
-	transactionQueueDetails := model.TransactionQueue{}
-	if err := controller.Repository.Get(&model.TransactionQueue{TransactionId: transactionId}, &transactionQueueDetails); err != nil {
-		return err
+
+	if batchExist {
+		dateCompleted := time.Now()
+		if err := tx.Model(&batch).Updates(model.BatchRequest{Status: status, DateCompleted: &dateCompleted}).Error; err != nil {
+			return err
+		}
 	}
-	if err := tx.Model(&transactionQueueDetails).Updates(&model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
-		return err
-	}
+
 	if err := tx.Commit().Error; err != nil {
+		controller.Logger.Error("Error response from confirmTransactions : %+v while commiting db transaction", err)
 		return err
 	}
-
 	return nil
 
 }
