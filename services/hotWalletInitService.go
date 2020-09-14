@@ -1,6 +1,7 @@
 package services
 
 import (
+	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
 	"wallet-adapter/errorcode"
@@ -27,32 +28,33 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 	}
 
 	for _, asset := range supportedAssets {
+		if strings.EqualFold(asset.WithdrawActivity, utility.ACTIVE) {
 
-		address, err = GetHotWalletAddressFor(cache, DB, logger, config, asset.AssetSymbol)
-		if err != nil {
-			logger.Error("Error with getting hot wallet address for %s : %s", asset.AssetSymbol, err)
-			return err
-		}
-
-		if address != "" {
-			coinTypeToAddrMap[asset.CoinType] = address
-			continue
-		}
-
-		if coinTypeToAddrMap[asset.CoinType] != "" {
-			address = coinTypeToAddrMap[asset.CoinType]
-		} else {
-			address, err = GenerateAddressWithoutSub(cache, logger, config, serviceID, asset.AssetSymbol, &externalServiceErr)
+			address, err = GetHotWalletAddressFor(cache, DB, logger, config, asset.AssetSymbol)
 			if err != nil {
+				logger.Error("Error with getting hot wallet address for %s : %s", asset.AssetSymbol, err)
 				return err
 			}
-			coinTypeToAddrMap[asset.CoinType] = address
-		}
 
-		if err := DB.Create(&model.HotWalletAsset{Address: address, AssetSymbol: asset.AssetSymbol}).Error; err != nil {
-			logger.Error("Error with creating hot wallet asset record %s : %s", asset.AssetSymbol, err)
-		}
+			if address != "" {
+				coinTypeToAddrMap[asset.CoinType] = address
+				continue
+			}
 
+			if coinTypeToAddrMap[asset.CoinType] != "" {
+				address = coinTypeToAddrMap[asset.CoinType]
+			} else {
+				address, err = GenerateAddressWithoutSub(cache, logger, config, serviceID, asset.AssetSymbol, &externalServiceErr)
+				if err != nil {
+					return err
+				}
+				coinTypeToAddrMap[asset.CoinType] = address
+			}
+
+			if err := DB.Create(&model.HotWalletAsset{Address: address, AssetSymbol: asset.AssetSymbol}).Error; err != nil {
+				logger.Error("Error with creating hot wallet asset record %s : %s", asset.AssetSymbol, err)
+			}
+		}
 	}
 
 	return nil

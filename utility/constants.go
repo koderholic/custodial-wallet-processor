@@ -39,4 +39,6 @@ const (
 	SWEEP_GROUPING_SEPERATOR        = "|"
 	SWEEP_ERROR_INSUFFICIENT        = "Sweep amount is insufficient"
 	SWEEP_ERROR_ASSET_NOT_SUPPORTED = "Sweep checkInsufficient sum asset not supported"
+	ACTIVE                          = "ACTIVE"
+	MIN_WAIT_TIME_IN_PROCESSING     = 120
 )
