@@ -128,9 +128,6 @@ func (s *Suite) SetupSuite() {
 		ConnMaxLifetime:        300,
 		LockerPrefix:           "Wallet-Adapter-Lock-",
 		ETH_minimumSweep:       0.9,
-		BnbSlipValue:           "714",
-		BtcSlipValue:           "0",
-		EthSlipValue:           "60",
 	}
 
 	Database := database.Database{
