@@ -35,9 +35,6 @@ type Data struct {
 	ColdWalletEmail           string        `mapstructure:"coldWalletEmail"  yaml:"coldWalletEmail,omitempty"`
 	ColdWalletSmsNumber       string        `mapstructure:"coldWalletSmsNumber"  yaml:"coldWalletSmsNumber,omitempty"`
 	ColdWalletEmailTemplateId string        `mapstructure:"coldWalletEmailTemplateId"  yaml:"coldWalletEmailTemplateId,omitempty"`
-	BtcSlipValue              string        `mapstructure:"BTC_SLIP_VALUE"  yaml:"BTC_SLIP_VALUE,omitempty"`
-	BnbSlipValue              string        `mapstructure:"BNB_SLIP_VALUE"  yaml:"BNB_SLIP_VALUE,omitempty"`
-	EthSlipValue              string        `mapstructure:"ETH_SLIP_VALUE"  yaml:"ETH_SLIP_VALUE,omitempty"`
 	PurgeCacheInterval        time.Duration `mapstructure:"purgeCacheInterval"  yaml:"purgeCacheInterval,omitempty"`
 	RequestTimeout            time.Duration `mapstructure:"requestTimeout"  yaml:"requestTimeout,omitempty"`
 	ExpireCacheDuration       time.Duration `mapstructure:"expireCacheDuration"  yaml:"expireCacheDuration,omitempty"`
@@ -109,10 +106,4 @@ func (c *Data) Init(configDir string) {
 
 	viper.Unmarshal(c)
 	log.Println("App configuration loaded successfully!")
-}
-
-var SupportedAssets = [...]string{
-	"BTC",
-	"BNB",
-	"ETH",
 }
