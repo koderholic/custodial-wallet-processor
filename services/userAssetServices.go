@@ -1,48 +1,41 @@
 package services
 
 import (
-	"fmt"
-	"net/http"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
-	"wallet-adapter/utility"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 )
 
-type IServiceRepository interface {
-}
-
-func CreateAsset(repository IRepository, denominations []string) {
-
-	// Create user asset record for each given denomination
-	for i := 0; i < len(denominations); i++ {
-		denominationSymbol := requestData.Assets[i]
+// CreateUserAsset ... Create given assets for the specified user
+func CreateUserAsset(repository database.IUserAssetRepository, assetDenominations []string, userID uuid.UUID) ([]dto.Asset, error) {
+	assets := []dto.Asset{}
+	for i := 0; i < len(assetDenominations); i++ {
+		denominationSymbol := assetDenominations[i]
 		denomination := model.Denomination{}
 
-		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
-			if err.Error() == errorcode.SQL_404 {
-				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
-				return
-			}
-			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
-			return
+		if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
+			return assets, err
 		}
 		balance, _ := decimal.NewFromString("0.00")
-		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetmodel)
+		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: userID, AvailableBalance: balance.String()}
+		_ = repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: userID}, &userAssetmodel)
 
-		responseData.Assets = append(responseData.Assets, userAsset)
+		asset := normalizeUserAsset(userAssetmodel)
+
+		assets = append(assets, asset)
 	}
-
+	return assets, nil
 }
 
-func normalizeAsset() {
+func normalizeUserAsset(userAssetmodel model.UserAsset) dto.Asset {
 	userAsset := dto.Asset{}
 	userAsset.ID = userAssetmodel.ID
 	userAsset.UserID = userAssetmodel.UserID
 	userAsset.AssetSymbol = userAssetmodel.AssetSymbol
 	userAsset.AvailableBalance = userAssetmodel.AvailableBalance
 	userAsset.Decimal = userAssetmodel.Decimal
+	return userAsset
 }
