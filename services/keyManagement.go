@@ -20,7 +20,7 @@ func (service BaseService) GenerateAddress(userID uuid.UUID, symbol string, coin
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, []string{generatedAddress}, userID, coinType); err != nil {
+	if err := service.subscribeAddress(serviceErr, []string{generatedAddress}, coinType); err != nil {
 		return "", err
 	}
 
@@ -99,7 +99,7 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, addressArray, userID, coinType); err != nil {
+	if err := service.subscribeAddress(serviceErr, addressArray, coinType); err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
 
@@ -235,31 +235,23 @@ func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.Me
 }
 
 //does v1 and v2 address subscriptions
-func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray []string, userID uuid.UUID, coinType int64) error {
+func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray []string, coinType int64) error {
 
-	subscriptionRequestData := dto.SubscriptionRequestV1{}
 	subscriptionRequestDataV2 := dto.SubscriptionRequestV2{}
-	subscriptionRequestData.Subscriptions = make(map[string][]string)
 	subscriptionRequestDataV2.Subscriptions = make(map[string][]string)
 	switch coinType {
 	case 0:
-		subscriptionRequestData.Subscriptions[service.Config.BtcSlipValue] = addressArray
 		subscriptionRequestDataV2.Subscriptions[service.Config.BtcSlipValue] = addressArray
 		break
 	case 60:
-		subscriptionRequestData.Subscriptions[service.Config.EthSlipValue] = addressArray
 		subscriptionRequestDataV2.Subscriptions[service.Config.EthSlipValue] = addressArray
 		break
 	case 714:
-		subscriptionRequestData.Subscriptions[service.Config.BnbSlipValue] = addressArray
 		subscriptionRequestDataV2.Subscriptions[service.Config.BnbSlipValue] = addressArray
 		break
 	}
-	subscriptionRequestData.Webhook = service.Config.DepositWebhookURL
-	subscriptionRequestDataV2.UserId = userID
-
 	subscriptionResponseData := dto.SubscriptionResponse{}
-	if err := SubscribeAddressV1(service.Cache, service.Logger, service.Config, subscriptionRequestData, &subscriptionResponseData, serviceErr); err != nil {
+	if err := SubscribeAddressV2(service.Cache, service.Logger, service.Config, subscriptionRequestDataV2, &subscriptionResponseData, serviceErr); err != nil {
 		service.Logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)
 		return err
 	}
