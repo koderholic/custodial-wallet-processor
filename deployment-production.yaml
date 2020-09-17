@@ -3,6 +3,6 @@ config:
   floatCronInterval: '10 */4 * * *'
   BTC_minimumSweep: '1.0'
   BNB_minimumSweep: '5'
-  ETH_minimumSweep: '0.1'
+  ETH_minimumSweep: '0.05'
   BUSD_minimumSweep: '300'
   coldWalletSmsNumber: '+2349084859418'
