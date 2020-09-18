@@ -38,7 +38,7 @@ func (service *KeyManagementService) GenerateAddress(userID uuid.UUID, symbol st
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, []string{generatedAddress}, coinType); err != nil {
+	if err := service.subscribeAddress(serviceErr, []string{generatedAddress}, userID, coinType); err != nil {
 		return "", err
 	}
 
@@ -117,7 +117,7 @@ func (service *KeyManagementService) GenerateAllAddresses(userID uuid.UUID, symb
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, addressArray, coinType); err != nil {
+	if err := service.subscribeAddress(serviceErr, addressArray, userID, coinType); err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
 
