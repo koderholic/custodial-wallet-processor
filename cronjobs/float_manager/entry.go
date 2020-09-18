@@ -20,10 +20,7 @@ func main() {
 		return
 	}
 
-	logger := utility.NewLogger()
-
 	Database := &database.Database{
-		Logger: logger,
 		Config: config,
 	}
 	Database.LoadDBInstance()
@@ -36,5 +33,5 @@ func main() {
 	baseRepository := database.BaseRepository{Database: *Database}
 	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 
-	tasks.ManageFloat(authCache, logger, config, baseRepository, userAssetRepository)
+	tasks.ManageFloat(authCache, config, baseRepository, userAssetRepository)
 }

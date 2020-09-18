@@ -6,19 +6,38 @@ import (
 	"math/big"
 	"strings"
 	Config "wallet-adapter/config"
+
+	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/logger"
+
 	"wallet-adapter/dto"
 	"wallet-adapter/utility"
 )
 
-func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SendEmailRequest, responseData *dto.SendEmailResponse, serviceErr interface{}) error {
+//NotificationService object
+type NotificationService struct {
+	Cache  *utility.MemoryCache
+	Config Config.Data
+	Error  *dto.ExternalServicesRequestErr
+}
 
-	authToken, err := GetAuthToken(cache, logger, config)
+func NewNotificationService(cache *utility.MemoryCache, config Config.Data) *NotificationService {
+	baseService := NotificationService{
+		Cache:  cache,
+		Config: config,
+	}
+	return &baseService
+}
+
+func (service *NotificationService) SendEmailNotification(cache *utility.MemoryCache, config Config.Data, requestData dto.SendEmailRequest, responseData *dto.SendEmailResponse, serviceErr interface{}) error {
+	AuthService := NewAuthService(service.Cache, service.Config)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("sendEmail", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -39,13 +58,14 @@ func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, c
 	return nil
 }
 
-func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SendSmsRequest, responseData *dto.SendSmsResponse, serviceErr interface{}) error {
-	authToken, err := GetAuthToken(cache, logger, config)
+func (service *NotificationService) SendSmsNotification(cache *utility.MemoryCache, config Config.Data, requestData dto.SendSmsRequest, responseData *dto.SendSmsResponse, serviceErr interface{}) error {
+	AuthService := NewAuthService(service.Cache, service.Config)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("sendSms", config)
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -66,7 +86,7 @@ func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, con
 	return nil
 }
 
-func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
+func (service *NotificationService) BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.MemoryCache, config Config.Data, serviceErr interface{}) {
 	logger.Info("Sending sms notification for asset ", assetSymbol)
 	formattedPhoneNumber := config.ColdWalletSmsNumber
 	if !strings.HasPrefix(config.ColdWalletSmsNumber, "+") {
@@ -79,7 +99,7 @@ func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.Memor
 		Country:     utility.NOTIFICATION_SMS_COUNTRY,
 	}
 	sendSmsResponse := dto.SendSmsResponse{}
-	if err := SendSmsNotification(cache, logger, config, sendSmsRequest, &sendSmsResponse, serviceErr); err != nil {
+	if err := service.SendSmsNotification(cache, config, sendSmsRequest, &sendSmsResponse, serviceErr); err != nil {
 		logger.Error(fmt.Sprintf("error with sending sms notification for asset %s : %s", assetSymbol, err))
 	}
 }

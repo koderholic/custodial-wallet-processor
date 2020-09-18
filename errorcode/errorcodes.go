@@ -2,9 +2,10 @@ package errorcode
 
 const (
 	INPUT_ERR                           = "Invalid Input Supplied. See documentation"
-	SYSTEM_ERR                          = "Request Could Not Be Proccessed. Server encountered an error"
+	SERVER_ERR                          = "Request Could Not Be Proccessed. Server encountered an error"
 	VALIDATION_ERR                      = "Validation Failed For Some Fields"
-	UUID_CAST_ERR                       = "Cannot cast Id, ensure to be passing a valid id"
+	UUID_CAST_ERR                       = "Cannot cast input to UUID, ensure to be passing a valid id"
+	UUID_ERROR_CODE                     = "UUID_CAST_ERR"
 	EMPTY_AUTH_KEY                      = "Authentication token is required"
 	INVALID_AUTH_TOKEN                  = "Authentication token is not valid"
 	AUTH_VALIDATE_ERR                   = "Failed to validate authentication token"
@@ -15,6 +16,7 @@ const (
 	TRANSFER_TO_SELF                    = "Transfer to self not allowed"
 	INSUFFICIENT_FUNDS_ERR              = "User asset do not have sufficient balance for this transaction"
 	SQL_404                             = "record not found"
+	SQL_ERR                             = "SQL_ERR"
 	INVALID_DEBIT                       = "Debit reference provided was not successful."
 	INVALID_DEBIT_AMOUNT                = "Value in debit reference does not match value provided."
 	DEBIT_PROCESSED_ERR                 = "Debit reference has already been processed for external transfer"
@@ -27,4 +29,9 @@ const (
 	BROADCAST_REJECTED_ERR              = "TRANSACTION_REJECTED_ON_BROADCAST"
 	WITHDRAWAL_NOT_ACTIVE               = "Withdrawal operation is currently not available for this asset"
 	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
+	ASSET_NOT_SUPPORTED                 = "ASSET_NOT_SUPPORTED"
+	VALIDATION_ERR_CODE                 = "VALIDATION_ERR"
+	INPUT_ERR_CODE                      = "INPUT_ERR"
+	SERVER_ERR_CODE                     = "SERVER_ERR_CODE"
+	RECORD_NOT_FOUND                    = "RECORD_NOT_FOUND"
 )

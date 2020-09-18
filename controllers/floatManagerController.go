@@ -6,6 +6,7 @@ import (
 	"wallet-adapter/database"
 	"wallet-adapter/tasks"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/logger"
 )
 
 func (controller UserAssetController) TriggerFloat(responseWriter http.ResponseWriter, requestReader *http.Request) {
@@ -18,7 +19,6 @@ func (controller UserAssetController) TriggerFloat(responseWriter http.ResponseW
 	go func() {
 
 		Database := &database.Database{
-			Logger: controller.Logger,
 			Config: controller.Config,
 			DB:     controller.Repository.Db(),
 		}
@@ -26,12 +26,12 @@ func (controller UserAssetController) TriggerFloat(responseWriter http.ResponseW
 		db := *Database
 		baseRepository := database.BaseRepository{Database: db}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-		tasks.ManageFloat(controller.Cache, controller.Logger, controller.Config, baseRepository, userAssetRepository)
+		tasks.ManageFloat(controller.Cache, controller.Config, baseRepository, userAssetRepository)
 
 		done <- true
 	}()
 
-	controller.Logger.Info("Outgoing response to TriggerFloat request %+v", utility.SUCCESS)
+	logger.Info("Outgoing response to TriggerFloat request %+v", utility.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))

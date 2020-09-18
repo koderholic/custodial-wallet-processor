@@ -15,10 +15,7 @@ func main() {
 	config := Config.Data{}
 	config.Init("")
 
-	logger := utility.NewLogger()
-
 	Database := &database.Database{
-		Logger: logger,
 		Config: config,
 	}
 	Database.LoadDBInstance()
@@ -29,6 +26,6 @@ func main() {
 	//authCache, logger, config, baseRepository
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: *Database}
-	tasks.SweepTransactions(authCache, logger, config, baseRepository)
+	tasks.SweepTransactions(authCache, config, baseRepository)
 
 }
