@@ -5,13 +5,12 @@ import (
 	"strings"
 )
 
+// Error struct
 type AppError struct {
+	ErrCode int
 	ErrType string
 	Err     error
-}
-
-func (e AppError) Type() string {
-	return fmt.Sprintf("%s", e.ErrType)
+	ErrData interface{}
 }
 
 func (e AppError) Error() string {

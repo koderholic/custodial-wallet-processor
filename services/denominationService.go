@@ -11,17 +11,34 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
+	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/logger"
+
 	"github.com/jinzhu/gorm"
-	"github.com/trustwallet/blockatlas/pkg/logger"
 )
 
+//HotWalletService object
+type DenominationServices struct {
+	Cache  *utility.MemoryCache
+	Config Config.Data
+	Error  *dto.ExternalServicesRequestErr
+}
+
+func NewDenominationServices(cache *utility.MemoryCache, config Config.Data) *DenominationServices {
+	baseService := DenominationServices{
+		Cache:  cache,
+		Config: config,
+	}
+	return &baseService
+}
+
 // GetAssetDenominations Fetch all supported asset denominations from rate service
-func (service BaseService) GetAssetDenominations() (dto.AssetDenominations, error) {
+func (service *DenominationServices) GetAssetDenominations() (dto.AssetDenominations, error) {
 
 	responseData := dto.AssetDenominations{}
 	metaData := utility.GetRequestMetaData("getAssetDenominations", service.Config)
 
-	APIClient := NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?assetType=CRYPTO", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?assetType=CRYPTO", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return responseData, err
@@ -40,12 +57,12 @@ func (service BaseService) GetAssetDenominations() (dto.AssetDenominations, erro
 }
 
 // GetTWDenominations, returns all coins and their info from TW
-func (service BaseService) GetTWDenominations() ([]dto.TWDenomination, error) {
+func (service *DenominationServices) GetTWDenominations() ([]dto.TWDenomination, error) {
 
 	responseData := []dto.TWDenomination{}
 	metaData := utility.GetRequestMetaData("getTWDenominations", service.Config)
 
-	APIClient := NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return responseData, err
@@ -63,21 +80,20 @@ func (service BaseService) GetTWDenominations() ([]dto.TWDenomination, error) {
 
 }
 
-func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
+func (service *DenominationServices) SeedSupportedAssets(DB *gorm.DB) {
 
 	// Get assets from rate service
-	denominationService := NewService(cache, logger, config)
-	assetDenominations, err := denominationService.GetAssetDenominations()
+	assetDenominations, err := service.GetAssetDenominations()
 	if err != nil {
 		logger.Fatal("Supported assets could not be seeded, err : %s", err)
 	}
 
-	TWDenominations, err := denominationService.GetTWDenominations()
+	TWDenominations, err := service.GetTWDenominations()
 	if err != nil {
 		logger.Fatal("Supported assets could not be seeded, err : %s", err)
 	}
 
-	assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
+	assets := service.normalizeAsset(assetDenominations.Denominations, TWDenominations)
 
 	for _, asset := range assets {
 		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
@@ -87,7 +103,7 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 	logger.Info("Supported assets seeded successfully")
 }
 
-func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
+func (service *DenominationServices) normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
 
 	normalizedAssets := []model.Denomination{}
 
@@ -106,8 +122,8 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			Decimal:             denom.NativeDecimals,
 			IsEnabled:           denom.Enabled,
 			IsToken:             &isToken,
-			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
-			SweepFee:            getAssetSweepFee(denom.CoinType),
+			MainCoinAssetSymbol: service.getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
+			SweepFee:            service.getAssetSweepFee(denom.CoinType),
 			TradeActivity:       denom.TradeActivity,
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
@@ -120,7 +136,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 
 }
 
-func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination) string {
+func (service *DenominationServices) getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination) string {
 
 	for _, denom := range TWDenominations {
 		if denom.CoinId == coinType {
@@ -130,7 +146,7 @@ func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination
 	return ""
 }
 
-func getAssetSweepFee(coinType int64) int64 {
+func (service *DenominationServices) getAssetSweepFee(coinType int64) int64 {
 	switch coinType {
 	case 714:
 		return 37500
@@ -139,7 +155,7 @@ func getAssetSweepFee(coinType int64) int64 {
 	}
 }
 
-func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+func (service *DenominationServices) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		return false, err
@@ -152,7 +168,7 @@ func (service BaseService) IsWithdrawalActive(assetSymbol string, repository dat
 	return true, nil
 }
 
-func (service BaseService) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+func (service *DenominationServices) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		return false, err

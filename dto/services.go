@@ -76,7 +76,7 @@ type SubscriptionResponse struct {
 }
 
 // ServicesRequestErr ... Model definition for external services request made with error response
-type ServicesRequestErr struct {
+type ExternalServicesRequestErr struct {
 	Success    bool              `json:"success"`
 	Code       string            `json:"code"`
 	Message    string            `json:"message"`

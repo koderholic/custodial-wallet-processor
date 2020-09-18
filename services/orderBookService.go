@@ -4,20 +4,37 @@ import (
 	"encoding/json"
 	"fmt"
 	Config "wallet-adapter/config"
+
 	"wallet-adapter/dto"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/apiClient"
 )
 
-// withdrawToHotWallet ... Calls order-book service to withdraw to specified hot wallet address
-func WithdrawToHotWallet(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.WitdrawToHotWalletRequest, responseData *dto.WitdrawToHotWalletResponse, serviceErr interface{}) error {
+//OrderBookService object
+type OrderBookService struct {
+	Cache  *utility.MemoryCache
+	Config Config.Data
+	Error  *dto.ExternalServicesRequestErr
+}
 
-	authToken, err := GetAuthToken(cache, logger, config)
+func NewOrderBookService(cache *utility.MemoryCache, config Config.Data) *OrderBookService {
+	baseService := OrderBookService{
+		Cache:  cache,
+		Config: config,
+	}
+	return &baseService
+}
+
+// withdrawToHotWallet ... Calls order-book service to withdraw to specified hot wallet address
+func (service *OrderBookService) WithdrawToHotWallet(cache *utility.MemoryCache, config Config.Data, requestData dto.WitdrawToHotWalletRequest, responseData *dto.WitdrawToHotWalletResponse, serviceErr interface{}) error {
+	AuthService := NewAuthService(service.Cache, service.Config)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("withdrawToHotWallet", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -37,15 +54,15 @@ func WithdrawToHotWallet(cache *utility.MemoryCache, logger *utility.Logger, con
 }
 
 // withdrawToHotWallet ... Calls order-book service to get asset details
-func GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, responseData *dto.BinanceAssetBalances, serviceErr interface{}) error {
-
-	authToken, err := GetAuthToken(cache, logger, config)
+func (service *OrderBookService) GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, config Config.Data, responseData *dto.BinanceAssetBalances, serviceErr interface{}) error {
+	AuthService := NewAuthService(service.Cache, service.Config)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("getAssetBalances", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err
@@ -65,15 +82,15 @@ func GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, logger *utility.
 }
 
 // withdrawToHotWallet ... Calls order-book service to get asset details
-func GetDepositAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, coin string, network string, responseData *dto.DepositAddressResponse, serviceErr interface{}) error {
-
-	authToken, err := GetAuthToken(cache, logger, config)
+func (service *OrderBookService) GetDepositAddress(cache *utility.MemoryCache, config Config.Data, coin string, network string, responseData *dto.DepositAddressResponse, serviceErr interface{}) error {
+	AuthService := NewAuthService(service.Cache, service.Config)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
 	metaData := utility.GetRequestMetaData("getDepositAddress", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err

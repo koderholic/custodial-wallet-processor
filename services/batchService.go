@@ -1,15 +1,31 @@
 package services
 
 import (
+	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
+	"wallet-adapter/utility/logger"
+
+	"wallet-adapter/dto"
+	"wallet-adapter/utility"
 
 	uuid "github.com/satori/go.uuid"
 )
 
+//BatchService object
 type BatchService struct {
-	BaseService
+	Cache  *utility.MemoryCache
+	Config Config.Data
+	Error  *dto.ExternalServicesRequestErr
+}
+
+func NewBatchService(cache *utility.MemoryCache, config Config.Data) *BatchService {
+	baseService := BatchService{
+		Cache:  cache,
+		Config: config,
+	}
+	return &baseService
 }
 
 func (service BatchService) GetWaitingBTCBatchId(repository database.IBatchRepository, assetSymbol string) (uuid.UUID, error) {
@@ -17,13 +33,13 @@ func (service BatchService) GetWaitingBTCBatchId(repository database.IBatchRepos
 	var currentBatch model.BatchRequest
 	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE, AssetSymbol: assetSymbol}, &currentBatch); err != nil {
 		if err.Error() != errorcode.SQL_404 {
-			service.Logger.Error("Error response from batch service : ", err)
+			logger.Error("Error response from batch service : ", err)
 			return uuid.UUID{}, err
 		}
 		// Create new batch entry
 		currentBatch.AssetSymbol = assetSymbol
 		if err := repository.Create(&currentBatch); err != nil {
-			service.Logger.Error("Error response from batch service : ", err)
+			logger.Error("Error response from batch service : ", err)
 			return uuid.UUID{}, err
 		}
 	}
@@ -46,7 +62,7 @@ func (service BatchService) CheckBatchExistAndReturn(repository database.IBatchR
 		return false, batchDetails, nil
 	}
 	if err := repository.GetByFieldName(&model.BatchRequest{BaseModel: model.BaseModel{ID: batchId}}, &batchDetails); err != nil {
-		service.Logger.Error("Error getting batch details : %+v for batch with id %+v", err)
+		logger.Error("Error getting batch details : %+v for batch with id %+v", err)
 		if err.Error() != errorcode.SQL_404 {
 			return false, model.BatchRequest{}, err
 		}

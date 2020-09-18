@@ -13,5 +13,4 @@ type UserAddress struct {
 	V2Address   string    `gorm:"VARCHAR(255);" json:"v2Address"`
 	Memo        string    `gorm:"VARCHAR(15);" json:"memo"`
 	IsValid     bool      `gorm:"default:1" json:"is_valid"`
-	AssetSymbol string    `json:"asset_symbol"`
 }

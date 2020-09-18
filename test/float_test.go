@@ -14,7 +14,6 @@ import (
 )
 
 func (s *Suite) TestFloat() {
-	logger := utility.NewLogger()
 	configTest := config.Data{
 		AppPort:                   "9000",
 		ServiceName:               "crypto-wallet-adapter",
@@ -45,7 +44,7 @@ func (s *Suite) TestFloat() {
 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: s.Database}
 	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-	tasks.ManageFloat(authCache, logger, configTest, baseRepository, userAssetRepository)
+	tasks.ManageFloat(authCache, configTest, baseRepository, userAssetRepository)
 
 }
 

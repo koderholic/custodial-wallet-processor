@@ -6,7 +6,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// transactionRequest ... Model definition for get transaction request
+// TransactionResponse ... Model definition for get transaction request
 type TransactionResponse struct {
 	ID                   uuid.UUID  `json:"id,omitempty"`
 	InitiatorID          uuid.UUID  `json:"initiatorId,omitempty"`
@@ -30,6 +30,15 @@ type TransactionListResponse struct {
 	Transactions []TransactionResponse `json:"transactions,omitempty"`
 }
 
+// TransactionReceipt ... Model definition for credit user asset request
+type TransactionReceipt struct {
+	AssetID              uuid.UUID `json:"assetId,omitempty"`
+	Value                string    `json:"value,omitempty"`
+	TransactionReference string    `json:"transactionReference,omitempty"`
+	PaymentReference     string    `json:"paymentReference,omitempty"`
+	TransactionStatus    string    `json:"transactionStatus,omitempty"`
+}
+
 type ExternalTransferRequest struct {
 	RecipientAddress     string  `json:"recipientAddress,omitempty" validate:"required"`
 	Value                float64 `json:"value,omitempty" validate:"required"`
@@ -43,17 +52,34 @@ type ExternalTransferResponse struct {
 	TransactionStatus    string `json:"transactionStatus,omitempty"`
 }
 
-type BatchBTCRequest struct {
-	AssetSymbol   string            `json:"assetSymbol"`
-	ChangeAddress string            `json:"changeAddress"`
-	IsSweep       bool              `json:"isSweep"`
-	Origins       []string          `json:"origins"`
-	Recipients    []BatchRecipients `json:"recipients"`
-	ProcessType   string            `json:"processType"`
-	Reference     string            `json:"reference"`
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type InternalTransferRequest struct {
+	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`
+	RecipientAssetId     uuid.UUID `json:"recipientAssetId" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
+	TransactionReference string    `json:"transactionReference" validate:"required"`
+	Memo                 string    `json:"memo" validate:"required"`
 }
 
-type BatchRecipients struct {
-	Address string `json:"address"`
-	Value   int64  `json:"value"`
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type CreditUserAssetRequest struct {
+	AssetID              uuid.UUID `json:"assetId" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
+	TransactionReference string    `json:"transactionReference" validate:"required"`
+	Memo                 string    `json:"memo"`
+}
+
+// OnChainCreditUserAssetRequest object
+type OnChainCreditUserAssetRequest struct {
+	CreditUserAssetRequest
+	ChainData ChainData `json:"chainData" validate:"required"`
+}
+
+// ChainData On-chain metadata for broadcasted / incoming transactions
+type ChainData struct {
+	Status           *bool  `json:"status" validate:"required"`
+	TransactionHash  string `json:"transactionHash" validate:"required"`
+	TransactionFee   string `json:"transactionFee" validate:"required"`
+	RecipientAddress string `json:"recipientAddress"`
+	BlockHeight      int64  `json:"blockHeight"`
 }
