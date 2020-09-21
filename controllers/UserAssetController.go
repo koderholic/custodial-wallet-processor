@@ -177,7 +177,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 
 	if err != nil {
 		if err.Error() == errorcode.SQL_404 {
-			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Record not found for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusNotFound, err, apiResponse.PlainError(err.(utility.AppError).ErrType, fmt.Sprintf("Record not found for address : %s, with asset symbol : %s and memo : %s, additional context : %s", address, assetSymbol, userAssetMemo, err)), controller.Logger)
 			return
 		}
 		ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", fmt.Sprintf("An error occured while getting asset for address : %s, with asset symbol : %s and memo : %s", address, assetSymbol, userAssetMemo)), controller.Logger)

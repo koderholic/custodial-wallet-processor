@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
@@ -140,9 +141,16 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
 		Where("address = ? && asset_symbol = ?", address, assetSymbol).
-		Find(model).Error; err != nil {
+		First(model).Error; err != nil {
+		repo.Logger.Info("GetAssetByAddressAndSymbol logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
+		if gorm.IsRecordNotFoundError(err) {
+			return utility.AppError{
+				ErrType: errorcode.RECORD_NOT_FOUND,
+				Err:     err,
+			}
+		}
 		return utility.AppError{
-			ErrType: "INPUT_ERR",
+			ErrType: errorcode.SERVER_ERR,
 			Err:     err,
 		}
 	}
@@ -154,10 +162,17 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("v2_address = ? && asset_symbol = ? && memo = ?", address, assetSymbol, memo).
-		Find(model).Error; err != nil {
+		Where("asset_symbol = ? && v2_address=? && memo = ? ", assetSymbol, address, memo).
+		First(model).Error; err != nil {
+		repo.Logger.Info("GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
+		if gorm.IsRecordNotFoundError(err) {
+			return utility.AppError{
+				ErrType: errorcode.RECORD_NOT_FOUND,
+				Err:     err,
+			}
+		}
 		return utility.AppError{
-			ErrType: "INPUT_ERR",
+			ErrType: errorcode.SERVER_ERR,
 			Err:     err,
 		}
 	}
