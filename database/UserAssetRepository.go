@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
@@ -140,7 +141,13 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
 		Where("address = ? && asset_symbol = ?", address, assetSymbol).
-		Find(model).Error; err != nil {
+		First(model).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return utility.AppError{
+				ErrType: "RECORD_NOT_FOUND",
+				Err:     err,
+			}
+		}
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,
@@ -155,9 +162,15 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
 		Where("v2_address = ? && asset_symbol = ? && memo = ?", address, assetSymbol, memo).
-		Find(model).Error; err != nil {
+		First(model).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return utility.AppError{
+				ErrType: errorcode.RECORD_NOT_FOUND,
+				Err:     err,
+			}
+		}
 		return utility.AppError{
-			ErrType: "INPUT_ERR",
+			ErrType: errorcode.RECORD_NOT_FOUND,
 			Err:     err,
 		}
 	}

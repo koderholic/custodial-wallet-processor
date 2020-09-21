@@ -176,7 +176,7 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, logger *util
 	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
 		return model.UserAsset{}, err
 	}
-	logger.Info("GetAssetForV2Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
+	logger.Info("GetAssetForV1Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
 
 	return userAsset, nil
 }
