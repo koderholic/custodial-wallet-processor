@@ -28,4 +28,5 @@ const (
 	WITHDRAWAL_NOT_ACTIVE               = "Withdrawal operation is currently not available for this asset"
 	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
 	RECORD_NOT_FOUND                    = "RECORD_NOT_FOUND"
+	SERVER_ERR                          = "SERVER_ERR"
 )

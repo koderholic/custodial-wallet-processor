@@ -144,12 +144,12 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 		First(model).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return utility.AppError{
-				ErrType: "RECORD_NOT_FOUND",
+				ErrType: errorcode.RECORD_NOT_FOUND,
 				Err:     err,
 			}
 		}
 		return utility.AppError{
-			ErrType: "INPUT_ERR",
+			ErrType: errorcode.SERVER_ERR,
 			Err:     err,
 		}
 	}
@@ -170,7 +170,7 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 			}
 		}
 		return utility.AppError{
-			ErrType: errorcode.RECORD_NOT_FOUND,
+			ErrType: errorcode.SERVER_ERR,
 			Err:     err,
 		}
 	}
