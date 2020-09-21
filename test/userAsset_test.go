@@ -2,6 +2,7 @@ package test
 
 import (
 	"wallet-adapter/dto"
+	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
 
@@ -102,4 +103,29 @@ func (s *Suite) Test_GetAssetById_Fails_ForNonExistingUserId() {
 	assert.NotEqual(s.T(), nil, err, "Expected FetchAssets to return error")
 	assert.Equal(s.T(), 400, err.(utility.AppError).ErrCode, "Expected FetchAssets to return error")
 	assert.Equal(s.T(), "RECORD_NOT_FOUND", err.(utility.AppError).ErrType, "Expected FetchAssets to return RECORD_NOT_FOUND")
+}
+
+// func (s *Suite) Test_GetAssetByAddress_pass_ForV2Address() {
+// 	denominations := []string{"LINK", "ETH", "BNB"}
+// 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
+// 	UserAssetService := services.NewUserAssetService(authCache, s.Config)
+// 	createdAsset, err := UserAssetService.CreateAsset(&testUserAssetRepository, denominations, userId)
+
+// 	asset, err := UserAssetService.GetAssetByAddressSymbolAndMemo(&testUserAssetRepository, "bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a", "BNB", "639469678")
+// 	expected := testUserAssets1[0]
+
+// 	assert.Equal(s.T(), nil, err, "Expected GetAssetByAddressSymbolAndMemo to not error")
+// 	assert.Equal(s.T(), expected, asset, "Expected asset not returned")
+// }
+
+func (s *Suite) Test_ComputeNewAssetBalance() {
+	assetDetails := model.UserAsset{
+		AvailableBalance: "0.8",
+	}
+	creditValue := float64(0.2)
+	UserAssetService := services.NewUserAssetService(authCache, s.Config)
+	newAssetValue := UserAssetService.ComputeNewAssetBalance(assetDetails, creditValue)
+	expectedAssetValue := "1"
+
+	assert.Equal(s.T(), expectedAssetValue, newAssetValue)
 }

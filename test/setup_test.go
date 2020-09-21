@@ -38,12 +38,11 @@ type Suite struct {
 }
 
 var (
-	once          sync.Once
-	purgeInterval = 5 * time.Second
-	cacheDuration = 60 * time.Second
-	authCache     = utility.InitializeCache(cacheDuration, purgeInterval)
-	authToken     = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVkNTL0FVVEgiLCJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5jcmVkaXQtYXNzZXQiLCJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5nZXQtYXNzZXRzIiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIuY3JlYXRlLWFzc2V0cyIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmNyZWRpdC1hc3NldCIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmRlYml0LWFzc2V0Iiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIuZG8taW50ZXJuYWwtdHJhbnNmZXIiLCJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5nZXQtYWRkcmVzcyIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmdldC10cmFuc2FjdGlvbnMiLCJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5vbi1jaGFpbi1kZXBvc2l0Iiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIuY29uZmlybS10cmFuc2FjdGlvbiIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmRvLWV4dGVybmFsLXRyYW5zZmVyIiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIucHJvY2Vzcy10cmFuc2FjdGlvbnMiXSwic2VydmljZUlkIjoiNzZhYTcyZjctYjAwZS00OWRhLTgwN2ItNzVjZGUyZjEwZTI3IiwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.ImOiJYkjwGG5_-E4FDUO3LRKZFDLxv3WLpgDt__Ih42B4jUlJ7pl4YJPfSJBc0vM1A57fjuPdJ8NhCd0wcIkxOuDDXJuon5xE1NIr0muIbPWQjNtpkgcVy9gSYBgHAERAFNkSIV_GWvki06uIT0DoQviWTWZmwuG112jquRpfyYV8M5l2pE-xtpf75quQBQQU08EEA-dS17iR4VaaTiCD584o9ujO-Wql9PBs8NK5g1kBpqpOWj2jIpa0NQSYlwijOw2cKL91KpTS0xxG1AXMzvyOyQK-QVpTX09tJrqsmzYHH49Zg5AlaTmiHbsSDhxacdiIE7O_Ge0T1B6PC_SLA"
-
+	once                    sync.Once
+	purgeInterval           = 5 * time.Second
+	cacheDuration           = 60 * time.Second
+	authCache               = utility.InitializeCache(cacheDuration, purgeInterval)
+	authToken               = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVkNTL0FVVEgiLCJwZXJtaXNzaW9ucyI6WyJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5jcmVkaXQtYXNzZXQiLCJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5nZXQtYXNzZXRzIiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIuY3JlYXRlLWFzc2V0cyIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmNyZWRpdC1hc3NldCIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmRlYml0LWFzc2V0Iiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIuZG8taW50ZXJuYWwtdHJhbnNmZXIiLCJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5nZXQtYWRkcmVzcyIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmdldC10cmFuc2FjdGlvbnMiLCJzdmNzLmNyeXB0by13YWxsZXQtYWRhcHRlci5vbi1jaGFpbi1kZXBvc2l0Iiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIuY29uZmlybS10cmFuc2FjdGlvbiIsInN2Y3MuY3J5cHRvLXdhbGxldC1hZGFwdGVyLmRvLWV4dGVybmFsLXRyYW5zZmVyIiwic3Zjcy5jcnlwdG8td2FsbGV0LWFkYXB0ZXIucHJvY2Vzcy10cmFuc2FjdGlvbnMiXSwic2VydmljZUlkIjoiNzZhYTcyZjctYjAwZS00OWRhLTgwN2ItNzVjZGUyZjEwZTI3IiwidG9rZW5UeXBlIjoiU0VSVklDRSJ9.ImOiJYkjwGG5_-E4FDUO3LRKZFDLxv3WLpgDt__Ih42B4jUlJ7pl4YJPfSJBc0vM1A57fjuPdJ8NhCd0wcIkxOuDDXJuon5xE1NIr0muIbPWQjNtpkgcVy9gSYBgHAERAFNkSIV_GWvki06uIT0DoQviWTWZmwuG112jquRpfyYV8M5l2pE-xtpf75quQBQQU08EEA-dS17iR4VaaTiCD584o9ujO-Wql9PBs8NK5g1kBpqpOWj2jIpa0NQSYlwijOw2cKL91KpTS0xxG1AXMzvyOyQK-QVpTX09tJrqsmzYHH49Zg5AlaTmiHbsSDhxacdiIE7O_Ge0T1B6PC_SLA"
 	testUserId1, _          = uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 	testUserId2, _          = uuid.FromString("ff365b4d-6e56-4df7-b0ed-1c5ce325f6e2")
 	testUserAssets1         []model.UserAsset
@@ -52,6 +51,7 @@ var (
 	testUserAssets2Ids      []uuid.UUID
 	testDenominations       = []model.Denomination{}
 	testUserAssetRepository database.UserAssetRepository
+	testUserAddresses       []model.UserAddress
 )
 
 func TestInit(t *testing.T) {
@@ -66,6 +66,7 @@ func (s *Suite) SetupSuite() {
 	}
 	db, err := gorm.Open("sqlite3", dir+"/walletAdapter.db")
 	db.DB().SetMaxOpenConns(1)
+	db.LogMode(true)
 
 	s.DB = db
 	require.NoError(s.T(), err)
@@ -245,6 +246,53 @@ func (s *Suite) DBSeeder() {
 		}
 		testUserAssets2 = append(testUserAssets2, asset)
 		testUserAssets2Ids = append(testUserAssets2Ids, asset.ID)
+	}
+
+	testUserAddresses = []model.UserAddress{
+		{
+			AssetID:   testUserAssets1[0].ID,
+			V2Address: "bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a",
+			Memo:      "639469678",
+			IsValid:   true,
+		},
+		{
+			AssetID:   testUserAssets1[1].ID,
+			V2Address: "bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a",
+			Memo:      "639469678",
+			IsValid:   true,
+		},
+		{
+			AssetID: testUserAssets1[2].ID,
+			Address: "0xce4B800c0aB49Dda535BCe18F87f81D13f142A3C",
+			IsValid: true,
+		},
+		{
+			AssetID:     testUserAssets1[3].ID,
+			Address:     "1F824Xzdnv3bu29npK7ZZaN9aPAnN31kaD",
+			AddressType: "Legacy",
+			IsValid:     true,
+		},
+		{
+			AssetID:     testUserAssets1[3].ID,
+			Address:     "bc1q2fv8dmp3hdeu49azalvwh9w7dd8wvw2jl62l6m",
+			AddressType: "Segwit",
+			IsValid:     true,
+		},
+	}
+	for _, userAddress := range testUserAddresses {
+		if err := s.DB.Create(&userAddress).Error; err != nil {
+			logger.Error(fmt.Sprintf("Error with creating asset address record for %v : %s", userAddress.AssetID, err))
+		}
+	}
+
+	testSharedAddress := model.SharedAddress{
+		UserId:      testUserId1,
+		Address:     "bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a",
+		AssetSymbol: "BNB",
+		CoinType:    714,
+	}
+	if err := s.DB.Create(&testSharedAddress).Error; err != nil {
+		logger.Error(fmt.Sprintf("Error with creating shared address record for %v : %s", testSharedAddress.Address, err))
 	}
 
 	logger.Info("Supported assets seeded successfully")

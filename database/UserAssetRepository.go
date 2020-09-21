@@ -91,7 +91,7 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
 		Where("address = ? && asset_symbol = ?", address, assetSymbol).
-		Find(model).Error; err != nil {
+		First(model).Error; err != nil {
 		return repoError(err)
 	}
 	return nil
@@ -102,8 +102,8 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("v2_address = ? && asset_symbol = ? && memo = ?", address, assetSymbol, memo).
-		Find(model).Error; err != nil {
+		Where("v2_address = ? & asset_symbol = ? & memo = ?", address, assetSymbol, memo).
+		First(model).Error; err != nil {
 		return repoError(err)
 	}
 	return nil

@@ -7,6 +7,8 @@ import (
 	"wallet-adapter/utility"
 	"wallet-adapter/utility/logger"
 
+	"github.com/jinzhu/gorm"
+
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -165,7 +167,7 @@ func (repo *BaseRepository) FetchByLastRunDate(assettype, lastRunDate string, mo
 }
 
 func repoError(err error) error {
-	if err.Error() == errorcode.SQL_404 {
+	if err == gorm.ErrRecordNotFound {
 		return utility.AppError{
 			ErrType: errorcode.SQL_ERR,
 			ErrCode: http.StatusBadRequest,

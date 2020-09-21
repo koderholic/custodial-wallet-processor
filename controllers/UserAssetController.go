@@ -135,7 +135,6 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	apiResponse := utility.NewResponse()
 	requestData := dto.CreditUserAssetRequest{}
 	responseData := dto.TransactionReceipt{}
-	paymentRef := utility.RandomString(16)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	logger.Info("Incoming request details for CreditUserAssets : %+v", requestData)
@@ -146,74 +145,12 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		ReturnError(responseWriter, "CreateUserAssets", err, apiResponse.Error(appErr.ErrType, err.Error(), appErr.ErrData))
 		return
 	}
+
 	authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
 	decodedToken := dto.TokenClaims{}
 	_ = utility.DecodeAuthToken(authToken, controller.Config, &decodedToken)
 
-	// ensure asset exists and fetc asset
-	assetDetails := model.UserAsset{}
-	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: requestData.AssetID}}, &assetDetails); err != nil {
-		ReturnError(responseWriter, "CreditUserAssets", err, apiResponse.PlainError(errorcode.INPUT_ERR_CODE, fmt.Sprintf("%s, for get assetDetails with id = %s", utility.GetSQLErr(err), requestData.AssetID)))
-		return
-	}
-
-	// increment user account by value
-	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
-	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
-
-	tx := controller.Repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Error; err != nil {
-		ReturnError(responseWriter, "CreditUserAssets", err, apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
-		return
-	}
-
-	if err := tx.Model(assetDetails).Updates(model.UserAsset{AvailableBalance: currentAvailableBalance}).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "CreditUserAssets", err, apiResponse.PlainError("SERVER_ERR", utility.GetSQLErr(err)))
-		return
-	}
-
-	// Create transaction record
-	transaction := model.Transaction{
-
-		InitiatorID:          decodedToken.ServiceID, // serviceId
-		RecipientID:          assetDetails.ID,
-		TransactionReference: requestData.TransactionReference,
-		PaymentReference:     paymentRef,
-		Memo:                 requestData.Memo,
-		TransactionType:      model.TransactionType.OFFCHAIN,
-		TransactionStatus:    model.TransactionStatus.COMPLETED,
-		TransactionTag:       model.TransactionTag.CREDIT,
-		Value:                value,
-		PreviousBalance:      assetDetails.AvailableBalance,
-		AvailableBalance:     currentAvailableBalance,
-		ProcessingType:       model.ProcessingType.SINGLE,
-		TransactionStartDate: time.Now(),
-		TransactionEndDate:   time.Now(),
-		AssetSymbol:          assetDetails.AssetSymbol,
-	}
-
-	if err := tx.Create(&transaction).Error; err != nil {
-		tx.Rollback()
-		ReturnError(responseWriter, "CreditUserAssets", err, apiResponse.PlainError("SERVER_ERR", utility.GetSQLErr(err)))
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		ReturnError(responseWriter, "CreditUserAssets", err, apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestData.AssetID, err)))
-		return
-	}
-
-	responseData.AssetID = requestData.AssetID
-	responseData.Value = transaction.Value
-	responseData.TransactionReference = transaction.TransactionReference
-	responseData.PaymentReference = transaction.PaymentReference
-	responseData.TransactionStatus = transaction.TransactionStatus
+	// credit asset
 
 	logger.Info("Outgoing response to CreditUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
@@ -98,9 +100,7 @@ func (service *UserAssetService) GetAssetById(repository database.IUserAssetRepo
 		return dto.Asset{}, err
 	}
 
-	asset := normalize(userAsset)
-
-	return asset, nil
+	return normalize(userAsset), nil
 }
 
 func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository database.IUserAssetRepository, address, assetSymbol, memo string) (dto.Asset, error) {
@@ -130,8 +130,86 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository datab
 	}
 	logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, memo, assetSymbol, userAsset)
 
-	asset := normalize(userAsset)
-	return asset, nil
+	return normalize(userAsset), nil
+}
+
+func (service *UserAssetService) CreditUserAsset(repository database.IUserAssetRepository, creditRequest dto.CreditUserAssetRequest, serviceID uuid.UUID) (dto.TransactionReceipt, error) {
+
+	// ensure asset exists and fetch asset
+	assetDetails := model.UserAsset{}
+	if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: creditRequest.AssetID}}, &assetDetails); err != nil {
+		return dto.TransactionReceipt{}, serviceError(http.StatusNotFound, errorcode.RECORD_NOT_FOUND, errors.New(fmt.Sprintf("Record not found for asset with id : %v", creditRequest.AssetID)))
+	}
+
+	// increment user account by value
+	newAvailableBalance := service.ComputeNewAssetBalance(assetDetails, creditRequest.Value)
+
+	// Update asset balance
+	transaction, err := UpdateAssetBalance(repository, assetDetails, creditRequest, newAvailableBalance, serviceID)
+	if err != nil {
+		return dto.TransactionReceipt{}, serviceError(err.(utility.AppError).ErrCode, err.(utility.AppError).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", creditRequest.AssetID, err)))
+	}
+
+	return dto.TransactionReceipt{
+		AssetID:              creditRequest.AssetID,
+		Value:                transaction.Value,
+		TransactionReference: transaction.TransactionReference,
+		PaymentReference:     transaction.PaymentReference,
+		TransactionStatus:    transaction.TransactionStatus,
+	}, nil
+}
+
+func (service *UserAssetService) ComputeNewAssetBalance(assetDetails model.UserAsset, creditValue float64) string {
+	currentAvailableBalance := utility.Add(creditValue, assetDetails.AvailableBalance, assetDetails.Decimal)
+	return currentAvailableBalance
+}
+
+func UpdateAssetBalance(repository database.IUserAssetRepository, assetDetails model.UserAsset, creditRequest dto.CreditUserAssetRequest, newAvailableBalance string, serviceID uuid.UUID) (model.Transaction, error) {
+	tx := repository.Db().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		return model.Transaction{}, err
+	}
+
+	if err := tx.Model(assetDetails).Updates(model.UserAsset{AvailableBalance: newAvailableBalance}).Error; err != nil {
+		tx.Rollback()
+		return model.Transaction{}, err
+	}
+	// Create transaction record
+	paymentRef := utility.RandomString(16)
+	value := strconv.FormatFloat(creditRequest.Value, 'g', utility.DigPrecision, 64)
+	transaction := model.Transaction{
+		InitiatorID:          serviceID, // serviceId
+		RecipientID:          assetDetails.ID,
+		TransactionReference: creditRequest.TransactionReference,
+		PaymentReference:     paymentRef,
+		Memo:                 creditRequest.Memo,
+		TransactionType:      model.TransactionType.OFFCHAIN,
+		TransactionStatus:    model.TransactionStatus.COMPLETED,
+		TransactionTag:       model.TransactionTag.CREDIT,
+		Value:                value,
+		PreviousBalance:      assetDetails.AvailableBalance,
+		AvailableBalance:     newAvailableBalance,
+		ProcessingType:       model.ProcessingType.SINGLE,
+		TransactionStartDate: time.Now(),
+		TransactionEndDate:   time.Now(),
+		AssetSymbol:          assetDetails.AssetSymbol,
+	}
+
+	if err := tx.Create(&transaction).Error; err != nil {
+		tx.Rollback()
+		return model.Transaction{}, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return model.Transaction{}, err
+	}
+
+	return transaction, nil
 }
 
 func normalize(userAssetmodel model.UserAsset) dto.Asset {
