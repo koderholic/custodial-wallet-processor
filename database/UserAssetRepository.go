@@ -137,10 +137,10 @@ func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (floa
 
 // GetAssetByAddressAndSymbol... Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_assets.*").
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.address, user_assets.*").
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("v2_address = ? && asset_symbol = ?", address, assetSymbol).
+		Where("address = ? && asset_symbol = ?", address, assetSymbol).
 		First(model).Error; err != nil {
 		repo.Logger.Info("GetAssetByAddressAndSymbol logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
 		if gorm.IsRecordNotFoundError(err) {
