@@ -162,7 +162,7 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("v2_address = ? && asset_symbol = ? && memo = ?", address, assetSymbol, memo).
+		Where("asset_symbol = ? && v2_address=? && memo = ? ", assetSymbol, address, memo).
 		First(model).Error; err != nil {
 		repo.Logger.Info("GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
 		if gorm.IsRecordNotFoundError(err) {
