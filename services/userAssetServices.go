@@ -14,24 +14,24 @@ import (
 func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
 
 	// Get assets from rate service
-	denominationService := NewService(cache, logger, config)
-	assetDenominations, err := denominationService.GetAssetDenominations()
-	if err != nil {
-		logger.Fatal("Supported assets could not be seeded, err : %s", err)
-	}
+	// denominationService := NewService(cache, logger, config)
+	// assetDenominations, err := denominationService.GetAssetDenominations()
+	// if err != nil {
+	// 	logger.Fatal("Supported assets could not be seeded, err : %s", err)
+	// }
 
-	TWDenominations, err := denominationService.GetTWDenominations()
-	if err != nil {
-		logger.Fatal("Supported assets could not be seeded, err : %s", err)
-	}
+	// TWDenominations, err := denominationService.GetTWDenominations()
+	// if err != nil {
+	// 	logger.Fatal("Supported assets could not be seeded, err : %s", err)
+	// }
 
-	assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
+	// assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
 
-	for _, asset := range assets {
-		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
-			logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
-		}
-	}
+	// for _, asset := range assets {
+	// 	if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
+	// 		logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+	// 	}
+	// }
 	logger.Info("Supported assets seeded successfully")
 }
 

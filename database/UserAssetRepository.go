@@ -165,7 +165,6 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 		Where("v2_address = ? && asset_symbol = ? && memo = ?", address, assetSymbol, memo).
 		First(model).Error; err != nil {
 		repo.Logger.Info("GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
-		return model.UserAsset{}, err
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,
