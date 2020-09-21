@@ -137,12 +137,8 @@ func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (floa
 
 // GetAssetByAddressAndSymbol... Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.address, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
-		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("address = ? && asset_symbol = ?", address, assetSymbol).
-		First(model).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := repo.DB.Raw("SELECT denominations.asset_symbol, denominations.decimal, user_assets.* FROM user_assets inner join denominations ON denominations.id = user_assets.denomination_id WHERE denominations.asset_symbol= ? && user_assets.id in (select id from user_assets where id IN (select asset_id from user_addresses where v2_address = ?))", assetSymbol, address).Scan(model).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,
 				Err:     err,
@@ -158,12 +154,8 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
-		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("v2_address = ? && asset_symbol = ? && memo = ?", address, assetSymbol, memo).
-		First(model).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := repo.DB.Raw("SELECT denominations.asset_symbol, denominations.decimal, user_assets.* FROM user_assets inner join denominations ON denominations.id = user_assets.denomination_id WHERE denominations.asset_symbol= ? && user_assets.id in (select id from user_assets where id IN (select asset_id from user_addresses where v2_address = ? && memo = ?))", assetSymbol, address, memo).Scan(model).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,
 				Err:     err,
