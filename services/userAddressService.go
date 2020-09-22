@@ -185,7 +185,7 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, logger *util
 func GetAssetForV2Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string, memo string) (model.UserAsset, error) {
 	var userAsset model.UserAsset
 
-	if err := repository.GetAssetBySymbolAndMemo(assetSymbol, memo, &userAsset); err != nil {
+	if err := repository.GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address, &userAsset); err != nil {
 		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
 		return model.UserAsset{}, err
 	}

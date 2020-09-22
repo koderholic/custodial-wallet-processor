@@ -20,7 +20,7 @@ type IUserAssetRepository interface {
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
-	GetAssetBySymbolAndMemo(assetSymbol, memo string, model interface{}) error
+	GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -158,13 +158,14 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 }
 
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetBySymbolAndMemo(assetSymbol, memo string, model interface{}) error {
-	if err := repo.DB.Raw(`SELECT d.asset_symbol, d.decimal, a.* FROM user_memos m 
-	INNER JOIN user_assets a ON a.user_id = m.user_id
-	INNER JOIN denominations d ON d.id = a.denomination_id
-	WHERE d.asset_symbol = ? AND m.memo = ?`, assetSymbol, memo).
+func (repo *UserAssetRepository) GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error {
+	if err := repo.DB.Raw(`
+		SELECT d.asset_symbol, d.decimal, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
+		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
+		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ?`, assetSymbol, memo, address).
 		Scan(model).Error; err != nil {
-		repo.Logger.Info(`GetAssetBySymbolAndMemo logs : error with fetching asset for memo : %s and assetSymbol : %s, error : %+v`, memo, assetSymbol, err)
+		repo.Logger.Info(`GetAssetBySymbolMemoAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,
