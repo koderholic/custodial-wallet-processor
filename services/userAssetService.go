@@ -54,7 +54,7 @@ func (service *UserAssetService) CreateAsset(repository database.IUserAssetRepos
 		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: userID, AvailableBalance: balance.String()}
 		_ = repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: userID}, &userAssetmodel)
 
-		asset := normalize(userAssetmodel)
+		asset := Normalize(userAssetmodel)
 		assets = append(assets, asset)
 	}
 	return assets, nil
@@ -79,7 +79,7 @@ func (service *UserAssetService) FetchAssets(repository database.IUserAssetRepos
 
 	for i := 0; i < len(userAssets); i++ {
 		userAssetmodel := userAssets[i]
-		asset := normalize(userAssetmodel)
+		asset := Normalize(userAssetmodel)
 		assets = append(assets, asset)
 	}
 
@@ -88,19 +88,12 @@ func (service *UserAssetService) FetchAssets(repository database.IUserAssetRepos
 
 // GetAssetById returns user asset for given id
 func (service *UserAssetService) GetAssetById(repository database.IUserAssetRepository, assetID uuid.UUID) (dto.Asset, error) {
-	userAsset := model.UserAsset{}
-	if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetID}}, &userAsset); err != nil {
-		if err.Error() == errorcode.SQL_404 {
-			return dto.Asset{}, utility.AppError{
-				ErrCode: err.(utility.AppError).ErrCode,
-				ErrType: errorcode.RECORD_NOT_FOUND,
-				Err:     errors.New(fmt.Sprintf("Asset not found for assetId > %v", assetID)),
-			}
-		}
+	userAsset, err := service.GetAssetBy(assetID, repository)
+	if err != nil {
 		return dto.Asset{}, err
 	}
 
-	return normalize(userAsset), nil
+	return Normalize(userAsset), nil
 }
 
 func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository database.IUserAssetRepository, address, assetSymbol, memo string) (dto.Asset, error) {
@@ -130,89 +123,127 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository datab
 	}
 	logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, memo, assetSymbol, userAsset)
 
-	return normalize(userAsset), nil
+	return Normalize(userAsset), nil
 }
 
-func (service *UserAssetService) CreditUserAsset(repository database.IUserAssetRepository, creditRequest dto.CreditUserAssetRequest, serviceID uuid.UUID) (dto.TransactionReceipt, error) {
-
-	// ensure asset exists and fetch asset
-	assetDetails := model.UserAsset{}
-	if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: creditRequest.AssetID}}, &assetDetails); err != nil {
-		return dto.TransactionReceipt{}, serviceError(http.StatusNotFound, errorcode.RECORD_NOT_FOUND, errors.New(fmt.Sprintf("Record not found for asset with id : %v", creditRequest.AssetID)))
-	}
+func (service *UserAssetService) CreditAsset(repository database.IUserAssetRepository, requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
 
 	// increment user account by value
-	newAvailableBalance := service.ComputeNewAssetBalance(assetDetails, creditRequest.Value)
+	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+	transaction := BuildTxnObject(assetDetails, requestDetails, newAssetBalance, initiatorId)
 
-	// Update asset balance
-	transaction, err := UpdateAssetBalance(repository, assetDetails, creditRequest, newAvailableBalance, serviceID)
-	if err != nil {
-		return dto.TransactionReceipt{}, serviceError(err.(utility.AppError).ErrCode, err.(utility.AppError).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", creditRequest.AssetID, err)))
+	tx := database.NewTx(repository.Db())
+	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
+		Create(&transaction).Commit(); err != nil {
+		return dto.TransactionReceipt{}, serviceError(err.(utility.AppError).ErrCode, err.(utility.AppError).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
 	}
 
-	return dto.TransactionReceipt{
-		AssetID:              creditRequest.AssetID,
-		Value:                transaction.Value,
-		TransactionReference: transaction.TransactionReference,
-		PaymentReference:     transaction.PaymentReference,
-		TransactionStatus:    transaction.TransactionStatus,
-	}, nil
+	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
-func (service *UserAssetService) ComputeNewAssetBalance(assetDetails model.UserAsset, creditValue float64) string {
-	currentAvailableBalance := utility.Add(creditValue, assetDetails.AvailableBalance, assetDetails.Decimal)
-	return currentAvailableBalance
+func (service *UserAssetService) OnChainCreditAsset(repository database.IUserAssetRepository, requestDetails dto.CreditUserAssetRequest, chainData dto.ChainData, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+
+	// increment user account by value
+	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+
+	transaction := BuildTxnObject(assetDetails, requestDetails, newAssetBalance, initiatorId)
+
+	//save chain tx model first, get id and use that in Transaction model
+	var chainTransaction model.ChainTransaction
+	newChainTransaction := model.ChainTransaction{
+		Status:           *chainData.Status,
+		TransactionHash:  chainData.TransactionHash,
+		TransactionFee:   chainData.TransactionFee,
+		BlockHeight:      chainData.BlockHeight,
+		RecipientAddress: chainData.RecipientAddress,
+	}
+	if err := repository.FindOrCreate(newChainTransaction, &chainTransaction); err != nil {
+		err := err.(utility.AppError)
+		return dto.TransactionReceipt{}, serviceError(err.ErrCode, err.ErrType, err)
+	}
+	transactionStatus := model.TransactionStatus.PENDING
+	if chainTransaction.Status == true {
+		transactionStatus = model.TransactionStatus.COMPLETED
+	} else {
+		transactionStatus = model.TransactionStatus.REJECTED
+	}
+	// update transaction object
+	transaction.TransactionStatus = transactionStatus
+	transaction.TransactionType = model.TransactionType.ONCHAIN
+	transaction.TransactionTag = model.TransactionTag.DEPOSIT
+	transaction.OnChainTxId = chainTransaction.ID
+
+	tx := database.NewTx(repository.Db())
+	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
+		Create(&transaction).Commit(); err != nil {
+		return dto.TransactionReceipt{}, serviceError(err.(utility.AppError).ErrCode, err.(utility.AppError).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
+	}
+
+	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
-func UpdateAssetBalance(repository database.IUserAssetRepository, assetDetails model.UserAsset, creditRequest dto.CreditUserAssetRequest, newAvailableBalance string, serviceID uuid.UUID) (model.Transaction, error) {
-	tx := repository.Db().Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Error; err != nil {
-		return model.Transaction{}, err
+func (service *UserAssetService) InternalTransfer(repository database.IUserAssetRepository, requestDetails dto.CreditUserAssetRequest, initiatorAssetDetails model.UserAsset, recipientAssetDetails model.UserAsset) (dto.TransactionReceipt, error) {
+
+	// Increment initiator asset balance and decrement recipient asset balance
+	initiatorCurrentBalance := utility.Subtract(requestDetails.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
+	recipientCurrentBalance := utility.Add(requestDetails.Value, recipientAssetDetails.AvailableBalance, recipientAssetDetails.Decimal)
+
+	transaction := BuildTxnObject(initiatorAssetDetails, requestDetails, initiatorCurrentBalance, initiatorAssetDetails.ID)
+	transaction.InitiatorID = initiatorAssetDetails.ID
+	transaction.RecipientID = recipientAssetDetails.ID
+	transaction.TransactionTag = model.TransactionTag.TRANSFER
+
+	tx := database.NewTx(repository.Db())
+	if err := tx.Update(&model.UserAsset{BaseModel: model.BaseModel{ID: initiatorAssetDetails.ID}}, model.UserAsset{AvailableBalance: initiatorCurrentBalance}).
+		Update(&model.UserAsset{BaseModel: model.BaseModel{ID: recipientAssetDetails.ID}}, model.UserAsset{AvailableBalance: recipientCurrentBalance}).
+		Create(&transaction).Commit(); err != nil {
+		return dto.TransactionReceipt{}, err
 	}
 
-	if err := tx.Model(assetDetails).Updates(model.UserAsset{AvailableBalance: newAvailableBalance}).Error; err != nil {
-		tx.Rollback()
-		return model.Transaction{}, err
-	}
+	return TxnReceipt(transaction, requestDetails.AssetID), nil
+
+}
+
+func BuildTxnObject(assetDetails model.UserAsset, requestDetails dto.CreditUserAssetRequest, newAssetBalance string, initiatorId uuid.UUID) model.Transaction {
 	// Create transaction record
 	paymentRef := utility.RandomString(16)
-	value := strconv.FormatFloat(creditRequest.Value, 'g', utility.DigPrecision, 64)
-	transaction := model.Transaction{
-		InitiatorID:          serviceID, // serviceId
+	value := strconv.FormatFloat(requestDetails.Value, 'g', utility.DigPrecision, 64)
+	return model.Transaction{
+		InitiatorID:          initiatorId, // serviceId
 		RecipientID:          assetDetails.ID,
-		TransactionReference: creditRequest.TransactionReference,
+		TransactionReference: requestDetails.TransactionReference,
 		PaymentReference:     paymentRef,
-		Memo:                 creditRequest.Memo,
+		Memo:                 requestDetails.Memo,
 		TransactionType:      model.TransactionType.OFFCHAIN,
 		TransactionStatus:    model.TransactionStatus.COMPLETED,
 		TransactionTag:       model.TransactionTag.CREDIT,
 		Value:                value,
 		PreviousBalance:      assetDetails.AvailableBalance,
-		AvailableBalance:     newAvailableBalance,
+		AvailableBalance:     newAssetBalance,
 		ProcessingType:       model.ProcessingType.SINGLE,
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          assetDetails.AssetSymbol,
 	}
-
-	if err := tx.Create(&transaction).Error; err != nil {
-		tx.Rollback()
-		return model.Transaction{}, err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return model.Transaction{}, err
-	}
-
-	return transaction, nil
 }
 
-func normalize(userAssetmodel model.UserAsset) dto.Asset {
+func (service *UserAssetService) GetAssetBy(id uuid.UUID, repository database.IUserAssetRepository) (model.UserAsset, error) {
+	userAsset := model.UserAsset{}
+	if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: id}}, &userAsset); err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			return userAsset, utility.AppError{
+				ErrCode: err.(utility.AppError).ErrCode,
+				ErrType: errorcode.RECORD_NOT_FOUND,
+				Err:     errors.New(fmt.Sprintf("Asset not found for assetId > %v", id)),
+			}
+		}
+		return userAsset, err
+	}
+
+	return userAsset, nil
+}
+
+func Normalize(userAssetmodel model.UserAsset) dto.Asset {
 	userAsset := dto.Asset{}
 	userAsset.ID = userAssetmodel.ID
 	userAsset.UserID = userAssetmodel.UserID
@@ -220,6 +251,16 @@ func normalize(userAssetmodel model.UserAsset) dto.Asset {
 	userAsset.AvailableBalance = userAssetmodel.AvailableBalance
 	userAsset.Decimal = userAssetmodel.Decimal
 	return userAsset
+}
+
+func TxnReceipt(transaction model.Transaction, assetId uuid.UUID) dto.TransactionReceipt {
+	return dto.TransactionReceipt{
+		AssetID:              assetId,
+		Value:                transaction.Value,
+		TransactionReference: transaction.TransactionReference,
+		PaymentReference:     transaction.PaymentReference,
+		TransactionStatus:    transaction.TransactionStatus,
+	}
 }
 
 func serviceError(status int, errType string, err error) error {

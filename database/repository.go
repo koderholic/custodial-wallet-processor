@@ -166,6 +166,74 @@ func (repo *BaseRepository) FetchByLastRunDate(assettype, lastRunDate string, mo
 	return nil
 }
 
+type TX struct {
+	tx  *gorm.DB
+	err error
+}
+
+func NewTx(Db *gorm.DB) *TX {
+	tx := Db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		return &TX{
+			tx:  tx,
+			err: repoError(err),
+		}
+	}
+	return &TX{
+		tx:  tx,
+		err: nil,
+	}
+}
+
+func (db *TX) Update(model, update interface{}) *TX {
+	if db.err != nil {
+		db.Commit()
+	}
+	if err := db.tx.Model(model).Update(update).Error; err != nil {
+		db.tx.Rollback()
+		return &TX{
+			tx:  db.tx,
+			err: repoError(err),
+		}
+	}
+	return &TX{
+		tx:  db.tx,
+		err: nil,
+	}
+}
+
+func (db *TX) Create(model interface{}) *TX {
+	if db.err != nil {
+		db.Commit()
+	}
+	if err := db.tx.Create(model).Error; err != nil {
+		db.tx.Rollback()
+		return &TX{
+			tx:  db.tx,
+			err: repoError(err),
+		}
+	}
+	return &TX{
+		tx:  db.tx,
+		err: nil,
+	}
+}
+
+func (db *TX) Commit() error {
+	if db.err != nil {
+		return db.err
+	}
+	if err := db.tx.Commit().Error; err != nil {
+		return repoError(err)
+	}
+	return nil
+}
+
 func repoError(err error) error {
 	if err == gorm.ErrRecordNotFound {
 		return utility.AppError{

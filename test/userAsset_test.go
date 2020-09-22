@@ -118,7 +118,7 @@ func (s *Suite) Test_GetAssetById_Fails_ForNonExistingUserId() {
 // 	assert.Equal(s.T(), expected, asset, "Expected asset not returned")
 // }
 
-func (s *Suite) Test_ComputeNewAssetBalance() {
+func (s *Suite) Test_ComputeNewAssetBalance_ForCreditAsset() {
 	assetDetails := model.UserAsset{
 		AvailableBalance: "0.8",
 	}
