@@ -161,11 +161,11 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 ;
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetBySymbolAndMemo(assetSymbol, memo  string, model interface{}) error {
-	if err := repo.DB.Raw(`FROM walletadapter_user_memos m 
-	INNER JOIN walletadapter_user_assets a ON a.user_id = m.user_id
-	INNER JOIN walletadapter_denominations d ON d.id = a.denomination_id
+	if err := repo.DB.Raw(`FROM user_memos m 
+	INNER JOIN user_assets a ON a.user_id = m.user_id
+	INNER JOIN denominations d ON d.id = a.denomination_id
 	WHERE d.asset_symbol = ? AND m.memo = ?`, assetSymbol, memo).Error; err != nil {
-		repo.Logger.Info(`GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v`, 
+		repo.Logger.Info(`GetAssetBySymbolAndMemo logs : error with fetching asset for memo : %s and assetSymbol : %s, error : %+v`, 
 		address, memo, assetSymbol, err)
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
