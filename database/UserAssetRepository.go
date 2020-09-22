@@ -20,7 +20,7 @@ type IUserAssetRepository interface {
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error
-	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
+	GetAssetBySymbolAndMemo(assetSymbol, memo  string, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -157,14 +157,16 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 	return nil
 }
 
+
+;
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
-		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("asset_symbol = ? && v2_address=? && memo = ? ", assetSymbol, address, memo).
-		First(model).Error; err != nil {
-		repo.Logger.Info("GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
+func (repo *UserAssetRepository) GetAssetBySymbolAndMemo(assetSymbol, memo  string, model interface{}) error {
+	if err := repo.DB.Raw(`FROM walletadapter_user_memos m 
+	INNER JOIN walletadapter_user_assets a ON a.user_id = m.user_id
+	INNER JOIN walletadapter_denominations d ON d.id = a.denomination_id
+	WHERE d.asset_symbol = ? AND m.memo = ?`, assetSymbol, memo).Error; err != nil {
+		repo.Logger.Info(`GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v`, 
+		address, memo, assetSymbol, err)
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,
