@@ -162,7 +162,8 @@ func (repo *UserAssetRepository) GetAssetBySymbolAndMemo(assetSymbol, memo strin
 	if err := repo.DB.Raw(`SELECT d.asset_symbol, d.decimal, a.* FROM user_memos m 
 	INNER JOIN user_assets a ON a.user_id = m.user_id
 	INNER JOIN denominations d ON d.id = a.denomination_id
-	WHERE d.asset_symbol = ? AND m.memo = ?`, assetSymbol, memo).Scan(model).Error; err != nil {
+	WHERE d.asset_symbol = ? AND m.memo = ?`, assetSymbol, memo).
+		Scan(model).Error; err != nil {
 		repo.Logger.Info(`GetAssetBySymbolAndMemo logs : error with fetching asset for memo : %s and assetSymbol : %s, error : %+v`, memo, assetSymbol, err)
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
