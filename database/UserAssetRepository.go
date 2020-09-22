@@ -19,8 +19,8 @@ type IUserAssetRepository interface {
 	UpdateAssetBalByID(amount, model interface{}) error
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
-	GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error
 	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
+	GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -158,13 +158,14 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 }
 
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
-		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("asset_symbol = ? && v2_address=? && memo = ? ", assetSymbol, address, memo).
-		First(model).Error; err != nil {
-		repo.Logger.Info("GetAssetByAddressAndMemo logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
+func (repo *UserAssetRepository) GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error {
+	if err := repo.DB.Raw(`
+		SELECT d.asset_symbol, d.decimal, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
+		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
+		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ?`, assetSymbol, memo, address).
+		Scan(model).Error; err != nil {
+		repo.Logger.Info(`GetAssetBySymbolMemoAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,
