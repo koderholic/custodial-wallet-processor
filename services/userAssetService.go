@@ -249,7 +249,8 @@ func (service *UserAssetService) DebitAsset(requestDetails dto.CreditUserAssetRe
 	tx := database.NewTx(repository.Db())
 	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
 		Create(&transaction).Commit(); err != nil {
-		return dto.TransactionReceipt{}, serviceError(err.(appError.Err).ErrCode, err.(appError.Err).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestDetails.AssetID, err)))
+		appErr := err.(appError.Err)
+		return dto.TransactionReceipt{}, serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestDetails.AssetID, appErr)))
 	}
 
 	return TxnReceipt(transaction, requestDetails.AssetID), nil

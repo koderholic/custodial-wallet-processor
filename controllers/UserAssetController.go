@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"wallet-adapter/dto"
 	"wallet-adapter/services"
@@ -158,6 +159,10 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 	// credit asset
 	responseData, err = UserAssetService.CreditAsset(requestData, assetDetails, decodedToken.ServiceID)
+	if err != nil {
+		ReturnError(responseWriter, "CreateUserAssets", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
+		return
+	}
 
 	logger.Info("Outgoing response to CreditUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
@@ -197,6 +202,10 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	// credit asset
 	requestDetails := dto.CreditUserAssetRequest{AssetID: requestData.AssetID, Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
 	responseData, err = UserAssetService.OnChainCreditAsset(requestDetails, requestData.ChainData, assetDetails, decodedToken.ServiceID)
+	if err != nil {
+		ReturnError(responseWriter, "OnChainCreditUserAsset", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
+		return
+	}
 
 	logger.Info("Outgoing response to OnChainCreditUserAssets request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
@@ -250,6 +259,10 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	// Call user asset service
 	requestDetails := dto.CreditUserAssetRequest{Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
 	responseData, err = UserAssetService.InternalTransfer(requestDetails, initiatorAssetDetails, recipientAssetDetails)
+	if err != nil {
+		ReturnError(responseWriter, "InternalTransfer", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
+		return
+	}
 
 	logger.Info("Outgoing response to InternalTransfer request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
@@ -279,13 +292,14 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
 	assetDetails, err := UserAssetService.GetAssetBy(requestData.AssetID)
 	if err != nil {
-		err := err.(appError.Err)
-		ReturnError(responseWriter, "DebitUserAsset", err, apiResponse.PlainError(err.ErrType, err.Error()))
+		appErr := err.(appError.Err)
+		ReturnError(responseWriter, "DebitUserAsset", err, apiResponse.PlainError(appErr.ErrType, appErr.Error()))
 	}
 
 	// Checks if user asset has enough value to for the transaction
 	if !utility.IsGreater(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal) {
-		ReturnError(responseWriter, "DebitUserAsset", errorcode.INSUFFICIENT_FUNDS_ERR, apiResponse.PlainError("INSUFFICIENT_FUNDS_ERR", errorcode.INSUFFICIENT_FUNDS_ERR))
+		err := appError.Err{ErrType: "INSUFFICIENT_FUNDS_ERR", ErrCode: http.StatusBadGateway, Err: errors.New(errorcode.INSUFFICIENT_FUNDS_ERR)}
+		ReturnError(responseWriter, "DebitUserAsset", err, apiResponse.PlainError(err.ErrType, err.Error()))
 		return
 	}
 
@@ -294,6 +308,10 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	_ = jwt.DecodeToken(authToken, controller.Config, &decodedToken)
 
 	responseData, err = UserAssetService.DebitAsset(requestData, assetDetails, decodedToken.ServiceID)
+	if err != nil {
+		ReturnError(responseWriter, "DebitUserAsset", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
+		return
+	}
 
 	logger.Info("Outgoing response to DebitUserAsset request %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")

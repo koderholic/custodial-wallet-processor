@@ -1,7 +1,10 @@
 package database
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/errorcode"
@@ -246,8 +249,26 @@ func repoError(err error) error {
 			Err:     err, //errors.New(strings.Join(strings.Split(err.Error(), " ")[2:], " ")),
 		}
 	}
+
+	errDef := strings.Split(err.Error(), ":")
+	errSubstring := errDef[1:]
+	switch errDef[0] {
+	case "Error 1062", "Error 1366":
+		return appError.Err{
+			ErrType: errorcode.INPUT_ERR_CODE,
+			ErrCode: http.StatusBadRequest,
+			Err:     errors.New(fmt.Sprintf("%s", strings.Join(errSubstring, " "))),
+		}
+	case "Error 3819":
+		return appError.Err{
+			ErrType: errorcode.INPUT_ERR_CODE,
+			ErrCode: http.StatusBadRequest,
+			Err:     errors.New(fmt.Sprintf("Negative balance violation! additional context : %s", err)),
+		}
+	}
+
 	return appError.Err{
-		ErrType: errorcode.SERVER_ERR,
+		ErrType: errorcode.SERVER_ERR_CODE,
 		ErrCode: http.StatusInternalServerError,
 		Err:     err,
 	}
