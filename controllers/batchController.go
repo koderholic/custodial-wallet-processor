@@ -10,18 +10,21 @@ import (
 	"wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
-	"wallet-adapter/utility"
+	"wallet-adapter/tasks/sweep"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/constants"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
+	Response "wallet-adapter/utility/response"
 
 	uuid "github.com/satori/go.uuid"
 )
 
 type BatchTransactionProcessor struct {
-	Cache          *utility.MemoryCache
+	Cache          *cache.Memory
 	Config         config.Data
 	Repository     database.IBatchRepository
 	SweepTriggered bool
@@ -30,13 +33,13 @@ type BatchTransactionProcessor struct {
 // ProcessBatchBTCTransactions ...
 func (controller BatchController) ProcessBatchBTCTransactions(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	apiResponse := utility.NewResponse()
-	BatchService := services.NewBatchService(controller.Cache, controller.Config)
+	apiResponse := Response.New()
+	BatchService := services.NewBatchService(controller.Cache, controller.Config, controller.Repository)
 	done := make(chan bool)
 
 	go func() {
 		// Get all active batches
-		activeBatches, err := BatchService.GetAllActiveBatches(controller.Repository)
+		activeBatches, err := BatchService.GetAllActiveBatches()
 		if err != nil {
 			logger.Error("Error response from ProcessBatchBTCTransactions : %+v, while fetching active batches", err)
 			done <- true
@@ -86,10 +89,10 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 		done <- true
 	}()
 
-	logger.Info("Outgoing response to ProcessBatchBTCTransactions request %+v", utility.SUCCESS)
+	logger.Info("Outgoing response to ProcessBatchBTCTransactions request %+v", constants.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(constants.SUCCESSFUL, constants.SUCCESS))
 
 	<-done
 }
@@ -100,8 +103,8 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	batchedRecipients := []dto.BatchRecipients{}
 	batchedTransactionsIds := []uuid.UUID{}
 	queuedBatchedTransactionsIds := []uuid.UUID{}
-	HotWalletService := services.NewHotWalletService(processor.Cache, processor.Config)
-	floatAccount, err := HotWalletService.GetHotWalletAddressFor(processor.Cache, processor.Repository.Db(), processor.Config, batch.AssetSymbol)
+	HotWalletService := services.NewHotWalletService(processor.Cache, processor.Config, processor.Repository, nil)
+	floatAccount, err := HotWalletService.GetHotWalletAddressFor(processor.Repository.Db(), batch.AssetSymbol)
 	if err != nil {
 		logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
 		return err
@@ -122,14 +125,14 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		ChangeAddress: floatAccount,
 		Origins:       []string{floatAccount},
 		Recipients:    batchedRecipients,
-		ProcessType:   utility.WITHDRAWALPROCESS,
+		ProcessType:   constants.WITHDRAWALPROCESS,
 		Reference:     batch.ID.String(),
 	}
 
 	// Calls key-management to sign batched transactions
 	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ExternalServicesRequestErr{}
-	KeyManagementService := services.NewKeyManagementService(processor.Cache, processor.Config)
+	KeyManagementService := services.NewKeyManagementService(processor.Cache, processor.Config, processor.Repository, &serviceErr)
 	if err := KeyManagementService.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
 		if serviceErr.StatusCode == http.StatusBadRequest {
@@ -176,8 +179,8 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.BatchRequest) error {
 	// Checks status of the TXN broadcast to chain
-	CryptoAdapterService := services.NewCryptoAdapterService(processor.Cache, processor.Config)
-	txnExist, broadcastedTXNDetails, err := CryptoAdapterService.GetBroadcastedTXNDetailsByRef(batch.ID.String(), batch.AssetSymbol, processor.Cache, processor.Config)
+	CryptoAdapterService := services.NewCryptoAdapterService(processor.Cache, processor.Config, processor.Repository, nil)
+	txnExist, broadcastedTXNDetails, err := CryptoAdapterService.GetBroadcastedTXNDetailsByRefAndSymbol(batch.ID.String(), batch.AssetSymbol)
 	if err != nil {
 		logger.Error("Error response from retryBatchProcessing : %+v while fetching broadcasted transaction status for batch with id %+v", err, batch.ID)
 		return err
@@ -204,7 +207,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 		BatchID:         batch.ID,
 	}
 	switch broadcastedTXNDetails.Status {
-	case utility.FAILED:
+	case constants.FAILED:
 		if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction, model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}); err != nil {
 			logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
 			return err
@@ -215,7 +218,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 			return err
 		}
 		return nil
-	case utility.SUCCESSFUL:
+	case constants.SUCCESSFUL:
 		chainTransaction.Status = true
 		if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction, model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash, Status: true}); err != nil {
 			logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
@@ -309,9 +312,9 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 	baseRepository := database.BaseRepository{Database: DB}
 
 	serviceErr := dto.ExternalServicesRequestErr{}
-	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, serviceErr, baseRepository)
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, serviceErr, processor.Repository)
 	if !processor.SweepTriggered {
-		go tasks.SweepTransactions(processor.Cache, processor.Config, baseRepository)
+		go sweep.SweepTransactions(processor.Cache, processor.Config, &baseRepository)
 		processor.SweepTriggered = true
 		return errors.New(fmt.Sprintf("Not enough balance in float for this transaction, triggering sweep operation."))
 	}
@@ -326,8 +329,8 @@ func (controller BatchController) obtainLock(identifier string) (string, error) 
 		ExpiresAfter: 600000,
 	}
 	lockerServiceResponse := dto.LockerServiceResponse{}
-	LockerService := services.NewLockerService(controller.Cache, controller.Config)
-	if err := LockerService.AcquireLock(controller.Cache, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
+	LockerService := services.NewLockerService(controller.Cache, controller.Config, controller.Repository, &serviceErr)
+	if err := LockerService.AcquireLock(lockerServiceRequest, &lockerServiceResponse); err != nil {
 		logger.Error("Error occured while obtaining lock for (%+v) : %+v; %s", identifier, serviceErr, err)
 		return "", err
 	}
@@ -342,8 +345,8 @@ func (controller BatchController) releaseLock(identifier string, lockerserviceTo
 		Token:      lockerserviceToken,
 	}
 	lockReleaseResponse := dto.ServicesRequestSuccess{}
-	LockerService := services.NewLockerService(controller.Cache, controller.Config)
-	if err := LockerService.ReleaseLock(controller.Cache, controller.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
+	LockerService := services.NewLockerService(controller.Cache, controller.Config, controller.Repository, &serviceErr)
+	if err := LockerService.ReleaseLock(lockReleaseRequest, &lockReleaseResponse); err != nil || !lockReleaseResponse.Success {
 		logger.Error("Error occured while releasing lock for (%+v) : %+v; %s", identifier, serviceErr, err)
 		return err
 	}

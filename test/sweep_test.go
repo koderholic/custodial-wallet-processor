@@ -6,8 +6,8 @@ import (
 	"time"
 	"wallet-adapter/database"
 	"wallet-adapter/model"
-	"wallet-adapter/tasks"
-	"wallet-adapter/utility"
+	tasks "wallet-adapter/tasks/sweep"
+	"wallet-adapter/utility/cache"
 
 	"github.com/magiconair/properties/assert"
 	uuid "github.com/satori/go.uuid"
@@ -16,9 +16,9 @@ import (
 func (s *Suite) TestSweep() {
 	purgeInterval := s.Config.PurgeCacheInterval * time.Second
 	cacheDuration := s.Config.ExpireCacheDuration * time.Second
-	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+	authCache := cache.Initialize(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: s.Database}
-	tasks.SweepTransactions(authCache, s.Config, baseRepository)
+	tasks.SweepTransactions(authCache, s.Config, &baseRepository)
 
 }
 
@@ -26,7 +26,7 @@ func (s *Suite) TestSweep() {
 
 // 	purgeInterval := s.Config.PurgeCacheInterval * time.Second
 // 	cacheDuration := s.Config.ExpireCacheDuration * time.Second
-// 	cache := utility.InitializeCache(cacheDuration, purgeInterval)
+// 	cache := cache.Initialize(cacheDuration, purgeInterval)
 // 	baseRepository := database.BaseRepository{Database: s.Database}
 // 	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
 

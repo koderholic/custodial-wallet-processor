@@ -1,4 +1,4 @@
-package utility
+package validator
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 )
 
 // CustomizeValidationMessages ... Customize validation error messages
-func CustomizeValidationMessages(validator *validation.Validate) (ut.Translator, error) {
+func CustomizeMessages(validator *validation.Validate) (ut.Translator, error) {
 	translator := en.New()
 	uni := ut.New(translator, translator)
 

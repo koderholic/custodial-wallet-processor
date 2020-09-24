@@ -1,4 +1,4 @@
-package utility
+package appError
 
 import (
 	"fmt"
@@ -6,14 +6,14 @@ import (
 )
 
 // Error struct
-type AppError struct {
+type Err struct {
 	ErrCode int
 	ErrType string
 	Err     error
 	ErrData interface{}
 }
 
-func (e AppError) Error() string {
+func (e Err) Error() string {
 	return fmt.Sprintf("%s", e.Err)
 }
 

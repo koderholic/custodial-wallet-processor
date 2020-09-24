@@ -3,8 +3,8 @@ package database
 import (
 	"net/http"
 	"time"
-	"wallet-adapter/errorcode"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 
 	"github.com/jinzhu/gorm"
@@ -25,6 +25,9 @@ type IRepository interface {
 	FetchTransactionsWhereIn(values []string, model interface{}) error
 	FetchBatchesWithStatus(statuses []string, batches interface{}) error
 	FetchByLastRunDate(assettype, lastRund string, model interface{}) error
+	FetchByFieldNameFromDate(field interface{}, model interface{}, date *time.Time) error
+	FetchSweepCandidates(model interface{}) error
+	Db() *gorm.DB
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -77,7 +80,8 @@ func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{
 }
 
 func (repo *BaseRepository) FetchSweepCandidates(model interface{}) error {
-	sweepCandidatesQuery := "SELECT * FROM transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' and swept_status=0) ORDER BY asset_symbol, created_at"
+	sweepCandidatesQuery := `SELECT * FROM transactions where (transaction_tag='DEPOSIT' and transaction_status='COMPLETED' 
+	and swept_status=0) ORDER BY asset_symbol, created_at`
 	if err := repo.DB.Raw(sweepCandidatesQuery).Scan(model).Error; err != nil {
 		logger.Error("Error when fetching sweep status : %s", err)
 		return repoError(err)
@@ -236,15 +240,19 @@ func (db *TX) Commit() error {
 
 func repoError(err error) error {
 	if err == gorm.ErrRecordNotFound {
-		return utility.AppError{
+		return appError.Err{
 			ErrType: errorcode.SQL_ERR,
 			ErrCode: http.StatusBadRequest,
 			Err:     err, //errors.New(strings.Join(strings.Split(err.Error(), " ")[2:], " ")),
 		}
 	}
-	return utility.AppError{
+	return appError.Err{
 		ErrType: errorcode.SERVER_ERR,
 		ErrCode: http.StatusInternalServerError,
 		Err:     err,
 	}
+}
+
+func (repo *BaseRepository) Db() *gorm.DB {
+	return repo.DB
 }

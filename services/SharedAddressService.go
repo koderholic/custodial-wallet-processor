@@ -3,10 +3,12 @@ package services
 import (
 	"strings"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/constants"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 
 	"github.com/jinzhu/gorm"
@@ -15,25 +17,27 @@ import (
 
 //SharedAddressService object
 type SharedAddressService struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewSharedAddressService(cache *utility.MemoryCache, config Config.Data) *SharedAddressService {
+func NewSharedAddressService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *SharedAddressService {
 	baseService := SharedAddressService{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
 	}
 	return &baseService
 }
 
 // InitSharedAddress ... Initialize the shared addresses for each assets
-func (service *SharedAddressService) InitSharedAddress(cache *utility.MemoryCache, DB *gorm.DB, config Config.Data) error {
+func (service *SharedAddressService) InitSharedAddress(DB *gorm.DB) error {
 
 	supportedAssets := []model.Denomination{}
-	externalServiceErr := dto.ExternalServicesRequestErr{}
-	userID, _ := uuid.FromString(utility.SHARED_ADDRESS_ID)
+	userID, _ := uuid.FromString(constants.SHARED_ADDRESS_ID)
 	address := ""
 	var err error
 
@@ -44,17 +48,16 @@ func (service *SharedAddressService) InitSharedAddress(cache *utility.MemoryCach
 	}
 
 	for _, asset := range supportedAssets {
-		if strings.EqualFold(asset.DepositActivity, utility.ACTIVE) {
-			SharedAddressService := NewSharedAddressService(service.Cache, service.Config)
-			address, err = SharedAddressService.GetSharedAddressFor(cache, DB, config, asset.AssetSymbol)
+		if strings.EqualFold(asset.DepositActivity, constants.ACTIVE) {
+			address, err = service.GetSharedAddressFor(DB, asset.AssetSymbol)
 			if err != nil {
 				logger.Error("Error with getting shared address for %s : %s", asset.AssetSymbol, err)
 				return err
 			}
 
 			if address == "" {
-				KeyManagementService := NewKeyManagementService(service.Cache, service.Config)
-				address, err = KeyManagementService.GenerateAddress(userID, asset.AssetSymbol, asset.CoinType, &externalServiceErr)
+				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+				address, err = KeyManagementService.GenerateAddress(userID, asset.AssetSymbol, asset.CoinType)
 				if err != nil {
 					return err
 				}
@@ -71,7 +74,7 @@ func (service *SharedAddressService) InitSharedAddress(cache *utility.MemoryCach
 }
 
 // GetSharedAddressFor ... Get the Bundle shared address corresponding to a certain asset
-func (service *SharedAddressService) GetSharedAddressFor(cache *utility.MemoryCache, DB *gorm.DB, config Config.Data, asseSymbol string) (string, error) {
+func (service *SharedAddressService) GetSharedAddressFor(DB *gorm.DB, asseSymbol string) (string, error) {
 	sharedAddress := model.SharedAddress{}
 
 	if err := DB.Where(model.SharedAddress{AssetSymbol: asseSymbol}).First(&sharedAddress).Error; err != nil {

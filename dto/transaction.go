@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"math/big"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -52,34 +53,55 @@ type ExternalTransferResponse struct {
 	TransactionStatus    string `json:"transactionStatus,omitempty"`
 }
 
-// CreditUserAssetRequest ... Model definition for credit user asset request
-type InternalTransferRequest struct {
-	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`
-	RecipientAssetId     uuid.UUID `json:"recipientAssetId" validate:"required"`
-	Value                float64   `json:"value" validate:"required"`
-	TransactionReference string    `json:"transactionReference" validate:"required"`
-	Memo                 string    `json:"memo" validate:"required"`
+// SignTransaction ... Request definition for sign transaction , key-management service
+type SignTransactionRequest struct {
+	FromAddress string   `json:"fromAddress"`
+	ToAddress   string   `json:"toAddress"`
+	Memo        string   `json:"memo"`
+	Amount      *big.Int `json:"amount"`
+	AssetSymbol string   `json:"assetSymbol"`
+	IsSweep     bool     `json:"isSweep"`
+	ProcessType string   `json:"processType"`
+	Reference   string   `json:"reference"`
 }
 
-// CreditUserAssetRequest ... Model definition for credit user asset request
-type CreditUserAssetRequest struct {
-	AssetID              uuid.UUID `json:"assetId" validate:"required"`
-	Value                float64   `json:"value" validate:"required"`
-	TransactionReference string    `json:"transactionReference" validate:"required"`
-	Memo                 string    `json:"memo"`
+// SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
+type SignTransactionResponse struct {
+	SignedData string `json:"signedTransaction"`
+	Fee        int64  `json:"fee"`
 }
 
-// OnChainCreditUserAssetRequest object
-type OnChainCreditUserAssetRequest struct {
-	CreditUserAssetRequest
-	ChainData ChainData `json:"chainData" validate:"required"`
+// BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
+type BroadcastToChainRequest struct {
+	SignedData  string `json:"signedData"`
+	AssetSymbol string `json:"assetSymbol"`
+	Reference   string `json:"reference"`
+	ProcessType string `json:"processType"`
 }
 
-// ChainData On-chain metadata for broadcasted / incoming transactions
-type ChainData struct {
-	Status           *bool  `json:"status" validate:"required"`
-	TransactionHash  string `json:"transactionHash" validate:"required"`
-	TransactionFee   string `json:"transactionFee" validate:"required"`
-	RecipientAddress string `json:"recipientAddress"`
-	BlockHeight      int64  `json:"blockHeight"`
+// BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
+type SignAndBroadcastResponse struct {
+	TransactionHash string `json:"transactionHash"`
+}
+
+// TransactionStatusRequest ... Request definition for broadcast to chain , crypto-adapter service
+type TransactionStatusRequest struct {
+	TransactionHash string `json:"transactionHash"`
+	AssetSymbol     string `json:"assetSymbol"`
+	Reference       string `json:"reference"`
+}
+
+// TransactionStatusResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
+type TransactionStatusResponse struct {
+	TransactionHash       string `json:"transactionHash"`
+	Status                string `json:"status"`
+	AssetSymbol           string `json:"assetSymbol"`
+	TransactionFee        string `json:"fee"`
+	BlockHeight           string `json:"height"`
+	LastTimeStatusFetched string `json:"lastTimeStatusFetched"`
+}
+
+type TransactionListInfo struct {
+	Decimal     int
+	AssetSymbol string
 }

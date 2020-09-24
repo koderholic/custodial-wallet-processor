@@ -34,4 +34,7 @@ const (
 	INPUT_ERR_CODE                      = "INPUT_ERR"
 	SERVER_ERR_CODE                     = "SERVER_ERR_CODE"
 	RECORD_NOT_FOUND                    = "RECORD_NOT_FOUND"
+	SWEEP_ERROR_ASSET_NOT_SUPPORTED     = "Sweep checkInsufficient sum asset not supported"
+	COULD_NOT_SUBSCRIBE_ADDRESS         = "COULD_NOT_SUBSCRIBE_ADDRESS"
+	SWEEP_ERROR_INSUFFICIENT            = "Sweep amount is insufficient"
 )

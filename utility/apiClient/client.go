@@ -13,8 +13,6 @@ import (
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/utility/logger"
-
-	"wallet-adapter/utility"
 )
 
 // Client object for external API request
@@ -38,13 +36,7 @@ func New(HttpClient *http.Client, config Config.Data, baseURL string) *Client {
 }
 
 func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
-	metaData := utility.GetRequestMetaData("generateToken", c.Config)
-	if c.BaseURL.String() != fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action) {
-		logger.Info("Outgoing request to %s : %+v", c.BaseURL, body)
-	}
-
 	if strings.Contains(c.BaseURL.String(), "key-management/sign") {
-		//We need to increase timeout in Key Management also
 		c.HttpClient.Timeout = 120 * time.Second
 	}
 
@@ -96,8 +88,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		return resp, err
 	}
 
-	metaData := utility.GetRequestMetaData("generateToken", c.Config)
-	if c.BaseURL.String() != fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action) {
+	if c.BaseURL.String() != "authentication/services/token" {
 		duration := (time.Now().UnixNano() - c.startTime) / 1000000
 		logger.Info("Response from %s : [%d] %+s Time: %d", c.BaseURL, resp.StatusCode, resBody, duration)
 	}

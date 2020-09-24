@@ -9,9 +9,10 @@ import (
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
-	"wallet-adapter/utility"
 
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/constants"
 	"wallet-adapter/utility/logger"
 
 	"github.com/jinzhu/gorm"
@@ -19,15 +20,18 @@ import (
 
 //HotWalletService object
 type DenominationServices struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewDenominationServices(cache *utility.MemoryCache, config Config.Data) *DenominationServices {
+func NewDenominationServices(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *DenominationServices {
 	baseService := DenominationServices{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
 	}
 	return &baseService
 }
@@ -36,7 +40,7 @@ func NewDenominationServices(cache *utility.MemoryCache, config Config.Data) *De
 func (service *DenominationServices) GetAssetDenominations() (dto.AssetDenominations, error) {
 
 	responseData := dto.AssetDenominations{}
-	metaData := utility.GetRequestMetaData("getAssetDenominations", service.Config)
+	metaData := GetRequestMetaData("getAssetDenominations", service.Config)
 
 	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?assetType=CRYPTO", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
@@ -60,7 +64,7 @@ func (service *DenominationServices) GetAssetDenominations() (dto.AssetDenominat
 func (service *DenominationServices) GetTWDenominations() ([]dto.TWDenomination, error) {
 
 	responseData := []dto.TWDenomination{}
-	metaData := utility.GetRequestMetaData("getTWDenominations", service.Config)
+	metaData := GetRequestMetaData("getTWDenominations", service.Config)
 
 	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
@@ -155,26 +159,28 @@ func (service *DenominationServices) getAssetSweepFee(coinType int64) int64 {
 	}
 }
 
-func (service *DenominationServices) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+func (service *DenominationServices) IsWithdrawalActive(assetSymbol string) (bool, error) {
+	repository := service.Repository.(database.IUserAssetRepository)
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		return false, err
 	}
 
-	if !strings.EqualFold(denomination.WithdrawActivity, utility.ACTIVE) {
+	if !strings.EqualFold(denomination.WithdrawActivity, constants.ACTIVE) {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-func (service *DenominationServices) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+func (service *DenominationServices) IsDepositActive(assetSymbol string) (bool, error) {
+	repository := service.Repository.(database.IUserAssetRepository)
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		return false, err
 	}
 
-	if !strings.EqualFold(denomination.DepositActivity, utility.ACTIVE) {
+	if !strings.EqualFold(denomination.DepositActivity, constants.ACTIVE) {
 		return false, nil
 	}
 

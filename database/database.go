@@ -43,7 +43,6 @@ func (database *Database) LoadDBInstance() {
 		db.DB().SetMaxIdleConns(database.Config.MaxIdleConns)
 		db.DB().SetMaxOpenConns(database.Config.MaxOpenConns)
 		db.DB().SetConnMaxLifetime(time.Second * time.Duration(database.Config.ConnMaxLifetime))
-		db.LogMode(true)
 		database.DB = db
 	})
 	logger.Info("Database connection successful!")

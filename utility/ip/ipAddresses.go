@@ -1,4 +1,4 @@
-package utility
+package ip
 
 import (
 	"net"
@@ -65,7 +65,7 @@ func isPrivateSubnet(ipAddress net.IP) bool {
 	return false
 }
 
-func GetIPAdress(httpReq *http.Request) string {
+func GetAddress(httpReq *http.Request) string {
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(httpReq.Header.Get(h), ",")
 		// march from right to left until we get a public address

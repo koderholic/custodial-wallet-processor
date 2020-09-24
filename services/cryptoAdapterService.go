@@ -5,38 +5,42 @@ import (
 	"fmt"
 	"net/http"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 
 	"wallet-adapter/dto"
-	"wallet-adapter/utility"
 )
 
 //HotWalletService object
 type CryptoAdapterService struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewCryptoAdapterService(cache *utility.MemoryCache, config Config.Data) *CryptoAdapterService {
+func NewCryptoAdapterService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *CryptoAdapterService {
 	baseService := CryptoAdapterService{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
 	}
 	return &baseService
 }
 
 // broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func (service *CryptoAdapterService) BroadcastToChain(cache *utility.MemoryCache, config Config.Data, requestData dto.BroadcastToChainRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
-	AuthService := NewAuthService(service.Cache, service.Config)
+func (service *CryptoAdapterService) BroadcastToChain(requestData dto.BroadcastToChainRequest, responseData *dto.SignAndBroadcastResponse) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("broadcastTransaction", config)
+	metaData := GetRequestMetaData("broadcastTransaction", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -46,20 +50,18 @@ func (service *CryptoAdapterService) BroadcastToChain(cache *utility.MemoryCache
 	})
 	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
 			return err
 		}
-		errWithStatus := serviceErr.(*dto.ExternalServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
+		service.Error.StatusCode = APIResponse.StatusCode
 		return err
 	}
 
 	return nil
 }
 
-func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.SubscriptionRequestV2, responseData *dto.SubscriptionResponse, serviceErr interface{}) error {
-	metaData := utility.GetRequestMetaData("subscribeAddressV2", service.Config)
+func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.SubscriptionRequestV2, responseData *dto.SubscriptionResponse) error {
+	metaData := GetRequestMetaData("subscribeAddressV2", service.Config)
 	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
@@ -67,7 +69,7 @@ func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.Subscrip
 	}
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err
@@ -76,18 +78,18 @@ func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.Subscrip
 }
 
 // TransactionStatus ... Calls crypto adapter with transaction hash to confirm transaction status on-chain
-func (service *CryptoAdapterService) TransactionStatus(cache *utility.MemoryCache, config Config.Data, requestData dto.TransactionStatusRequest, responseData *dto.TransactionStatusResponse, serviceErr interface{}) error {
-	AuthService := NewAuthService(service.Cache, service.Config)
+func (service *CryptoAdapterService) TransactionStatus(requestData dto.TransactionStatusRequest, responseData *dto.TransactionStatusResponse) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("transactionStatus", config)
+	metaData := GetRequestMetaData("transactionStatus", service.Config)
 	var APIClient *apiClient.Client
 	if requestData.TransactionHash != "" && requestData.Reference == "" {
-		APIClient = apiClient.New(nil, config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
+		APIClient = apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
 	} else if requestData.Reference != "" && requestData.TransactionHash == "" {
-		APIClient = apiClient.New(nil, config, fmt.Sprintf("%s%s?reference=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Reference, requestData.AssetSymbol))
+		APIClient = apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?reference=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Reference, requestData.AssetSymbol))
 	}
 
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -99,12 +101,10 @@ func (service *CryptoAdapterService) TransactionStatus(cache *utility.MemoryCach
 	})
 	APIResponse, err := APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
 			return err
 		}
-		errWithStatus := serviceErr.(*dto.ExternalServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
+		service.Error.StatusCode = APIResponse.StatusCode
 		return err
 	}
 
@@ -112,15 +112,15 @@ func (service *CryptoAdapterService) TransactionStatus(cache *utility.MemoryCach
 }
 
 // GetOnchainBalance ... Calls crypto adapter with asset symbol and address to return balance of asset on-chain
-func (service *CryptoAdapterService) GetOnchainBalance(cache *utility.MemoryCache, config Config.Data, requestData dto.OnchainBalanceRequest, responseData *dto.OnchainBalanceResponse, serviceErr interface{}) error {
-	AuthService := NewAuthService(service.Cache, service.Config)
+func (service *CryptoAdapterService) GetOnchainBalance(requestData dto.OnchainBalanceRequest, responseData *dto.OnchainBalanceResponse) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("getOnchainBalance", config)
+	metaData := GetRequestMetaData("getOnchainBalance", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func (service *CryptoAdapterService) GetOnchainBalance(cache *utility.MemoryCach
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
 		logger.Error("An error occured when trying to get onChain Balance: ", err)
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err
@@ -141,7 +141,7 @@ func (service *CryptoAdapterService) GetOnchainBalance(cache *utility.MemoryCach
 }
 
 // GetBroadcastedTXNStatusByRef ...
-func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef, assetSymbol string, cache *utility.MemoryCache, config Config.Data) bool {
+func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef, assetSymbol string) bool {
 	serviceErr := dto.ExternalServicesRequestErr{}
 
 	transactionStatusRequest := dto.TransactionStatusRequest{
@@ -149,7 +149,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef
 		AssetSymbol: assetSymbol,
 	}
 	transactionStatusResponse := dto.TransactionStatusResponse{}
-	if err := service.TransactionStatus(cache, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
+	if err := service.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
 		if serviceErr.StatusCode != http.StatusNotFound {
 			return true
@@ -160,7 +160,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef
 }
 
 // GetBroadcastedTXNStatusByRef ...
-func (service *CryptoAdapterService) GetBroadcastedTXNDetailsByRef(transactionRef, assetSymbol string, cache *utility.MemoryCache, config Config.Data) (bool, dto.TransactionStatusResponse, error) {
+func (service *CryptoAdapterService) GetBroadcastedTXNDetailsByRefAndSymbol(transactionRef, assetSymbol string) (bool, dto.TransactionStatusResponse, error) {
 	serviceErr := dto.ExternalServicesRequestErr{}
 
 	transactionStatusRequest := dto.TransactionStatusRequest{
@@ -168,7 +168,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNDetailsByRef(transactionRe
 		AssetSymbol: assetSymbol,
 	}
 	transactionStatusResponse := dto.TransactionStatusResponse{}
-	if err := service.TransactionStatus(cache, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {
+	if err := service.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
 		if serviceErr.StatusCode != http.StatusNotFound {
 			return false, dto.TransactionStatusResponse{}, err

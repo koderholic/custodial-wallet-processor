@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"wallet-adapter/database"
-	"wallet-adapter/tasks"
-	"wallet-adapter/utility"
+	"wallet-adapter/tasks/float"
+	"wallet-adapter/utility/constants"
 	"wallet-adapter/utility/logger"
+	Response "wallet-adapter/utility/response"
 )
 
 func (controller UserAssetController) TriggerFloat(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	apiResponse := utility.NewResponse()
+	apiResponse := Response.New()
 
 	// Endpoint spins up a go-routine to process queued transactions and sends back an acknowledgement to the scheduler
 	done := make(chan bool)
@@ -26,15 +27,15 @@ func (controller UserAssetController) TriggerFloat(responseWriter http.ResponseW
 		db := *Database
 		baseRepository := database.BaseRepository{Database: db}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-		tasks.ManageFloat(controller.Cache, controller.Config, baseRepository, userAssetRepository)
+		float.ManageFloat(controller.Cache, controller.Config, &baseRepository, &userAssetRepository)
 
 		done <- true
 	}()
 
-	logger.Info("Outgoing response to TriggerFloat request %+v", utility.SUCCESS)
+	logger.Info("Outgoing response to TriggerFloat request %+v", constants.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(constants.SUCCESSFUL, constants.SUCCESS))
 
 	<-done
 }

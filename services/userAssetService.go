@@ -9,9 +9,11 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 
 	uuid "github.com/satori/go.uuid"
@@ -20,21 +22,25 @@ import (
 
 //userAssetService object
 type UserAssetService struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewUserAssetService(cache *utility.MemoryCache, config Config.Data) *UserAssetService {
+func NewUserAssetService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *UserAssetService {
 	baseService := UserAssetService{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
 	}
 	return &baseService
 }
 
 // CreateUserAsset ... Create given assets for the specified user
-func (service *UserAssetService) CreateAsset(repository database.IUserAssetRepository, assetDenominations []string, userID uuid.UUID) ([]dto.Asset, error) {
+func (service *UserAssetService) CreateAsset(assetDenominations []string, userID uuid.UUID) ([]dto.Asset, error) {
+	repository := service.Repository.(database.IUserAssetRepository)
 	assets := []dto.Asset{}
 	for i := 0; i < len(assetDenominations); i++ {
 		denominationSymbol := assetDenominations[i]
@@ -42,8 +48,8 @@ func (service *UserAssetService) CreateAsset(repository database.IUserAssetRepos
 
 		if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
 			if err.Error() == errorcode.SQL_404 {
-				return []dto.Asset{}, utility.AppError{
-					ErrCode: err.(utility.AppError).ErrCode,
+				return []dto.Asset{}, appError.Err{
+					ErrCode: err.(appError.Err).ErrCode,
 					ErrType: errorcode.ASSET_NOT_SUPPORTED,
 					Err:     errors.New(fmt.Sprintf("Asset (%s) is currently not supported", assetDenominations[i])),
 				}
@@ -54,14 +60,15 @@ func (service *UserAssetService) CreateAsset(repository database.IUserAssetRepos
 		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: userID, AvailableBalance: balance.String()}
 		_ = repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: userID}, &userAssetmodel)
 
-		asset := Normalize(userAssetmodel)
+		asset := service.Normalize(userAssetmodel)
 		assets = append(assets, asset)
 	}
 	return assets, nil
 }
 
 // FetchAssets by userId
-func (service *UserAssetService) FetchAssets(repository database.IUserAssetRepository, userID uuid.UUID) ([]dto.Asset, error) {
+func (service *UserAssetService) FetchAssets(userID uuid.UUID) ([]dto.Asset, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	var userAssets []model.UserAsset
 	var assets []dto.Asset
@@ -70,7 +77,7 @@ func (service *UserAssetService) FetchAssets(repository database.IUserAssetRepos
 		return assets, err
 	}
 	if len(userAssets) < 1 {
-		return assets, utility.AppError{
+		return assets, appError.Err{
 			ErrType: errorcode.RECORD_NOT_FOUND,
 			ErrCode: http.StatusBadRequest,
 			Err:     errors.New(fmt.Sprintf("No assets found for userId : %v", userID)),
@@ -79,7 +86,7 @@ func (service *UserAssetService) FetchAssets(repository database.IUserAssetRepos
 
 	for i := 0; i < len(userAssets); i++ {
 		userAssetmodel := userAssets[i]
-		asset := Normalize(userAssetmodel)
+		asset := service.Normalize(userAssetmodel)
 		assets = append(assets, asset)
 	}
 
@@ -87,18 +94,18 @@ func (service *UserAssetService) FetchAssets(repository database.IUserAssetRepos
 }
 
 // GetAssetById returns user asset for given id
-func (service *UserAssetService) GetAssetById(repository database.IUserAssetRepository, assetID uuid.UUID) (dto.Asset, error) {
-	userAsset, err := service.GetAssetBy(assetID, repository)
+func (service *UserAssetService) GetAssetById(assetID uuid.UUID) (dto.Asset, error) {
+	userAsset, err := service.GetAssetBy(assetID)
 	if err != nil {
 		return dto.Asset{}, err
 	}
 
-	return Normalize(userAsset), nil
+	return service.Normalize(userAsset), nil
 }
 
-func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository database.IUserAssetRepository, address, assetSymbol, memo string) (dto.Asset, error) {
+func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(address, assetSymbol, memo string) (dto.Asset, error) {
 	userAsset := model.UserAsset{}
-	UserAddressService := NewUserAddressService(service.Cache, service.Config)
+	UserAddressService := NewUserAddressService(service.Cache, service.Config, service.Repository, service.Error)
 
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
@@ -106,15 +113,15 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository datab
 	}
 
 	// Ensure Memos are provided for v2_addresses
-	IsV2Address, err := UserAddressService.CheckV2Address(repository, address)
+	IsV2Address, err := UserAddressService.CheckV2Address(address)
 	if err != nil {
 		return dto.Asset{}, serviceError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 	}
 
 	if IsV2Address {
-		userAsset, err = UserAddressService.GetAssetForV2Address(repository, address, assetSymbol, memo)
+		userAsset, err = UserAddressService.GetAssetForV2Address(address, assetSymbol, memo)
 	} else {
-		userAsset, err = UserAddressService.GetAssetForV1Address(repository, address, assetSymbol)
+		userAsset, err = UserAddressService.GetAssetForV1Address(address, assetSymbol)
 	}
 	if err != nil {
 		if err.Error() == errorcode.SQL_404 {
@@ -123,10 +130,11 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(repository datab
 	}
 	logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, memo, assetSymbol, userAsset)
 
-	return Normalize(userAsset), nil
+	return service.Normalize(userAsset), nil
 }
 
-func (service *UserAssetService) CreditAsset(repository database.IUserAssetRepository, requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) CreditAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	// increment user account by value
 	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
@@ -135,14 +143,15 @@ func (service *UserAssetService) CreditAsset(repository database.IUserAssetRepos
 	tx := database.NewTx(repository.Db())
 	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
 		Create(&transaction).Commit(); err != nil {
-		return dto.TransactionReceipt{}, serviceError(err.(utility.AppError).ErrCode, err.(utility.AppError).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
+		return dto.TransactionReceipt{}, serviceError(err.(appError.Err).ErrCode, err.(appError.Err).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
 	}
 
 	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
-func (service *UserAssetService) OnChainCreditAsset(repository database.IUserAssetRepository, requestDetails dto.CreditUserAssetRequest, chainData dto.ChainData, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUserAssetRequest, chainData dto.ChainData, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
 
+	repository := service.Repository.(database.IUserAddressRepository)
 	// increment user account by value
 	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
@@ -158,7 +167,7 @@ func (service *UserAssetService) OnChainCreditAsset(repository database.IUserAss
 		RecipientAddress: chainData.RecipientAddress,
 	}
 	if err := repository.FindOrCreate(newChainTransaction, &chainTransaction); err != nil {
-		err := err.(utility.AppError)
+		err := err.(appError.Err)
 		return dto.TransactionReceipt{}, serviceError(err.ErrCode, err.ErrType, err)
 	}
 	transactionStatus := model.TransactionStatus.PENDING
@@ -176,13 +185,14 @@ func (service *UserAssetService) OnChainCreditAsset(repository database.IUserAss
 	tx := database.NewTx(repository.Db())
 	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
 		Create(&transaction).Commit(); err != nil {
-		return dto.TransactionReceipt{}, serviceError(err.(utility.AppError).ErrCode, err.(utility.AppError).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
+		return dto.TransactionReceipt{}, serviceError(err.(appError.Err).ErrCode, err.(appError.Err).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
 	}
 
 	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
-func (service *UserAssetService) InternalTransfer(repository database.IUserAssetRepository, requestDetails dto.CreditUserAssetRequest, initiatorAssetDetails model.UserAsset, recipientAssetDetails model.UserAsset) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserAssetRequest, initiatorAssetDetails model.UserAsset, recipientAssetDetails model.UserAsset) (dto.TransactionReceipt, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	// Increment initiator asset balance and decrement recipient asset balance
 	initiatorCurrentBalance := utility.Subtract(requestDetails.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
@@ -202,6 +212,22 @@ func (service *UserAssetService) InternalTransfer(repository database.IUserAsset
 
 	return TxnReceipt(transaction, requestDetails.AssetID), nil
 
+}
+
+func (service *UserAssetService) DebitAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
+	// decrement user account by value
+	newAssetBalance := utility.Subtract(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+	transaction := BuildTxnObject(assetDetails, requestDetails, newAssetBalance, initiatorId)
+	transaction.TransactionTag = model.TransactionTag.DEBIT
+
+	tx := database.NewTx(repository.Db())
+	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
+		Create(&transaction).Commit(); err != nil {
+		return dto.TransactionReceipt{}, serviceError(err.(appError.Err).ErrCode, err.(appError.Err).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be debited :  %s", requestDetails.AssetID, err)))
+	}
+
+	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
 func BuildTxnObject(assetDetails model.UserAsset, requestDetails dto.CreditUserAssetRequest, newAssetBalance string, initiatorId uuid.UUID) model.Transaction {
@@ -227,12 +253,13 @@ func BuildTxnObject(assetDetails model.UserAsset, requestDetails dto.CreditUserA
 	}
 }
 
-func (service *UserAssetService) GetAssetBy(id uuid.UUID, repository database.IUserAssetRepository) (model.UserAsset, error) {
+func (service *UserAssetService) GetAssetBy(id uuid.UUID) (model.UserAsset, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 	userAsset := model.UserAsset{}
 	if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: id}}, &userAsset); err != nil {
 		if err.Error() == errorcode.SQL_404 {
-			return userAsset, utility.AppError{
-				ErrCode: err.(utility.AppError).ErrCode,
+			return userAsset, appError.Err{
+				ErrCode: err.(appError.Err).ErrCode,
 				ErrType: errorcode.RECORD_NOT_FOUND,
 				Err:     errors.New(fmt.Sprintf("Asset not found for assetId > %v", id)),
 			}
@@ -243,7 +270,7 @@ func (service *UserAssetService) GetAssetBy(id uuid.UUID, repository database.IU
 	return userAsset, nil
 }
 
-func Normalize(userAssetmodel model.UserAsset) dto.Asset {
+func (service *UserAssetService) Normalize(userAssetmodel model.UserAsset) dto.Asset {
 	userAsset := dto.Asset{}
 	userAsset.ID = userAssetmodel.ID
 	userAsset.UserID = userAssetmodel.UserID
@@ -264,7 +291,7 @@ func TxnReceipt(transaction model.Transaction, assetId uuid.UUID) dto.Transactio
 }
 
 func serviceError(status int, errType string, err error) error {
-	return utility.AppError{
+	return appError.Err{
 		ErrCode: status,
 		ErrType: errType,
 		Err:     err,

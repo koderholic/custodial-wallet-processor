@@ -5,7 +5,6 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/utility/logger"
 
-	"github.com/jinzhu/gorm"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -17,7 +16,8 @@ type IUserAssetRepository interface {
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error
 	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
-	Db() *gorm.DB
+	SumAmountField(model interface{}) (float64, error)
+	GetMaxUserBalance(denomination uuid.UUID) (float64, error)
 }
 
 // UserAssetRepository ...
@@ -107,8 +107,4 @@ func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSy
 		return repoError(err)
 	}
 	return nil
-}
-
-func (repo *UserAssetRepository) Db() *gorm.DB {
-	return repo.DB
 }

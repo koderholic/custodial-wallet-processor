@@ -13,8 +13,8 @@ type Logger struct {
 	logger log.Logger
 }
 
-// NewLogger constructs a logger object
-func NewLogger() *Logger {
+// New constructs a logger object
+func New() *Logger {
 
 	logger := log.NewDefaultLogger(log.DEBUG)
 

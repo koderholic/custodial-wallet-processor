@@ -1,7 +1,7 @@
-package utility
+package permissions
 
 var (
-	Permissions = map[string]string{
+	All = map[string]string{
 		"GetUserAssets":      "get-assets",
 		"CreateUserAssets":   "create-assets",
 		"CreditUserAsset":    "credit-asset",

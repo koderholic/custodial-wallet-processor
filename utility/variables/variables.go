@@ -1,4 +1,8 @@
-package utility
+package variables
+
+import (
+	"wallet-adapter/utility/constants"
+)
 
 var (
 	MINIMUM_SPENDABLE = map[string]float64{
@@ -7,8 +11,6 @@ var (
 		"BNB": 0.000375,
 	}
 	DefaultAddressesTypes = map[int64]string{
-		BTC_COINTYPE: ADDRESS_TYPE_SEGWIT,
-		ETH_COINTYPE: "",
-		BNB_COINTYPE: "",
+		constants.BTC_COINTYPE: constants.ADDRESS_TYPE_SEGWIT,
 	}
 )

@@ -45,7 +45,7 @@ package test
 
 // 	purgeInterval := Config.PurgeCacheInterval * time.Second
 // 	cacheDuration := Config.ExpireCacheDuration * time.Second
-// 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+// 	authCache := cache.Initialize(cacheDuration, purgeInterval)
 
 // 	KeyManagementService := services.NewKeyManagementService(authCache, s.Config)
 // 	if err := KeyManagementService.SignTransaction(authCache, Config, requestData, &responseData, serviceErr); err == nil {
@@ -104,7 +104,7 @@ package test
 
 // // 	purgeInterval := Config.PurgeCacheInterval * time.Second
 // // 	cacheDuration := Config.ExpireCacheDuration * time.Second
-// // 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+// // 	authCache := cache.Initialize(cacheDuration, purgeInterval)
 
 // // 	if err := services.SignBatchBTCTransaction(httpClient, authCache, logger, Config, signTransactionRequest, &signTransactionResponse, serviceErr); err != nil {
 // // 		t.Errorf("Expected SignTransaction to error due to validation on request data, got %s\n", err)
@@ -135,7 +135,7 @@ package test
 
 // 	purgeInterval := Config.PurgeCacheInterval * time.Second
 // 	cacheDuration := Config.ExpireCacheDuration * time.Second
-// 	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+// 	authCache := cache.Initialize(cacheDuration, purgeInterval)
 
 // 	if err := services.BroadcastToChain(authCache, Config, requestData, &responseData, serviceErr); err == nil {
 // 		t.Errorf("Expected SignTransaction to error due to incorrect signed data, got %s\n", err)

@@ -3,10 +3,12 @@ package services
 import (
 	"strings"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/constants"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 
 	"github.com/jinzhu/gorm"
@@ -15,25 +17,28 @@ import (
 
 //HotWalletService object
 type HotWalletService struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewHotWalletService(cache *utility.MemoryCache, config Config.Data) *HotWalletService {
+func NewHotWalletService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *HotWalletService {
 	baseService := HotWalletService{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
 	}
 	return &baseService
 }
 
-func (service *HotWalletService) InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, config Config.Data) error {
+func (service *HotWalletService) InitHotWallet(DB *gorm.DB) error {
 
 	supportedAssets := []model.Denomination{}
 	coinTypeToAddrMap := map[int64]string{}
 	externalServiceErr := dto.ExternalServicesRequestErr{}
-	serviceID, _ := uuid.FromString(config.ServiceID)
+	serviceID, _ := uuid.FromString(service.Config.ServiceID)
 	address := ""
 	var err error
 
@@ -44,9 +49,9 @@ func (service *HotWalletService) InitHotWallet(cache *utility.MemoryCache, DB *g
 	}
 
 	for _, asset := range supportedAssets {
-		if strings.EqualFold(asset.WithdrawActivity, utility.ACTIVE) {
+		if strings.EqualFold(asset.WithdrawActivity, constants.ACTIVE) {
 
-			address, err = service.GetHotWalletAddressFor(cache, DB, config, asset.AssetSymbol)
+			address, err = service.GetHotWalletAddressFor(DB, asset.AssetSymbol)
 			if err != nil {
 				logger.Error("Error with getting hot wallet address for %s : %s", asset.AssetSymbol, err)
 				return err
@@ -60,8 +65,8 @@ func (service *HotWalletService) InitHotWallet(cache *utility.MemoryCache, DB *g
 			if coinTypeToAddrMap[asset.CoinType] != "" {
 				address = coinTypeToAddrMap[asset.CoinType]
 			} else {
-				KeyManagementService := NewKeyManagementService(service.Cache, service.Config)
-				address, err = KeyManagementService.GenerateAddressWithoutSub(cache, config, serviceID, asset.AssetSymbol, &externalServiceErr)
+				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+				address, err = KeyManagementService.GenerateAddressWithoutSub(service.Cache, service.Config, serviceID, asset.AssetSymbol, &externalServiceErr)
 				if err != nil {
 					return err
 				}
@@ -79,7 +84,7 @@ func (service *HotWalletService) InitHotWallet(cache *utility.MemoryCache, DB *g
 }
 
 // GetHotWalletAddressFor ... Get the Bundle hot wallet address corresponding to a certain asset
-func (service *HotWalletService) GetHotWalletAddressFor(cache *utility.MemoryCache, DB *gorm.DB, config Config.Data, asseSymbol string) (string, error) {
+func (service *HotWalletService) GetHotWalletAddressFor(DB *gorm.DB, asseSymbol string) (string, error) {
 	hotWallet := model.HotWalletAsset{}
 
 	if err := DB.Where(model.HotWalletAsset{AssetSymbol: asseSymbol}).First(&hotWallet).Error; err != nil {

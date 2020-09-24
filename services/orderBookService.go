@@ -5,36 +5,40 @@ import (
 	"fmt"
 	Config "wallet-adapter/config"
 
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/utility"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/cache"
 )
 
 //OrderBookService object
 type OrderBookService struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewOrderBookService(cache *utility.MemoryCache, config Config.Data) *OrderBookService {
+func NewOrderBookService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *OrderBookService {
 	baseService := OrderBookService{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
 	}
 	return &baseService
 }
 
 // withdrawToHotWallet ... Calls order-book service to withdraw to specified hot wallet address
-func (service *OrderBookService) WithdrawToHotWallet(cache *utility.MemoryCache, config Config.Data, requestData dto.WitdrawToHotWalletRequest, responseData *dto.WitdrawToHotWalletResponse, serviceErr interface{}) error {
-	AuthService := NewAuthService(service.Cache, service.Config)
+func (service *OrderBookService) WithdrawToHotWallet(requestData dto.WitdrawToHotWalletRequest, responseData *dto.WitdrawToHotWalletResponse, serviceErr interface{}) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("withdrawToHotWallet", config)
+	metaData := GetRequestMetaData("withdrawToHotWallet", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -54,15 +58,15 @@ func (service *OrderBookService) WithdrawToHotWallet(cache *utility.MemoryCache,
 }
 
 // withdrawToHotWallet ... Calls order-book service to get asset details
-func (service *OrderBookService) GetOnChainBinanceAssetBalances(cache *utility.MemoryCache, config Config.Data, responseData *dto.BinanceAssetBalances, serviceErr interface{}) error {
-	AuthService := NewAuthService(service.Cache, service.Config)
+func (service *OrderBookService) GetOnChainBinanceAssetBalances(responseData *dto.BinanceAssetBalances) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("getAssetBalances", config)
+	metaData := GetRequestMetaData("getAssetBalances", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err
@@ -72,7 +76,7 @@ func (service *OrderBookService) GetOnChainBinanceAssetBalances(cache *utility.M
 	})
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err
@@ -82,15 +86,15 @@ func (service *OrderBookService) GetOnChainBinanceAssetBalances(cache *utility.M
 }
 
 // withdrawToHotWallet ... Calls order-book service to get asset details
-func (service *OrderBookService) GetDepositAddress(cache *utility.MemoryCache, config Config.Data, coin string, network string, responseData *dto.DepositAddressResponse, serviceErr interface{}) error {
-	AuthService := NewAuthService(service.Cache, service.Config)
+func (service *OrderBookService) GetDepositAddress(coin string, network string, responseData *dto.DepositAddressResponse) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("getDepositAddress", config)
+	metaData := GetRequestMetaData("getDepositAddress", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err
@@ -107,7 +111,7 @@ func (service *OrderBookService) GetDepositAddress(cache *utility.MemoryCache, c
 
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err

@@ -1,4 +1,4 @@
-package utility
+package jwt
 
 import (
 	"encoding/base64"
@@ -15,7 +15,7 @@ var (
 )
 
 // VerifyJWT ... This verrifies a JWT generated token
-func VerifyJWT(authToken string, config Config.Data, tokenClaims interface{}) error {
+func Verify(authToken string, config Config.Data, tokenClaims interface{}) error {
 
 	authenticatorKey := config.AuthenticatorKey
 	keyByte, err := base64.URLEncoding.DecodeString(authenticatorKey)
@@ -52,7 +52,7 @@ func VerifyJWT(authToken string, config Config.Data, tokenClaims interface{}) er
 }
 
 // DecodeToken ... This decodes a JWT generated token
-func DecodeAuthToken(authToken string, config Config.Data, tokenClaims interface{}) error {
+func DecodeToken(authToken string, config Config.Data, tokenClaims interface{}) error {
 
 	authenticatorKey := config.AuthenticatorKey
 	keyByte, err := base64.URLEncoding.DecodeString(authenticatorKey)

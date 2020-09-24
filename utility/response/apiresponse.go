@@ -1,4 +1,4 @@
-package utility
+package response
 
 // ResponseObj ... Response object definition without additional data field
 type ResponseObj struct {
@@ -19,8 +19,8 @@ type ResponseValidateObj struct {
 	ValidationErrors []map[string]string
 }
 
-// NewResponse ... Initializes a response object.
-func NewResponse() ResponseResultObj {
+// New ... Initializes a response object.
+func New() ResponseResultObj {
 	return ResponseResultObj{}
 }
 

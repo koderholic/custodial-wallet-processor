@@ -1,4 +1,4 @@
-package utility
+package cache
 
 import (
 	"time"
@@ -7,21 +7,21 @@ import (
 )
 
 // MemoryCache ...
-type MemoryCache struct {
+type Memory struct {
 	Cache *cache.Cache
 }
 
 // InitializeCache ...
-func InitializeCache(expiry time.Duration, purgeInterval time.Duration) *MemoryCache {
+func Initialize(expiry time.Duration, purgeInterval time.Duration) *Memory {
 	newCache := cache.New(expiry, purgeInterval)
-	memoryCache := MemoryCache{
+	memoryCache := Memory{
 		Cache: newCache,
 	}
 	return &memoryCache
 }
 
 // Set ...
-func (memory *MemoryCache) Set(key string, value interface{}, expiry bool) {
+func (memory *Memory) Set(key string, value interface{}, expiry bool) {
 	if expiry {
 		memory.Cache.Set(key, value, cache.DefaultExpiration)
 	} else {
@@ -30,7 +30,7 @@ func (memory *MemoryCache) Set(key string, value interface{}, expiry bool) {
 }
 
 // Get ...
-func (memory *MemoryCache) Get(key string) interface{} {
+func (memory *Memory) Get(key string) interface{} {
 	cacheValue, _ := memory.Cache.Get(key)
 	return cacheValue
 }

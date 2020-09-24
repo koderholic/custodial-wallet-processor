@@ -9,12 +9,14 @@ import (
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/errorcode"
+	"wallet-adapter/utility/ip"
+	"wallet-adapter/utility/jwt"
 	"wallet-adapter/utility/logger"
+	Response "wallet-adapter/utility/response"
 )
 
-var response = utility.NewResponse()
+var response = Response.New()
 
 // Middleware ... Middleware struct
 type Middleware struct {
@@ -35,7 +37,7 @@ func (m *Middleware) Build() http.HandlerFunc {
 // LogAPIRequests ... Logs every incoming request
 func (m *Middleware) LogAPIRequests() *Middleware {
 	nextHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, requestReader *http.Request) {
-		logger.Info(fmt.Sprintf("Incoming request from : %s with IP : %s to : %s", requestReader.UserAgent(), utility.GetIPAdress(requestReader), requestReader.URL.Path))
+		logger.Info(fmt.Sprintf("Incoming request from : %s with IP : %s to : %s", requestReader.UserAgent(), ip.GetAddress(requestReader), requestReader.URL.Path))
 		m.next.ServeHTTP(responseWriter, requestReader)
 	})
 
@@ -85,7 +87,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			return
 		}
 
-		authToken := requestReader.Header.Get(utility.X_AUTH_TOKEN)
+		authToken := requestReader.Header.Get(jwt.X_AUTH_TOKEN)
 		tokenClaims := dto.TokenClaims{}
 
 		if authToken == "" {
@@ -96,7 +98,7 @@ func (m *Middleware) ValidateAuthToken(requiredPermission string) *Middleware {
 			return
 		}
 
-		if err := utility.VerifyJWT(authToken, m.config, &tokenClaims); err != nil {
+		if err := jwt.Verify(authToken, m.config, &tokenClaims); err != nil {
 			logger.Error(fmt.Sprintf("Authentication token validation error : %s", err))
 			responseWriter.Header().Set("Content-Type", "application/json")
 			responseWriter.WriteHeader(http.StatusForbidden)

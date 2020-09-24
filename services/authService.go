@@ -3,23 +3,26 @@ package services
 import (
 	"fmt"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/utility"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 )
 
 //AuthService object
 type AuthService struct {
-	Cache  *utility.MemoryCache
-	Config Config.Data
-	Error  *dto.ExternalServicesRequestErr
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
 }
 
-func NewAuthService(cache *utility.MemoryCache, config Config.Data) *AuthService {
+func NewAuthService(cache *cache.Memory, config Config.Data, repository database.IRepository) *AuthService {
 	baseService := AuthService{
-		Cache:  cache,
-		Config: config,
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
 	}
 	return &baseService
 }
@@ -32,7 +35,7 @@ func (service *AuthService) UpdateAuthToken() (dto.UpdateAuthTokenResponse, erro
 		"password": service.Config.ServiceKey,
 	}
 	authToken := dto.UpdateAuthTokenResponse{}
-	metaData := utility.GetRequestMetaData("generateToken", service.Config)
+	metaData := GetRequestMetaData("generateToken", service.Config)
 
 	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)

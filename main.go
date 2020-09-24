@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/migration"
+	"wallet-adapter/routes"
 	"wallet-adapter/services"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 
 	"github.com/getsentry/sentry-go"
@@ -39,21 +39,21 @@ func main() {
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
-	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+	authCache := cache.Initialize(cacheDuration, purgeInterval)
 
-	DenominationServices := services.NewDenominationServices(authCache, config)
+	DenominationServices := services.NewDenominationServices(authCache, config, nil, nil)
 	DenominationServices.SeedSupportedAssets(Database.DB)
 
-	HotWalletService := services.NewHotWalletService(authCache, config)
-	if err := HotWalletService.InitHotWallet(authCache, Database.DB, config); err != nil {
+	HotWalletService := services.NewHotWalletService(authCache, config, nil, nil)
+	if err := HotWalletService.InitHotWallet(Database.DB); err != nil {
 		logger.Error("Error with InitHotWallet %s", err)
 	}
-	SharedAddressService := services.NewSharedAddressService(authCache, config)
-	if err := SharedAddressService.InitSharedAddress(authCache, Database.DB, config); err != nil {
+	SharedAddressService := services.NewSharedAddressService(authCache, config, nil, nil)
+	if err := SharedAddressService.InitSharedAddress(Database.DB); err != nil {
 		logger.Error("Error with InitSharedAddress %s", err)
 	}
 
-	app.RegisterRoutes(router, validator, config, Database.DB, authCache)
+	routes.Register(router, validator, config, Database.DB, authCache)
 
 	serviceAddress := ":" + config.AppPort
 
