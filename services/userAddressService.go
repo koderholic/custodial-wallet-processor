@@ -217,7 +217,7 @@ func (service *UserAddressService) GetAssetForV2Address(address string, assetSym
 	repository := service.Repository.(database.IUserAddressRepository)
 	var userAsset model.UserAsset
 
-	if err := repository.GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address, &userAsset); err != nil {
+	if err := repository.GetAssetByAddressMemoAndSymbol(address, memo, assetSymbol, &userAsset); err != nil {
 		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
 		return model.UserAsset{}, err
 	}

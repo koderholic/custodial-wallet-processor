@@ -10,7 +10,6 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
@@ -256,7 +255,7 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)
 		switch serviceErr.Code {
 		case errorcode.INSUFFICIENT_FUNDS:
-			if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
+			if err := updateSweptStatus(addressTransactions, repository, config); err != nil {
 				return err
 			}
 		default:

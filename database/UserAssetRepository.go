@@ -15,6 +15,7 @@ type IUserAssetRepository interface {
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
+	GetAssetByAddressMemoAndSymbol(address, memo, assetSymbol string, model interface{}) error
 	SumAmountField(model interface{}) (float64, error)
 	GetMaxUserBalance(denomination uuid.UUID) (float64, error)
 }
@@ -96,8 +97,8 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 	return nil
 }
 
-// GetAssetByAddressAndMemo...  Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetByAddressAndMemo(address, memo, assetSymbol string, model interface{}) error {
+// GetAssetByAddressMemoAndSymbol...  Get user asset matching the given condition
+func (repo *UserAssetRepository) GetAssetByAddressMemoAndSymbol(address, memo, assetSymbol string, model interface{}) error {
 	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
 		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
