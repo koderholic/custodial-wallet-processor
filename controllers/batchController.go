@@ -133,7 +133,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ExternalServicesRequestErr{}
 	KeyManagementService := services.NewKeyManagementService(processor.Cache, processor.Config, processor.Repository, &serviceErr)
-	if err := KeyManagementService.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
+	if err := KeyManagementService.SignBatchTransactionAndBroadcast(nil, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse); err != nil {
 		logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
 		if serviceErr.StatusCode == http.StatusBadRequest {
 			if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {

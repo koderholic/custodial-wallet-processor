@@ -314,11 +314,3 @@ func TxnReceipt(transaction model.Transaction, assetId uuid.UUID) dto.Transactio
 		TransactionStatus:    transaction.TransactionStatus,
 	}
 }
-
-func serviceError(status int, errType string, err error) error {
-	return appError.Err{
-		ErrCode: status,
-		ErrType: errType,
-		Err:     err,
-	}
-}

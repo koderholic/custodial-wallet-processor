@@ -3,6 +3,7 @@ package services
 import (
 	"net/http"
 	Config "wallet-adapter/config"
+	"wallet-adapter/utility/appError"
 )
 
 type MetaData struct {
@@ -146,5 +147,13 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 		}
 	default:
 		return MetaData{}
+	}
+}
+
+func serviceError(status int, errType string, err error) error {
+	return appError.Err{
+		ErrCode: status,
+		ErrType: errType,
+		Err:     err,
 	}
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"net/http"
 	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -43,8 +44,9 @@ func (service *SharedAddressService) InitSharedAddress(DB *gorm.DB) error {
 
 	if err := DB.Order("is_token asc").Where(&model.Denomination{RequiresMemo: true}).Find(&supportedAssets).Error; err != nil {
 		if err.Error() != errorcode.SQL_404 {
-			return err
+			return serviceError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 		}
+		return serviceError(http.StatusNotFound, errorcode.RECORD_NOT_FOUND, err)
 	}
 
 	for _, asset := range supportedAssets {
@@ -79,9 +81,9 @@ func (service *SharedAddressService) GetSharedAddressFor(DB *gorm.DB, asseSymbol
 
 	if err := DB.Where(model.SharedAddress{AssetSymbol: asseSymbol}).First(&sharedAddress).Error; err != nil {
 		if err.Error() != errorcode.SQL_404 {
-			return "", err
+			return "", serviceError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 		}
-		return "", nil
+		return "", serviceError(http.StatusNotFound, errorcode.RECORD_NOT_FOUND, err)
 	}
 
 	return sharedAddress.Address, nil

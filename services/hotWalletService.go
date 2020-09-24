@@ -1,6 +1,7 @@
 package services
 
 import (
+	"net/http"
 	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -37,14 +38,13 @@ func (service *HotWalletService) InitHotWallet(DB *gorm.DB) error {
 
 	supportedAssets := []model.Denomination{}
 	coinTypeToAddrMap := map[int64]string{}
-	externalServiceErr := dto.ExternalServicesRequestErr{}
 	serviceID, _ := uuid.FromString(service.Config.ServiceID)
 	address := ""
 	var err error
 
 	if err := DB.Order("created_at", true).Find(&supportedAssets).Error; err != nil {
 		if err.Error() != errorcode.SQL_404 {
-			return err
+			return serviceError(http.StatusNotFound, errorcode.RECORD_NOT_FOUND, err)
 		}
 	}
 
@@ -66,7 +66,7 @@ func (service *HotWalletService) InitHotWallet(DB *gorm.DB) error {
 				address = coinTypeToAddrMap[asset.CoinType]
 			} else {
 				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
-				address, err = KeyManagementService.GenerateAddressWithoutSub(service.Cache, service.Config, serviceID, asset.AssetSymbol, &externalServiceErr)
+				address, err = KeyManagementService.GenerateAddressWithoutSub(serviceID, asset.AssetSymbol)
 				if err != nil {
 					return err
 				}
@@ -89,7 +89,7 @@ func (service *HotWalletService) GetHotWalletAddressFor(DB *gorm.DB, asseSymbol 
 
 	if err := DB.Where(model.HotWalletAsset{AssetSymbol: asseSymbol}).First(&hotWallet).Error; err != nil {
 		if err.Error() != errorcode.SQL_404 {
-			return "", err
+			return "", serviceError(http.StatusNotFound, errorcode.RECORD_NOT_FOUND, err)
 		}
 		return "", nil
 	}

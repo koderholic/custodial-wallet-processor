@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	Config "wallet-adapter/config"
@@ -48,13 +49,11 @@ func (service *CryptoAdapterService) BroadcastToChain(requestData dto.BroadcastT
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
 			return err
 		}
-		service.Error.StatusCode = APIResponse.StatusCode
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -67,12 +66,11 @@ func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.Subscrip
 	if err != nil {
 		return err
 	}
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 	return nil
 }
@@ -99,13 +97,11 @@ func (service *CryptoAdapterService) TransactionStatus(requestData dto.Transacti
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
 			return err
 		}
-		service.Error.StatusCode = APIResponse.StatusCode
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -128,13 +124,12 @@ func (service *CryptoAdapterService) GetOnchainBalance(requestData dto.OnchainBa
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
 		logger.Error("An error occured when trying to get onChain Balance: ", err)
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -142,8 +137,6 @@ func (service *CryptoAdapterService) GetOnchainBalance(requestData dto.OnchainBa
 
 // GetBroadcastedTXNStatusByRef ...
 func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef, assetSymbol string) bool {
-	serviceErr := dto.ExternalServicesRequestErr{}
-
 	transactionStatusRequest := dto.TransactionStatusRequest{
 		Reference:   transactionRef,
 		AssetSymbol: assetSymbol,
@@ -151,7 +144,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := service.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
-		if serviceErr.StatusCode != http.StatusNotFound {
+		if service.Error.StatusCode != http.StatusNotFound {
 			return true
 		}
 		return false
@@ -161,8 +154,6 @@ func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef
 
 // GetBroadcastedTXNStatusByRef ...
 func (service *CryptoAdapterService) GetBroadcastedTXNDetailsByRefAndSymbol(transactionRef, assetSymbol string) (bool, dto.TransactionStatusResponse, error) {
-	serviceErr := dto.ExternalServicesRequestErr{}
-
 	transactionStatusRequest := dto.TransactionStatusRequest{
 		Reference:   transactionRef,
 		AssetSymbol: assetSymbol,
@@ -170,7 +161,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNDetailsByRefAndSymbol(tran
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := service.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
-		if serviceErr.StatusCode != http.StatusNotFound {
+		if service.Error.StatusCode != http.StatusNotFound {
 			return false, dto.TransactionStatusResponse{}, err
 		}
 		return false, dto.TransactionStatusResponse{}, nil

@@ -47,12 +47,11 @@ func (service *DenominationServices) GetAssetDenominations() (dto.AssetDenominat
 	if err != nil {
 		return responseData, err
 	}
-	_, err = APIClient.Do(APIRequest, &responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return responseData, err
 		}
-		return responseData, errors.New(service.Error.Message)
+		return responseData, serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	logger.Info("Response from GetAssetDenominations : %+v", responseData)
@@ -71,12 +70,11 @@ func (service *DenominationServices) GetTWDenominations() ([]dto.TWDenomination,
 	if err != nil {
 		return responseData, err
 	}
-	_, err = APIClient.Do(APIRequest, &responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return responseData, err
 		}
-		return responseData, errors.New(service.Error.Message)
+		return responseData, serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	logger.Info("Response from GetTWDenominations : %+v", responseData)

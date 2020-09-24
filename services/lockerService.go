@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	Config "wallet-adapter/config"
 	"wallet-adapter/utility/apiClient"
@@ -46,12 +47,11 @@ func (service *LockerService) AcquireLock(requestData dto.LockerServiceRequest, 
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -74,12 +74,11 @@ func (service *LockerService) RenewLock(requestData dto.LockerServiceRequest, re
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -102,12 +101,11 @@ func (service *LockerService) ReleaseLock(requestData dto.LockReleaseRequest, re
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil

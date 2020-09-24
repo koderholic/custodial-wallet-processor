@@ -190,7 +190,7 @@ func sweepBatchTx(cache *cache.Memory, config Config.Data, repository database.I
 	}
 	signBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	KeyManagementService := services.NewKeyManagementService(cache, config, repository, &serviceErr)
-	if err := KeyManagementService.SignBatchTransactionAndBroadcast(nil, cache, config, signBatchTransactionAndBroadcastRequest, &signBatchTransactionAndBroadcastResponse, serviceErr); err != nil {
+	if err := KeyManagementService.SignBatchTransactionAndBroadcast(nil, signBatchTransactionAndBroadcastRequest, &signBatchTransactionAndBroadcastResponse); err != nil {
 		logger.Error("Error response from SignBatchTransactionAndBroadcast : %+v while sweeping batch transactions for BTC", err)
 		return err
 	}

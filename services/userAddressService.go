@@ -103,7 +103,6 @@ func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (stri
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
 	var addressResponse []dto.AllAddressResponse
-	var externalServiceErr dto.ExternalServicesRequestErr
 	var addressType string
 	repository := service.Repository.(database.IUserAddressRepository)
 
@@ -121,7 +120,7 @@ func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (stri
 				addressType = constants.ADDRESS_TYPE_SEGWIT
 			}
 			KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
-			addressResponse, err = KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, addressType, externalServiceErr)
+			addressResponse, err = KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, addressType)
 			if err != nil {
 				return "", err
 			}
@@ -132,7 +131,7 @@ func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (stri
 
 		if err := repository.Create(&userAddress); err != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-			return "", errors.New(appError.GetSQLErr(err))
+			return "", err
 		}
 
 	} else if err != nil {
@@ -159,7 +158,7 @@ func (service *UserAddressService) GetV2AddressWithMemo(userAsset model.UserAsse
 
 		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo}); createErr != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-			return dto.AssetAddress{}, errors.New(appError.GetSQLErr(err))
+			return dto.AssetAddress{}, err
 		}
 		userAddress.V2Address = assetAddress.Address
 		userAddress.Memo = assetAddress.Memo
@@ -256,11 +255,10 @@ func (service *UserAddressService) GetBTCAddresses(userAsset model.UserAsset) ([
 }
 
 func (service *UserAddressService) GenerateAndCreateBTCAddresses(asset model.UserAsset, addressType string) ([]dto.AllAddressResponse, error) {
-	var externalServiceErr dto.ExternalServicesRequestErr
 	repository := service.Repository.(database.IUserAddressRepository)
 
 	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
-	responseAddresses, err := KeyManagementService.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType, externalServiceErr)
+	responseAddresses, err := KeyManagementService.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
 	if err != nil {
 		return []dto.AllAddressResponse{}, err
 	}

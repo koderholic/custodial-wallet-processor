@@ -248,7 +248,7 @@ func (controller TransactionController) ExternalTransfer(responseWriter http.Res
 	var activeBatchId uuid.UUID
 	if debitReferenceAsset.AssetSymbol == constants.COIN_BTC {
 		BatchService := services.NewBatchService(controller.Cache, controller.Config, controller.Repository)
-		activeBatchId, err = BatchService.GetWaitingBTCBatchId(constants.COIN_BTC)
+		activeBatchId, err = BatchService.GetWaitingBatchId(constants.COIN_BTC)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", err, apiResponse.PlainError("SERVER_ERR", errorcode.SERVER_ERR))
 			return

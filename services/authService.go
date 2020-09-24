@@ -43,8 +43,7 @@ func (service *AuthService) UpdateAuthToken() (dto.UpdateAuthTokenResponse, erro
 		return dto.UpdateAuthTokenResponse{}, err
 	}
 	APIClient.AddBasicAuth(APIRequest, authorization["username"], authorization["password"])
-	_, err = APIClient.Do(APIRequest, &authToken)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &authToken); err != nil {
 		return dto.UpdateAuthTokenResponse{}, err
 	}
 
@@ -76,7 +75,7 @@ func (service *AuthService) GetAuthToken() (string, error) {
 			logger.Error("Service auth token could not be retrieved, error : %s", err)
 			return authTokenResponse.Token, err
 		}
-		return authTokenResponse.Token, err
+		return authTokenResponse.Token, nil
 	}
 
 	return authToken, nil

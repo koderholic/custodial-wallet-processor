@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	Config "wallet-adapter/config"
 
@@ -46,12 +47,11 @@ func (service *OrderBookService) WithdrawToHotWallet(requestData dto.WitdrawToHo
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -74,12 +74,11 @@ func (service *OrderBookService) GetOnChainBinanceAssetBalances(responseData *dt
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -109,12 +108,11 @@ func (service *OrderBookService) GetDepositAddress(coin string, network string, 
 	}
 	APIRequest.URL.RawQuery = params.Encode() // Encode and assign back to the original query.
 
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil

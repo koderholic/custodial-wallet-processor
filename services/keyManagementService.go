@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -36,20 +37,20 @@ func NewKeyManagementService(cache *cache.Memory, config Config.Data, repository
 
 // GenerateAddress ...
 func (service *KeyManagementService) GenerateAddress(userID uuid.UUID, symbol string, coinType int64) (string, error) {
-	generatedAddress, err := service.GenerateAddressWithoutSub(service.Cache, service.Config, userID, symbol, service.Error)
+	generatedAddress, err := service.GenerateAddressWithoutSub(userID, symbol)
 	if err != nil {
 		return "", err
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(service.Error, []string{generatedAddress}, userID, coinType); err != nil {
+	if err := service.subscribeAddress([]string{generatedAddress}, userID, coinType); err != nil {
 		return "", err
 	}
 
 	return generatedAddress, nil
 }
 
-func (service *KeyManagementService) GenerateAddressWithoutSub(cache *cache.Memory, config Config.Data, userID uuid.UUID, symbol string, serviceErr interface{}) (string, error) {
+func (service *KeyManagementService) GenerateAddressWithoutSub(userID uuid.UUID, symbol string) (string, error) {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
@@ -57,12 +58,12 @@ func (service *KeyManagementService) GenerateAddressWithoutSub(cache *cache.Memo
 	}
 	requestData := dto.GenerateAddressRequest{}
 	responseData := dto.GenerateAddressResponse{}
-	metaData := GetRequestMetaData("createAddress", config)
+	metaData := GetRequestMetaData("createAddress", service.Config)
 
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return "", err
@@ -70,12 +71,11 @@ func (service *KeyManagementService) GenerateAddressWithoutSub(cache *cache.Memo
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, &responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return "", err
 		}
-		return "", err
+		return "", serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	logger.Info("Response from GenerateAddress : %+v", responseData)
@@ -83,7 +83,7 @@ func (service *KeyManagementService) GenerateAddressWithoutSub(cache *cache.Memo
 }
 
 // GenerateAllAddresses ...
-func (service *KeyManagementService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType string, serviceErr interface{}) ([]dto.AllAddressResponse, error) {
+func (service *KeyManagementService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType string) ([]dto.AllAddressResponse, error) {
 	var APIClient *apiClient.Client
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
@@ -108,20 +108,20 @@ func (service *KeyManagementService) GenerateAllAddresses(userID uuid.UUID, symb
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, &responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return []dto.AllAddressResponse{}, err
 		}
-		return []dto.AllAddressResponse{}, err
+		return []dto.AllAddressResponse{}, serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
+
 	addressArray := []string{}
 	for _, item := range responseData.Addresses {
 		addressArray = append(addressArray, item.Data)
 	}
 
 	//call subscribe
-	if err := service.subscribeAddress(serviceErr, addressArray, userID, coinType); err != nil {
+	if err := service.subscribeAddress(addressArray, userID, coinType); err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
 
@@ -129,15 +129,15 @@ func (service *KeyManagementService) GenerateAllAddresses(userID uuid.UUID, symb
 }
 
 // SignTransaction ... Calls key-management service with a transaction object to sign
-func (service *KeyManagementService) SignTransaction(cache *cache.Memory, config Config.Data, requestData dto.SignTransactionRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
+func (service *KeyManagementService) SignTransaction(requestData dto.SignTransactionRequest, responseData *dto.SignTransactionResponse) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := GetRequestMetaData("signTransaction", config)
+	metaData := GetRequestMetaData("signTransaction", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -145,15 +145,11 @@ func (service *KeyManagementService) SignTransaction(cache *cache.Memory, config
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		errWithStatus := serviceErr.(*dto.ExternalServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -176,27 +172,25 @@ func (service *KeyManagementService) SignTransactionAndBroadcast(requestData dto
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		service.Error.StatusCode = APIResponse.StatusCode
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
 }
 
-func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Client, cache *cache.Memory, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
+func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Client, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := GetRequestMetaData("signBatchTransaction", config)
+	metaData := GetRequestMetaData("signBatchTransaction", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	if HttpClient != nil {
 		APIClient.HttpClient = HttpClient
 	}
@@ -207,30 +201,25 @@ func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Clien
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		errWithStatus := serviceErr.(*dto.ExternalServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
-
 	return nil
 
 }
 
-func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient *http.Client, cache *cache.Memory, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient *http.Client, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := GetRequestMetaData("signBatchTransactionAndbroadcast", config)
+	metaData := GetRequestMetaData("signBatchTransactionAndbroadcast", service.Config)
 
-	APIClient := apiClient.New(nil, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	if HttpClient != nil {
 		APIClient.HttpClient = HttpClient
 	}
@@ -241,15 +230,12 @@ func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
+
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
-		errWithStatus := serviceErr.(*dto.ExternalServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -257,7 +243,7 @@ func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient
 }
 
 //does v1 and v2 address subscriptions
-func (service *KeyManagementService) subscribeAddress(serviceErr interface{}, addressArray []string, userID uuid.UUID, coinType int64) error {
+func (service *KeyManagementService) subscribeAddress(addressArray []string, userID uuid.UUID, coinType int64) error {
 
 	subscriptionRequestDataV2 := dto.SubscriptionRequestV2{}
 	subscriptionRequestDataV2.Subscriptions = make(map[string][]string)

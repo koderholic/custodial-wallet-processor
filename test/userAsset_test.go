@@ -28,7 +28,7 @@ func (s *Suite) Test_CreateAsset_failCompletely_ForNonSupportedAssets() {
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
 	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
 	assert.NotEqual(s.T(), nil, err, "Expected CreateAsset to return error")
-	assert.Equal(s.T(), 400, err.(appError.Err).ErrCode, "Expected CreateAsset to return error")
+	assert.Equal(s.T(), 404, err.(appError.Err).ErrCode, "Expected CreateAsset to return error")
 	assert.Equal(s.T(), "ASSET_NOT_SUPPORTED", err.(appError.Err).ErrType, "Expected CreateAsset to return ASSET_NOT_SUPPORTED")
 	assert.Equal(s.T(), 0, len(createdAsset), "Assets not completely created")
 }
@@ -100,7 +100,7 @@ func (s *Suite) Test_GetAssetById_Fails_ForNonExistingUserId() {
 	_, err := UserAssetService.GetAssetById(nonExistingUserId)
 
 	assert.NotEqual(s.T(), nil, err, "Expected FetchAssets to return error")
-	assert.Equal(s.T(), 400, err.(appError.Err).ErrCode, "Expected FetchAssets to return error")
+	assert.Equal(s.T(), 404, err.(appError.Err).ErrCode, "Expected FetchAssets to return error")
 	assert.Equal(s.T(), "RECORD_NOT_FOUND", err.(appError.Err).ErrType, "Expected FetchAssets to return RECORD_NOT_FOUND")
 }
 

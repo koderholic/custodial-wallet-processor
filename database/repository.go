@@ -239,10 +239,10 @@ func (db *TX) Commit() error {
 }
 
 func repoError(err error) error {
-	if gorm.IsRecordNotFoundError(err) {
+	if err == gorm.ErrRecordNotFound {
 		return appError.Err{
-			ErrType: errorcode.SQL_ERR,
-			ErrCode: http.StatusBadRequest,
+			ErrType: errorcode.RECORD_NOT_FOUND,
+			ErrCode: http.StatusNotFound,
 			Err:     err, //errors.New(strings.Join(strings.Split(err.Error(), " ")[2:], " ")),
 		}
 	}

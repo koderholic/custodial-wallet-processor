@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 	Config "wallet-adapter/config"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 )
 
@@ -47,12 +49,12 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 		buf = new(bytes.Buffer)
 		err := json.NewEncoder(buf).Encode(body)
 		if err != nil {
-			return nil, err
+			return nil, clientError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 		}
 	}
 	req, err := http.NewRequest(method, u.String(), buf)
 	if err != nil {
-		return nil, err
+		return nil, clientError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -74,18 +76,18 @@ func (c *Client) AddBasicAuth(req *http.Request, username, password string) *htt
 	return req
 }
 
-func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
+func (c *Client) Do(req *http.Request, v interface{}) error {
 	c.startTime = time.Now().UnixNano()
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		logger.Info("Response from %s : +%v", c.BaseURL, err)
-		return nil, err
+		return clientError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 	}
 	defer resp.Body.Close()
 
 	resBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return resp, err
+		return clientError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
 	}
 
 	if c.BaseURL.String() != "authentication/services/token" {
@@ -94,10 +96,20 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		return resp, errors.New(fmt.Sprintf("%s", string(resBody)))
+		return clientError(resp.StatusCode, errorcode.SERVER_ERR_CODE, errors.New(fmt.Sprintf("%s", string(resBody))))
 	}
 
 	err = json.Unmarshal(resBody, v)
-	return resp, err
+	if err != nil {
+		return clientError(http.StatusInternalServerError, errorcode.SERVER_ERR_CODE, err)
+	}
+	return nil
+}
 
+func clientError(status int, errType string, err error) error {
+	return appError.Err{
+		ErrCode: status,
+		ErrType: errType,
+		Err:     err,
+	}
 }

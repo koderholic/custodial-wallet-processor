@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -50,14 +51,11 @@ func (service *NotificationService) SendEmailNotification(requestData dto.SendEm
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
-			logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 			return err
 		}
-		logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -78,14 +76,11 @@ func (service *NotificationService) SendSmsNotification(requestData dto.SendSmsR
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	_, err = APIClient.Do(APIRequest, responseData)
-	if err != nil {
+	if err := APIClient.Do(APIRequest, &responseData); err != nil {
 		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
-			logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 			return err
 		}
-		logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
-		return err
+		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
