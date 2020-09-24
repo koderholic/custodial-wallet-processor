@@ -2,7 +2,6 @@ package model
 
 import (
 	"time"
-	"wallet-adapter/dto"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -69,22 +68,4 @@ type Transaction struct {
 	SweptStatus          bool         `gorm:"not null;default:false" json:"swept_status,omitempty"`
 	Batch                BatchRequest `sql:"-" json:"omitempty"`
 	AssetSymbol          string       `gorm:"type:VARCHAR(36);not null;" json:"asset_symbol,omitempty"`
-}
-
-func (transaction Transaction) Map(tx *dto.TransactionResponse) {
-	tx.ID = transaction.ID
-	tx.InitiatorID = transaction.InitiatorID
-	tx.RecipientID = transaction.RecipientID
-	tx.Value = transaction.Value
-	tx.TransactionStatus = transaction.TransactionStatus
-	tx.TransactionReference = transaction.TransactionReference
-	tx.PaymentReference = transaction.PaymentReference
-	tx.PreviousBalance = transaction.PreviousBalance
-	tx.AvailableBalance = transaction.AvailableBalance
-	tx.TransactionType = transaction.TransactionType
-	tx.TransactionEndDate = transaction.TransactionEndDate
-	tx.TransactionStartDate = transaction.TransactionStartDate
-	tx.CreatedDate = transaction.CreatedAt
-	tx.UpdatedDate = transaction.UpdatedAt
-	tx.TransactionTag = transaction.TransactionTag
 }

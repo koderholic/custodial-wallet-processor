@@ -6,9 +6,13 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/errorcode"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -108,4 +112,16 @@ func IsExceedWaitTime(startTime, minDuration time.Duration) bool {
 		return true
 	}
 	return false
+}
+
+func ToUUID(input string) (uuid.UUID, error) {
+	uuidString, err := uuid.FromString(input)
+	if err != nil {
+		return uuidString, appError.Err{
+			ErrCode: http.StatusBadRequest,
+			ErrType: errorcode.UUID_ERROR_CODE,
+			Err:     err,
+		}
+	}
+	return uuidString, nil
 }

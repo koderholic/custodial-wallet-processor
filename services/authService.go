@@ -3,21 +3,41 @@ package services
 import (
 	"fmt"
 	Config "wallet-adapter/config"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/logger"
 )
 
+//AuthService object
+type AuthService struct {
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
+}
+
+func NewAuthService(cache *cache.Memory, config Config.Data, repository database.IRepository) *AuthService {
+	baseService := AuthService{
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+	}
+	return &baseService
+}
+
 // UpdateAuthToken ...
-func UpdateAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (dto.UpdateAuthTokenResponse, error) {
+func (service *AuthService) UpdateAuthToken() (dto.UpdateAuthTokenResponse, error) {
 
 	authorization := map[string]string{
-		"username": config.ServiceID,
-		"password": config.ServiceKey,
+		"username": service.Config.ServiceID,
+		"password": service.Config.ServiceKey,
 	}
 	authToken := dto.UpdateAuthTokenResponse{}
-	metaData := utility.GetRequestMetaData("generateToken", config)
+	metaData := GetRequestMetaData("generateToken", service.Config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return dto.UpdateAuthTokenResponse{}, err
@@ -28,18 +48,18 @@ func UpdateAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return dto.UpdateAuthTokenResponse{}, err
 	}
 
-	cache.Set("serviceAuth", &authToken, true)
+	service.Cache.Set("serviceAuth", &authToken, true)
 
 	return authToken, nil
 }
 
 // GetAuthToken ...
-func GetAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (string, error) {
+func (service *AuthService) GetAuthToken() (string, error) {
 
-	cachedResult := cache.Get("serviceAuth")
+	cachedResult := service.Cache.Get("serviceAuth")
 
 	if cachedResult == nil {
-		authTokenResponse, err := UpdateAuthToken(cache, logger, config)
+		authTokenResponse, err := service.UpdateAuthToken()
 		if err != nil {
 			logger.Error("Service auth token could not be retrieved, error : %s", err)
 			return authTokenResponse.Token, err
@@ -51,7 +71,7 @@ func GetAuthToken(cache *utility.MemoryCache, logger *utility.Logger, config Con
 	authToken := authTokenResponse.Token
 
 	if authToken == "" {
-		authTokenResponse, err := UpdateAuthToken(cache, logger, config)
+		authTokenResponse, err := service.UpdateAuthToken()
 		if err != nil {
 			logger.Error("Service auth token could not be retrieved, error : %s", err)
 			return authTokenResponse.Token, err

@@ -24,27 +24,6 @@ type UserAssetResponse struct {
 }
 
 // CreditUserAssetRequest ... Model definition for credit user asset request
-type CreditUserAssetRequest struct {
-	AssetID              uuid.UUID `json:"assetId" validate:"required"`
-	Value                float64   `json:"value" validate:"required"`
-	TransactionReference string    `json:"transactionReference" validate:"required"`
-	Memo                 string    `json:"memo"`
-}
-
-type ChainData struct {
-	Status           *bool  `json:"status" validate:"required"`
-	TransactionHash  string `json:"transactionHash" validate:"required"`
-	TransactionFee   string `json:"transactionFee" validate:"required"`
-	RecipientAddress string `json:"recipientAddress"`
-	BlockHeight      int64  `json:"blockHeight"`
-}
-
-type OnChainCreditUserAssetRequest struct {
-	CreditUserAssetRequest
-	ChainData ChainData `json:"chainData" validate:"required"`
-}
-
-// CreditUserAssetRequest ... Model definition for credit user asset request
 type InternalTransferRequest struct {
 	InitiatorAssetId     uuid.UUID `json:"initiatorAssetId" validate:"required"`
 	RecipientAssetId     uuid.UUID `json:"recipientAssetId" validate:"required"`
@@ -53,22 +32,25 @@ type InternalTransferRequest struct {
 	Memo                 string    `json:"memo" validate:"required"`
 }
 
-// TransactionReceipt ... Model definition for credit user asset request
-type TransactionReceipt struct {
-	AssetID              uuid.UUID `json:"assetId,omitempty"`
-	Value                string    `json:"value,omitempty"`
-	TransactionReference string    `json:"transactionReference,omitempty"`
-	PaymentReference     string    `json:"paymentReference,omitempty"`
-	TransactionStatus    string    `json:"transactionStatus,omitempty"`
+// CreditUserAssetRequest ... Model definition for credit user asset request
+type CreditUserAssetRequest struct {
+	AssetID              uuid.UUID `json:"assetId" validate:"required"`
+	Value                float64   `json:"value" validate:"required"`
+	TransactionReference string    `json:"transactionReference" validate:"required"`
+	Memo                 string    `json:"memo"`
 }
 
-type AssetAddress struct {
-	Address string `json:"address,omitempty"`
-	Memo    string `json:"memo,omitempty"`
-	Type    string `json:"type,omitempty"`
+// OnChainCreditUserAssetRequest object
+type OnChainCreditUserAssetRequest struct {
+	CreditUserAssetRequest
+	ChainData ChainData `json:"chainData" validate:"required"`
 }
 
-type AllAssetAddresses struct {
-	Addresses          []AssetAddress `json:"addresses"`
-	DefaultAddressType string         `json:"defaultAddressType"`
+// ChainData On-chain metadata for broadcasted / incoming transactions
+type ChainData struct {
+	Status           *bool  `json:"status" validate:"required"`
+	TransactionHash  string `json:"transactionHash" validate:"required"`
+	TransactionFee   string `json:"transactionFee" validate:"required"`
+	RecipientAddress string `json:"recipientAddress"`
+	BlockHeight      int64  `json:"blockHeight"`
 }

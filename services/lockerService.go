@@ -4,20 +4,41 @@ import (
 	"encoding/json"
 	"fmt"
 	Config "wallet-adapter/config"
+	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/cache"
+
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/utility"
 )
 
-// AcquireLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse, serviceErr interface{}) error {
+//NotificationService object
+type LockerService struct {
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
+}
 
-	authToken, err := GetAuthToken(cache, logger, config)
+func NewLockerService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *LockerService {
+	baseService := LockerService{
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      serviceErr,
+	}
+	return &baseService
+}
+
+// AcquireLock ... Calls locker service with information about the lock to lock down a transaction for processing
+func (service *LockerService) AcquireLock(requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("acquireLock", config)
+	metaData := GetRequestMetaData("acquireLock", service.Config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -27,7 +48,7 @@ func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 	})
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err
@@ -37,15 +58,15 @@ func AcquireLock(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 }
 
 // RenewLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse, serviceErr interface{}) error {
-
-	authToken, err := GetAuthToken(cache, logger, config)
+func (service *LockerService) RenewLock(requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("renewLockLease", config)
+	metaData := GetRequestMetaData("renewLockLease", service.Config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -55,7 +76,7 @@ func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config
 	})
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err
@@ -65,15 +86,15 @@ func RenewLock(cache *utility.MemoryCache, logger *utility.Logger, config Config
 }
 
 // ReleaseLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func ReleaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.LockReleaseRequest, responseData *dto.ServicesRequestSuccess, serviceErr interface{}) error {
-
-	authToken, err := GetAuthToken(cache, logger, config)
+func (service *LockerService) ReleaseLock(requestData dto.LockReleaseRequest, responseData *dto.ServicesRequestSuccess) error {
+	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
+	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	metaData := utility.GetRequestMetaData("releaseLock", config)
+	metaData := GetRequestMetaData("releaseLock", service.Config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -83,7 +104,7 @@ func ReleaseLock(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 	})
 	_, err = APIClient.Do(APIRequest, responseData)
 	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
 			return err
 		}
 		return err

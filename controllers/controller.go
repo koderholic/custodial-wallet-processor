@@ -2,19 +2,24 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"wallet-adapter/config"
 	"wallet-adapter/database"
-	"wallet-adapter/errorcode"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/constants"
+	"wallet-adapter/utility/errorcode"
+	"wallet-adapter/utility/logger"
+	Response "wallet-adapter/utility/response"
+	Validator "wallet-adapter/utility/validator"
 
 	validation "gopkg.in/go-playground/validator.v9"
 )
 
 //Controller : Controller struct
 type Controller struct {
-	Cache     *utility.MemoryCache
-	Logger    *utility.Logger
+	Cache     *cache.Memory
 	Config    config.Data
 	Validator *validation.Validate
 }
@@ -31,6 +36,18 @@ type UserAssetController struct {
 	Repository database.IUserAssetRepository
 }
 
+//UserAssetController : UserAsset controller struct
+type UserAddressController struct {
+	Controller
+	Repository database.IUserAddressRepository
+}
+
+//TransactionController : Transaction controller struct
+type TransactionController struct {
+	Controller
+	Repository database.ITransactionRepository
+}
+
 //BatchController : Batch controller struct
 type BatchController struct {
 	Controller
@@ -38,9 +55,8 @@ type BatchController struct {
 }
 
 // NewController ... Create a new base controller instance
-func NewController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
+func NewController(cache *cache.Memory, configData config.Data, validator *validation.Validate, repository database.IRepository) *BaseController {
 	controller := &BaseController{}
-	controller.Logger = logger
 	controller.Cache = cache
 	controller.Config = configData
 	controller.Validator = validator
@@ -50,10 +66,31 @@ func NewController(cache *utility.MemoryCache, logger *utility.Logger, configDat
 }
 
 // NewUserAssetController ... Create a new user asset controller instance
-func NewUserAssetController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IUserAssetRepository) *UserAssetController {
+func NewUserAssetController(cache *cache.Memory, configData config.Data, validator *validation.Validate, repository database.IUserAssetRepository) *UserAssetController {
 	controller := &UserAssetController{}
 	controller.Cache = cache
-	controller.Logger = logger
+	controller.Config = configData
+	controller.Validator = validator
+	controller.Repository = repository
+
+	return controller
+}
+
+// NewTransactionController ... Create a new transaction controller instance
+func NewTransactionController(cache *cache.Memory, configData config.Data, validator *validation.Validate, repository database.ITransactionRepository) *TransactionController {
+	controller := &TransactionController{}
+	controller.Cache = cache
+	controller.Config = configData
+	controller.Validator = validator
+	controller.Repository = repository
+
+	return controller
+}
+
+// NewUserAddressController ... Create a new user address controller instance
+func NewUserAddressController(cache *cache.Memory, configData config.Data, validator *validation.Validate, repository database.IUserAddressRepository) *UserAddressController {
+	controller := &UserAddressController{}
+	controller.Cache = cache
 	controller.Config = configData
 	controller.Validator = validator
 	controller.Repository = repository
@@ -62,10 +99,9 @@ func NewUserAssetController(cache *utility.MemoryCache, logger *utility.Logger, 
 }
 
 // NewBatchController ... Create a new batch controller instance
-func NewBatchController(cache *utility.MemoryCache, logger *utility.Logger, configData config.Data, validator *validation.Validate, repository database.IBatchRepository) *BatchController {
+func NewBatchController(cache *cache.Memory, configData config.Data, validator *validation.Validate, repository database.IBatchRepository) *BatchController {
 	controller := &BatchController{}
 	controller.Cache = cache
-	controller.Logger = logger
 	controller.Config = configData
 	controller.Validator = validator
 	controller.Repository = repository
@@ -76,18 +112,18 @@ func NewBatchController(cache *utility.MemoryCache, logger *utility.Logger, conf
 //Ping : Ping function
 func (controller *Controller) Ping(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	apiResponse := utility.NewResponse()
+	apiResponse := Response.New()
 
-	controller.Logger.Info("Ping request successful! Server is up and listening")
+	logger.Info("Ping request successful! Server is up and listening")
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, "Ping request successful! Server is up and listening"))
+	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(constants.SUCCESSFUL, "Ping request successful! Server is up and listening"))
 }
 
-func ValidateRequest(validator *validation.Validate, requestData interface{}, logger *utility.Logger) []map[string]string {
+func ValidateRequest(validator *validation.Validate, requestData interface{}) error {
 	validationErr := []map[string]string{}
-	translation, err := utility.CustomizeValidationMessages(validator)
+	translation, err := Validator.CustomizeMessages(validator)
 	if err != nil {
 		logger.Error("Failed to set custom validation error messages : %s", err)
 	}
@@ -100,19 +136,16 @@ func ValidateRequest(validator *validation.Validate, requestData interface{}, lo
 			})
 		}
 	}
-	return validationErr
-}
-func ReturnError(responseWriter http.ResponseWriter, executingMethod string, status int, err interface{}, response interface{}, logger *utility.Logger) {
-
-	switch err.(type) {
-	case error:
-		if err.(error).Error() == errorcode.SQL_404 {
-			status = http.StatusNotFound
-		}
+	return appError.Err{
+		ErrCode: http.StatusBadRequest,
+		ErrType: errorcode.VALIDATION_ERR_CODE,
+		Err:     errors.New(errorcode.VALIDATION_ERR),
+		ErrData: validationErr,
 	}
+}
+func ReturnError(responseWriter http.ResponseWriter, executingMethod string, err interface{}, response interface{}) {
 	logger.Error("Outgoing response to %s : %+v. Additional context : %s", executingMethod, response, err)
 	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(status)
+	responseWriter.WriteHeader(err.(appError.Err).ErrCode)
 	json.NewEncoder(responseWriter).Encode(response)
-	return
 }
