@@ -196,7 +196,7 @@ func NewTx(Db *gorm.DB) *TX {
 
 func (db *TX) Update(model, update interface{}) *TX {
 	if db.err != nil {
-		db.Commit()
+		return db
 	}
 	if err := db.tx.Model(model).Update(update).Error; err != nil {
 		db.tx.Rollback()
@@ -213,7 +213,7 @@ func (db *TX) Update(model, update interface{}) *TX {
 
 func (db *TX) Create(model interface{}) *TX {
 	if db.err != nil {
-		db.Commit()
+		return db
 	}
 	if err := db.tx.Create(model).Error; err != nil {
 		db.tx.Rollback()
