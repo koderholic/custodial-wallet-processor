@@ -119,9 +119,9 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(address, assetSy
 	}
 
 	if IsV2Address {
-		userAsset, err = UserAddressService.GetAssetForV2Address(address, assetSymbol, memo)
+		userAsset, err = service.GetAssetForV2Address(address, assetSymbol, memo)
 	} else {
-		userAsset, err = UserAddressService.GetAssetForV1Address(address, assetSymbol)
+		userAsset, err = service.GetAssetForV1Address(address, assetSymbol)
 	}
 	if err != nil {
 		if err.Error() == errorcode.SQL_404 {
@@ -131,6 +131,31 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(address, assetSy
 	logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, memo, assetSymbol, userAsset)
 
 	return service.Normalize(userAsset), nil
+}
+func (service *UserAssetService) GetAssetForV1Address(address string, assetSymbol string) (model.UserAsset, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
+	var userAsset model.UserAsset
+
+	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
+		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
+		return model.UserAsset{}, err
+	}
+	logger.Info("GetAssetForV1Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
+
+	return userAsset, nil
+}
+
+func (service *UserAssetService) GetAssetForV2Address(address string, assetSymbol string, memo string) (model.UserAsset, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
+	var userAsset model.UserAsset
+
+	if err := repository.GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address, &userAsset); err != nil {
+		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
+		return model.UserAsset{}, err
+	}
+	logger.Info("GetAssetForV2Address logs : address : %s and memo : %s, assetSymbol : %s, assest : %+v", address, memo, assetSymbol, userAsset)
+
+	return userAsset, nil
 }
 
 func (service *UserAssetService) CreditAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {

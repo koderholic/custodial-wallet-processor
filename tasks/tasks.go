@@ -122,7 +122,7 @@ func GetDepositsSumForAssetFromDate(repository database.IRepository, config Conf
 }
 
 func GetRecipientAsset(repository database.IRepository, config Config.Data, assetId uuid.UUID, recipientAsset *model.UserAsset) {
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetId}}, &recipientAsset); err != nil {
 		logger.Error("Error response from Float Manager job : %+v while checking for asset with id %+v", err, recipientAsset.ID)
 		return

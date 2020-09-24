@@ -15,7 +15,7 @@ type IUserAssetRepository interface {
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
-	GetAssetByAddressMemoAndSymbol(address, memo, assetSymbol string, model interface{}) error
+	GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error
 	SumAmountField(model interface{}) (float64, error)
 	GetMaxUserBalance(denomination uuid.UUID) (float64, error)
 }
@@ -92,18 +92,21 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
 		Where("address = ? && asset_symbol = ?", address, assetSymbol).
 		First(model).Error; err != nil {
+		logger.Info("GetAssetByAddressAndSymbol logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
 		return repoError(err)
 	}
 	return nil
 }
 
-// GetAssetByAddressMemoAndSymbol...  Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetByAddressMemoAndSymbol(address, memo, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.v2_address, user_addresses.memo, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
-		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("v2_address = ? & asset_symbol = ? & memo = ?", address, assetSymbol, memo).
-		First(model).Error; err != nil {
+// GetAssetByAddressAndMemo...  Get user asset matching the given condition
+func (repo *UserAssetRepository) GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error {
+	if err := repo.DB.Raw(`
+		SELECT d.asset_symbol, d.decimal, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
+		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
+		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ?`, assetSymbol, memo, address).
+		Scan(model).Error; err != nil {
+		logger.Info(`GetAssetBySymbolMemoAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		return repoError(err)
 	}
 	return nil

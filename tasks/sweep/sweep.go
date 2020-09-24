@@ -35,7 +35,7 @@ type (
 
 func SweepTransactions(cache *cache.Memory, config Config.Data, repository database.IRepository) {
 	logger.Info("Sweep operation begins")
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 
 	serviceErr := dto.ExternalServicesRequestErr{}
 	token, err := tasks.AcquireLock(&userAssetRepository, "sweep", constants.SIX_HUNDRED_MILLISECONDS, cache, config, serviceErr)
@@ -216,7 +216,7 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 		return err
 	}
 
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, config, &userAssetRepository, floatAccount)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
@@ -300,7 +300,7 @@ func getTransactionListInfo(repository database.IRepository, config Config.Data,
 
 	recipientAsset := model.UserAsset{}
 	//all the tx in assetTransactions have the same recipientId so get info from the 0th position
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 	if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetTransactions[0].RecipientID}}, &recipientAsset); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return dto.TransactionListInfo{}, err
@@ -417,7 +417,7 @@ func GetSweepParams(cache *cache.Memory, config Config.Data, repository database
 	sweepParam := BTCSweepParam{}
 	serviceErr := dto.ExternalServicesRequestErr{}
 
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 	totalUsersBalance, err := tasks.GetTotalUserBalance(repository, floatAccount.AssetSymbol, &userAssetRepository)
 	if err != nil {
 		return sweepParam, err
@@ -565,7 +565,7 @@ func GeTFloatPercent(accountDeficit, sweepFund *big.Float) *big.Int {
 
 func GetSweepAddressAndMemo(cache *cache.Memory, config Config.Data, repository database.IUserAddressRepository, floatAccount model.HotWalletAsset) (string, string, error) {
 
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 	totalUsersBalance, err := tasks.GetTotalUserBalance(repository, floatAccount.AssetSymbol, &userAssetRepository)
 	if err != nil {
 		return "", "", err
@@ -641,7 +641,7 @@ func updateSweptStatus(assetTransactions []model.Transaction, repository databas
 	for _, tx := range assetTransactions {
 		assetIdList = append(assetIdList, tx.ID)
 	}
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
+	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
 	if err := userAssetRepository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
 		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
 		return err

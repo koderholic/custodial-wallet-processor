@@ -137,9 +137,9 @@ func (s *Suite) RegisterRoutes(Config config.Data, router *mux.Router, validator
 		DB := database.Database{Config: s.Config, DB: s.DB}
 		baseRepository := database.BaseRepository{Database: DB}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-		transactionRepository := database.TransactionRepository{userAssetRepository}
-		userAddressRepository := database.UserAddressRepository{userAssetRepository}
-		batchRepository := database.BatchRepository{userAssetRepository}
+		transactionRepository := database.TransactionRepository{UserAssetRepository: userAssetRepository}
+		userAddressRepository := database.UserAddressRepository{UserAssetRepository: userAssetRepository}
+		batchRepository := database.BatchRepository{UserAssetRepository: userAssetRepository}
 
 		controller := controllers.NewController(authCache, s.Config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(authCache, s.Config, validator, &userAssetRepository)

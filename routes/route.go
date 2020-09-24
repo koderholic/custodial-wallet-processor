@@ -30,9 +30,9 @@ func Register(router *mux.Router, validator *validation.Validate, config Config.
 		DB := database.Database{Config: config, DB: db}
 		baseRepository := database.BaseRepository{Database: DB}
 		userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
-		transactionRepository := database.TransactionRepository{userAssetRepository}
-		userAddressRepository := database.UserAddressRepository{userAssetRepository}
-		batchRepository := database.BatchRepository{userAssetRepository}
+		transactionRepository := database.TransactionRepository{UserAssetRepository: userAssetRepository}
+		userAddressRepository := database.UserAddressRepository{UserAssetRepository: userAssetRepository}
+		batchRepository := database.BatchRepository{UserAssetRepository: userAssetRepository}
 
 		controller := controllers.NewController(memoryCache, config, validator, &baseRepository)
 		userAssetController := controllers.NewUserAssetController(memoryCache, config, validator, &userAssetRepository)
