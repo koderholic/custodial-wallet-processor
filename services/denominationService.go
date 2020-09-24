@@ -11,6 +11,7 @@ import (
 	"wallet-adapter/model"
 
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/constants"
 	"wallet-adapter/utility/logger"
@@ -48,10 +49,11 @@ func (service *DenominationServices) GetAssetDenominations() (dto.AssetDenominat
 		return responseData, err
 	}
 	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return responseData, err
 		}
-		return responseData, serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return responseData, serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	logger.Info("Response from GetAssetDenominations : %+v", responseData)
@@ -71,10 +73,11 @@ func (service *DenominationServices) GetTWDenominations() ([]dto.TWDenomination,
 		return responseData, err
 	}
 	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return responseData, err
 		}
-		return responseData, serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return responseData, serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	logger.Info("Response from GetTWDenominations : %+v", responseData)

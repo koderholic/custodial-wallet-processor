@@ -11,6 +11,7 @@ import (
 
 	"wallet-adapter/dto"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 
@@ -71,11 +72,12 @@ func (service *KeyManagementService) GenerateAddressWithoutSub(userID uuid.UUID,
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return "", err
 		}
-		return "", serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return "", serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	logger.Info("Response from GenerateAddress : %+v", responseData)
@@ -109,10 +111,11 @@ func (service *KeyManagementService) GenerateAllAddresses(userID uuid.UUID, symb
 		"x-auth-token": authToken,
 	})
 	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return []dto.AllAddressResponse{}, err
 		}
-		return []dto.AllAddressResponse{}, serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return []dto.AllAddressResponse{}, serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	addressArray := []string{}
@@ -145,11 +148,12 @@ func (service *KeyManagementService) SignTransaction(requestData dto.SignTransac
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -172,11 +176,12 @@ func (service *KeyManagementService) SignTransactionAndBroadcast(requestData dto
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -201,11 +206,12 @@ func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Clien
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 	return nil
 
@@ -231,11 +237,12 @@ func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient
 		"x-auth-token": authToken,
 	})
 
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil

@@ -8,6 +8,7 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 
@@ -50,10 +51,11 @@ func (service *CryptoAdapterService) BroadcastToChain(requestData dto.BroadcastT
 		"x-auth-token": authToken,
 	})
 	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -67,10 +69,11 @@ func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.Subscrip
 		return err
 	}
 	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 	return nil
 }
@@ -85,9 +88,11 @@ func (service *CryptoAdapterService) TransactionStatus(requestData dto.Transacti
 	metaData := GetRequestMetaData("transactionStatus", service.Config)
 	var APIClient *apiClient.Client
 	if requestData.TransactionHash != "" && requestData.Reference == "" {
-		APIClient = apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
+		APIClient = apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?transactionHash=%s&assetSymbol=%s",
+			metaData.Endpoint, metaData.Action, requestData.TransactionHash, requestData.AssetSymbol))
 	} else if requestData.Reference != "" && requestData.TransactionHash == "" {
-		APIClient = apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?reference=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Reference, requestData.AssetSymbol))
+		APIClient = apiClient.New(nil, service.Config, fmt.Sprintf("%s%s?reference=%s&assetSymbol=%s",
+			metaData.Endpoint, metaData.Action, requestData.Reference, requestData.AssetSymbol))
 	}
 
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -98,10 +103,11 @@ func (service *CryptoAdapterService) TransactionStatus(requestData dto.Transacti
 		"x-auth-token": authToken,
 	})
 	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -125,11 +131,11 @@ func (service *CryptoAdapterService) GetOnchainBalance(requestData dto.OnchainBa
 		"x-auth-token": authToken,
 	})
 	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		logger.Error("An error occured when trying to get onChain Balance: ", err)
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil

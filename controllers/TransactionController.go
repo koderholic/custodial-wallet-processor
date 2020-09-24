@@ -366,11 +366,8 @@ func (controller TransactionController) ConfirmTransaction(responseWriter http.R
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	CryptoAdapterService := services.NewCryptoAdapterService(controller.Cache, controller.Config, controller.Repository, &serviceErr)
 	if err := CryptoAdapterService.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
-		if serviceErr.Code != "" {
-			ReturnError(responseWriter, "ConfirmTransaction", err, apiResponse.PlainError(constants.SVCS_CRYPTOADAPTER_ERR, serviceErr.Message))
-			return
-		}
-		ReturnError(responseWriter, "ConfirmTransaction", err, apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s : %s", errorcode.SERVER_ERR, err.Error())))
+		appErr := err.(appError.Err)
+		ReturnError(responseWriter, "ConfirmTransaction", err, apiResponse.PlainError(appErr.ErrType, appErr.Error()))
 		return
 	}
 

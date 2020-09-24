@@ -1,11 +1,14 @@
 package services
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 )
@@ -44,7 +47,11 @@ func (service *AuthService) UpdateAuthToken() (dto.UpdateAuthTokenResponse, erro
 	}
 	APIClient.AddBasicAuth(APIRequest, authorization["username"], authorization["password"])
 	if err := APIClient.Do(APIRequest, &authToken); err != nil {
-		return dto.UpdateAuthTokenResponse{}, err
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
+			return dto.UpdateAuthTokenResponse{}, err
+		}
+		return dto.UpdateAuthTokenResponse{}, serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	service.Cache.Set("serviceAuth", &authToken, true)

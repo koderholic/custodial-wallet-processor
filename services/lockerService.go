@@ -6,6 +6,7 @@ import (
 	"fmt"
 	Config "wallet-adapter/config"
 	"wallet-adapter/utility/apiClient"
+	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 
 	"wallet-adapter/database"
@@ -47,11 +48,12 @@ func (service *LockerService) AcquireLock(requestData dto.LockerServiceRequest, 
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -74,11 +76,12 @@ func (service *LockerService) RenewLock(requestData dto.LockerServiceRequest, re
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
@@ -101,11 +104,12 @@ func (service *LockerService) ReleaseLock(requestData dto.LockReleaseRequest, re
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, &responseData); err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(err.Error()), service.Error); errUnmarshal != nil {
+	if err := APIClient.Do(APIRequest, responseData); err != nil {
+		appErr := err.(appError.Err)
+		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
 			return err
 		}
-		return serviceError(service.Error.StatusCode, service.Error.Code, errors.New(service.Error.Message))
+		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
 	return nil
