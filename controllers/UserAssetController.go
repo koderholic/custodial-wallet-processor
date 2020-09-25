@@ -9,7 +9,6 @@ import (
 	"wallet-adapter/utility"
 	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/errorcode"
-	"wallet-adapter/utility/jwt"
 	"wallet-adapter/utility/logger"
 	Response "wallet-adapter/utility/response"
 
@@ -152,13 +151,8 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		err := err.(appError.Err)
 		ReturnError(responseWriter, "CreateUserAssets", err, apiResponse.PlainError(err.ErrType, err.Error()))
 	}
-
-	authToken := requestReader.Header.Get(jwt.X_AUTH_TOKEN)
-	decodedToken := dto.TokenClaims{}
-	_ = jwt.DecodeToken(authToken, controller.Config, &decodedToken)
-
 	// credit asset
-	responseData, err = UserAssetService.CreditAsset(requestData, assetDetails, decodedToken.ServiceID)
+	responseData, err = UserAssetService.CreditAsset(requestData, assetDetails, controller.GetInitiatingServiceId(requestReader))
 	if err != nil {
 		ReturnError(responseWriter, "CreateUserAssets", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
 		return
@@ -195,13 +189,9 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		err := err.(appError.Err)
 		ReturnError(responseWriter, "OnChainCreditUserAsset", err, apiResponse.PlainError(err.ErrType, err.Error()))
 	}
-	authToken := requestReader.Header.Get(jwt.X_AUTH_TOKEN)
-	decodedToken := dto.TokenClaims{}
-	_ = jwt.DecodeToken(authToken, controller.Config, &decodedToken)
-
 	// credit asset
 	requestDetails := dto.CreditUserAssetRequest{AssetID: requestData.AssetID, Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
-	responseData, err = UserAssetService.OnChainCreditAsset(requestDetails, requestData.ChainData, assetDetails, decodedToken.ServiceID)
+	responseData, err = UserAssetService.OnChainCreditAsset(requestDetails, requestData.ChainData, assetDetails, controller.GetInitiatingServiceId(requestReader))
 	if err != nil {
 		ReturnError(responseWriter, "OnChainCreditUserAsset", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
 		return
@@ -308,11 +298,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		return
 	}
 
-	authToken := requestReader.Header.Get(jwt.X_AUTH_TOKEN)
-	decodedToken := dto.TokenClaims{}
-	_ = jwt.DecodeToken(authToken, controller.Config, &decodedToken)
-
-	responseData, err = UserAssetService.DebitAsset(requestData, assetDetails, decodedToken.ServiceID)
+	responseData, err = UserAssetService.DebitAsset(requestData, assetDetails, controller.GetInitiatingServiceId(requestReader))
 	if err != nil {
 		ReturnError(responseWriter, "DebitUserAsset", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
 		return

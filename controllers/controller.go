@@ -6,14 +6,17 @@ import (
 	"net/http"
 	"wallet-adapter/config"
 	"wallet-adapter/database"
+	"wallet-adapter/dto"
 	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/constants"
 	"wallet-adapter/utility/errorcode"
+	"wallet-adapter/utility/jwt"
 	"wallet-adapter/utility/logger"
 	Response "wallet-adapter/utility/response"
 	Validator "wallet-adapter/utility/validator"
 
+	uuid "github.com/satori/go.uuid"
 	validation "gopkg.in/go-playground/validator.v9"
 )
 
@@ -148,4 +151,11 @@ func ReturnError(responseWriter http.ResponseWriter, executingMethod string, err
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(err.(appError.Err).ErrCode)
 	json.NewEncoder(responseWriter).Encode(response)
+}
+
+func (controller *Controller) GetInitiatingServiceId(requestReader *http.Request) uuid.UUID {
+	authToken := requestReader.Header.Get(jwt.X_AUTH_TOKEN)
+	decodedToken := dto.TokenClaims{}
+	_ = jwt.DecodeToken(authToken, controller.Config, &decodedToken)
+	return decodedToken.ServiceID
 }
