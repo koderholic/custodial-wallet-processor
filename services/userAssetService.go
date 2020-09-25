@@ -28,12 +28,12 @@ type UserAssetService struct {
 	Repository database.IRepository
 }
 
-func NewUserAssetService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *UserAssetService {
+func NewUserAssetService(cache *cache.Memory, config Config.Data, repository database.IRepository) *UserAssetService {
 	baseService := UserAssetService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
@@ -105,7 +105,7 @@ func (service *UserAssetService) GetAssetById(assetID uuid.UUID) (dto.Asset, err
 
 func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(address, assetSymbol, memo string) (dto.Asset, error) {
 	userAsset := model.UserAsset{}
-	UserAddressService := NewUserAddressService(service.Cache, service.Config, service.Repository, service.Error)
+	UserAddressService := NewUserAddressService(service.Cache, service.Config, service.Repository)
 
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
@@ -235,7 +235,7 @@ func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserA
 		return dto.TransactionReceipt{}, err
 	}
 
-	return TxnReceipt(transaction, requestDetails.AssetID), nil
+	return TxnReceipt(transaction, initiatorAssetDetails.ID), nil
 
 }
 

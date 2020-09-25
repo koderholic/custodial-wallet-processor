@@ -24,9 +24,7 @@ import (
 
 func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IRepository, userAssetRepository database.IUserAssetRepository) {
 	logger.Info("Float manager process begins")
-
-	serviceErr := dto.ExternalServicesRequestErr{}
-	token, err := tasks.AcquireLock(userAssetRepository, "float", constants.SIX_HUNDRED_MILLISECONDS, cache, config, serviceErr)
+	token, err := tasks.AcquireLock(userAssetRepository, "float", constants.SIX_HUNDRED_MILLISECONDS, cache, config)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -50,7 +48,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 			Address:     floatAccount.Address,
 		}
 		floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
-		CryptoAdapterService := services.NewCryptoAdapterService(cache, config, repository, &serviceErr)
+		CryptoAdapterService := services.NewCryptoAdapterService(cache, config, repository)
 		if err := CryptoAdapterService.GetOnchainBalance(onchainBalanceRequest, &floatOnChainBalanceResponse); err != nil {
 			logger.Error(fmt.Sprintf("error with getting float on-chain balance for %+v is %+v", floatAccount.AssetSymbol, err))
 		}
@@ -145,7 +143,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 					"amount":      floatDeficitInDecimalUnits.String(),
 					"assetSymbol": floatAccount.AssetSymbol,
 				}
-				err = notifyColdWalletUsers("Fund", params, config, err, cache, serviceErr)
+				err = notifyColdWalletUsers("Fund", params, config, err, cache)
 			}
 			floatAction = fmt.Sprintf("Email to fund hot wallet (%s) of %+v has already been sent", floatAccount.AssetSymbol, floatDeficitInDecimalUnits)
 			logger.Info(floatAction)
@@ -171,7 +169,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
 				continue
 			}
-			OrderBookService := services.NewOrderBookService(cache, config, repository, &serviceErr)
+			OrderBookService := services.NewOrderBookService(cache, config, repository)
 			if *denomination.IsToken {
 				if err := OrderBookService.GetDepositAddress(floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse); err != nil {
 					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)
@@ -183,7 +181,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 			}
 
 			// Sign and broadcast transaction
-			if err := signTxAndBroadcastToChain(cache, repository, floatSurplusInBigInt, depositAddressResponse, config, floatAccount, serviceErr); err != nil {
+			if err := signTxAndBroadcastToChain(cache, repository, floatSurplusInBigInt, depositAddressResponse, config, floatAccount); err != nil {
 				continue
 			}
 
@@ -195,7 +193,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 				"depositAddress":     depositAddressResponse.Address,
 				"depositAddressMemo": depositAddressResponse.Tag,
 			}
-			err = notifyColdWalletUsers("Withdraw", params, config, err, cache, serviceErr)
+			err = notifyColdWalletUsers("Withdraw", params, config, err, cache)
 
 		}
 
@@ -205,7 +203,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 
 	}
 
-	if err := tasks.ReleaseLock(userAssetRepository, cache, config, token, serviceErr); err != nil {
+	if err := tasks.ReleaseLock(userAssetRepository, cache, config, token); err != nil {
 		logger.Error("Could not release lock", err)
 		return
 	}
@@ -231,7 +229,7 @@ func saveFloatVariables(repository database.IRepository, depositSumFromLastRun, 
 	return nil
 }
 
-func notifyColdWalletUsers(emailType string, params map[string]string, config Config.Data, err error, cache *cache.Memory, serviceErr dto.ExternalServicesRequestErr) error {
+func notifyColdWalletUsers(emailType string, params map[string]string, config Config.Data, err error, cache *cache.Memory) error {
 	coldWalletEmails := []dto.EmailUser{
 		dto.EmailUser{
 			Name:  "Binance Cold wallet user",
@@ -273,7 +271,7 @@ func notifyColdWalletUsers(emailType string, params map[string]string, config Co
 	}
 
 	sendEmailResponse := dto.SendEmailResponse{}
-	NotificationService := services.NewNotificationService(cache, config, nil, &serviceErr)
+	NotificationService := services.NewNotificationService(cache, config, nil)
 	err = NotificationService.SendEmailNotification(sendEmailRequest, &sendEmailResponse)
 	if err != nil {
 		logger.Info("An error occurred while sending email notification to cold wallet user %+v", err.Error())
@@ -298,7 +296,7 @@ func Abs(x int64) int64 {
 	return x
 }
 
-func signTxAndBroadcastToChain(cache *cache.Memory, repository database.IRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ExternalServicesRequestErr) error {
+func signTxAndBroadcastToChain(cache *cache.Memory, repository database.IRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, config Config.Data, floatAccount model.HotWalletAsset) error {
 	// Calls key-management to sign transaction
 	signTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
@@ -311,7 +309,7 @@ func signTxAndBroadcastToChain(cache *cache.Memory, repository database.IReposit
 		Reference:   uuid.NewV1().String(),
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	KeyManagementService := services.NewKeyManagementService(cache, config, repository, &serviceErr)
+	KeyManagementService := services.NewKeyManagementService(cache, config, repository)
 	if err := KeyManagementService.SignTransactionAndBroadcast(signTransactionRequest, &signTransactionAndBroadcastResponse); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return err

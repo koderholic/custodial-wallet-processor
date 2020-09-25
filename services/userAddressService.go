@@ -26,19 +26,19 @@ type UserAddressService struct {
 	Repository database.IRepository
 }
 
-func NewUserAddressService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *UserAddressService {
+func NewUserAddressService(cache *cache.Memory, config Config.Data, repository database.IRepository) *UserAddressService {
 	baseService := UserAddressService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
 
 func (service *UserAddressService) GenerateV1Address(userAsset model.UserAsset) (string, error) {
 	var externalServiceErr dto.ExternalServicesRequestErr
-	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
 	v1Address, err := KeyManagementService.GenerateAddress(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType)
 	if err != nil || v1Address == "" {
 		logger.Error("Error response from userAddress service, could not generate user address : %v => %s ", externalServiceErr, err)
@@ -54,7 +54,7 @@ func (service *UserAddressService) GenerateV1Address(userAsset model.UserAsset) 
 func (service *UserAddressService) GenerateV2AddressWithMemo(userAsset model.UserAsset, addressWithMemo *dto.AssetAddress) error {
 	repository := service.Repository.(database.IUserAddressRepository)
 
-	SharedAddressService := NewSharedAddressService(service.Cache, service.Config, service.Repository, service.Error)
+	SharedAddressService := NewSharedAddressService(service.Cache, service.Config, service.Repository)
 	v2Address, err := SharedAddressService.GetSharedAddressFor(repository.Db(), userAsset.AssetSymbol)
 	if err != nil || v2Address == "" {
 		logger.Error("Error response from shared address service : %s ", err)
@@ -119,7 +119,7 @@ func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (stri
 			if userAsset.AssetSymbol == constants.COIN_BTC {
 				addressType = constants.ADDRESS_TYPE_SEGWIT
 			}
-			KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+			KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
 			addressResponse, err = KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, addressType)
 			if err != nil {
 				return "", err
@@ -257,7 +257,7 @@ func (service *UserAddressService) GetBTCAddresses(userAsset model.UserAsset) ([
 func (service *UserAddressService) GenerateAndCreateBTCAddresses(asset model.UserAsset, addressType string) ([]dto.AllAddressResponse, error) {
 	repository := service.Repository.(database.IUserAddressRepository)
 
-	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
 	responseAddresses, err := KeyManagementService.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
 	if err != nil {
 		return []dto.AllAddressResponse{}, err

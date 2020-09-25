@@ -26,12 +26,12 @@ type KeyManagementService struct {
 	Repository database.IRepository
 }
 
-func NewKeyManagementService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *KeyManagementService {
+func NewKeyManagementService(cache *cache.Memory, config Config.Data, repository database.IRepository) *KeyManagementService {
 	baseService := KeyManagementService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
@@ -258,7 +258,7 @@ func (service *KeyManagementService) subscribeAddress(addressArray []string, use
 	subscriptionRequestDataV2.Subscriptions[strconv.Itoa(int(coinType))] = addressArray
 
 	subscriptionResponseData := dto.SubscriptionResponse{}
-	CryptoAdapterService := NewCryptoAdapterService(service.Cache, service.Config, service.Repository, service.Error)
+	CryptoAdapterService := NewCryptoAdapterService(service.Cache, service.Config, service.Repository)
 	if err := CryptoAdapterService.SubscribeAddressV2(subscriptionRequestDataV2, &subscriptionResponseData); err != nil {
 		logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)
 		return err

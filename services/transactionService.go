@@ -26,12 +26,12 @@ type TransactionService struct {
 	Repository database.IRepository
 }
 
-func NewTransactionService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *TransactionService {
+func NewTransactionService(cache *cache.Memory, config Config.Data, repository database.IRepository) *TransactionService {
 	baseService := TransactionService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
@@ -116,7 +116,7 @@ func (service *TransactionService) VerifyTransactionStatus(transaction model.Tra
 	// Check if the transaction belongs to a batch and return batch
 	broadcastTXRef := transactionQueue.DebitReference
 	BatchService := NewBatchService(service.Cache, service.Config, service.Repository)
-	CryptoAdapterService := NewCryptoAdapterService(service.Cache, service.Config, service.Repository, service.Error)
+	CryptoAdapterService := NewCryptoAdapterService(service.Cache, service.Config, service.Repository)
 	batchExist, _, err := BatchService.CheckBatchExistAndReturn(transactionQueue.BatchID)
 	if err != nil {
 		return "", err

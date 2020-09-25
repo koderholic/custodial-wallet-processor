@@ -2,6 +2,9 @@ package validator
 
 import (
 	"errors"
+	"net/http"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/errorcode"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -16,11 +19,11 @@ func CustomizeMessages(validator *validation.Validate) (ut.Translator, error) {
 
 	trans, found := uni.GetTranslator("en")
 	if !found {
-		return trans, errors.New("translator not found")
+		return trans, appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: errors.New("translator not found")}
 	}
 
 	if err := en_translations.RegisterDefaultTranslations(validator, trans); err != nil {
-		return trans, err
+		return trans, appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: err}
 	}
 
 	_ = validator.RegisterTranslation("required", trans, func(ut ut.Translator) error {

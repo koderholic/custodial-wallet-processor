@@ -41,14 +41,14 @@ func main() {
 	cacheDuration := config.ExpireCacheDuration * time.Second
 	authCache := cache.Initialize(cacheDuration, purgeInterval)
 
-	DenominationServices := services.NewDenominationServices(authCache, config, nil, nil)
+	DenominationServices := services.NewDenominationServices(authCache, config, nil)
 	DenominationServices.SeedSupportedAssets(Database.DB)
 
-	HotWalletService := services.NewHotWalletService(authCache, config, nil, nil)
+	HotWalletService := services.NewHotWalletService(authCache, config, nil)
 	if err := HotWalletService.InitHotWallet(Database.DB); err != nil {
 		logger.Error("Error with InitHotWallet %s", err)
 	}
-	SharedAddressService := services.NewSharedAddressService(authCache, config, nil, nil)
+	SharedAddressService := services.NewSharedAddressService(authCache, config, nil)
 	if err := SharedAddressService.InitSharedAddress(Database.DB); err != nil {
 		logger.Error("Error with InitSharedAddress %s", err)
 	}

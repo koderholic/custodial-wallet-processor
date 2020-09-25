@@ -11,6 +11,7 @@ import (
 	"time"
 	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/errorcode"
+	"wallet-adapter/utility/logger"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
@@ -43,13 +44,13 @@ func RandomString(strlen int) string {
 func UnmarshalJsonFile(fileLocation string, contentReciever interface{}) error {
 	jsonBytes, err := ioutil.ReadFile(fileLocation)
 	if err != nil {
-		println(err.Error)
-		return err
+		logger.Error(err.Error)
+		return appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: err}
 	}
 	err = json.Unmarshal([]byte(jsonBytes), contentReciever)
 	if err != nil {
-		println(err.Error)
-		return err
+		logger.Error(err.Error)
+		return appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: err}
 	}
 	return nil
 }
@@ -117,11 +118,7 @@ func IsExceedWaitTime(startTime, minDuration time.Duration) bool {
 func ToUUID(input string) (uuid.UUID, error) {
 	uuidString, err := uuid.FromString(input)
 	if err != nil {
-		return uuidString, appError.Err{
-			ErrCode: http.StatusBadRequest,
-			ErrType: errorcode.UUID_ERROR_CODE,
-			Err:     err,
-		}
+		return uuidString, appError.Err{ErrType: errorcode.UUID_ERROR_CODE, ErrCode: http.StatusBadRequest, Err: err}
 	}
 	return uuidString, nil
 }

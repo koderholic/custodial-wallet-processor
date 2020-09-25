@@ -15,7 +15,7 @@ func (s *Suite) Test_CreateAsset_pass_ForSupportedAssets() {
 	denominations := []string{"LINK", "ETH", "BNB"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
 	assert.Equal(s.T(), nil, err, "Expected CreateAsset to not return error")
 	assert.Equal(s.T(), 3, len(createdAsset), "Assets not completely created")
@@ -25,7 +25,7 @@ func (s *Suite) Test_CreateAsset_failCompletely_ForNonSupportedAssets() {
 	denominations := []string{"LINK", "ETH", "THG"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
 	assert.NotEqual(s.T(), nil, err, "Expected CreateAsset to return error")
 	assert.Equal(s.T(), 404, err.(appError.Err).ErrCode, "Expected CreateAsset to return error")
@@ -43,7 +43,7 @@ func (s *Suite) Test_CreateAsset_returnsCorrectFields() {
 		AvailableBalance: "0",
 		Decimal:          18,
 	}
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
 
 	assert.Equal(s.T(), nil, err, "Expected CreateAsset to return error")
@@ -56,7 +56,7 @@ func (s *Suite) Test_CreateAsset_returnsCorrectFields() {
 }
 
 func (s *Suite) Test_FetchAssets_pass_ForExistingUserId() {
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	userAssets, err := UserAssetService.FetchAssets(testUserId1)
 
 	assert.Equal(s.T(), nil, err, "Expected CreateAsset to return error")
@@ -69,7 +69,7 @@ func (s *Suite) Test_FetchAssets_pass_ForExistingUserId() {
 
 func (s *Suite) Test_FetchAssets_Fails_ForNonExistingUserId() {
 	nonExistingUserId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a0003")
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	userAssets, err := UserAssetService.FetchAssets(nonExistingUserId)
 
 	assert.NotEqual(s.T(), nil, err, "Expected FetchAssets to return error")
@@ -82,7 +82,7 @@ func (s *Suite) Test_GetAssetById_pass_ForExistingAssetId() {
 
 	denominations := []string{"BNB"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
 
 	userAsset, err := UserAssetService.GetAssetById(createdAsset[0].ID)
@@ -96,7 +96,7 @@ func (s *Suite) Test_GetAssetById_pass_ForExistingAssetId() {
 
 func (s *Suite) Test_GetAssetById_Fails_ForNonExistingUserId() {
 	nonExistingUserId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a0003")
-	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository, &dto.ExternalServicesRequestErr{})
+	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	_, err := UserAssetService.GetAssetById(nonExistingUserId)
 
 	assert.NotEqual(s.T(), nil, err, "Expected FetchAssets to return error")

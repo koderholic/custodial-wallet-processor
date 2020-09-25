@@ -21,12 +21,12 @@ type OrderBookService struct {
 	Repository database.IRepository
 }
 
-func NewOrderBookService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *OrderBookService {
+func NewOrderBookService(cache *cache.Memory, config Config.Data, repository database.IRepository) *OrderBookService {
 	baseService := OrderBookService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }

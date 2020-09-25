@@ -24,12 +24,12 @@ type HotWalletService struct {
 	Repository database.IRepository
 }
 
-func NewHotWalletService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *HotWalletService {
+func NewHotWalletService(cache *cache.Memory, config Config.Data, repository database.IRepository) *HotWalletService {
 	baseService := HotWalletService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
@@ -65,7 +65,7 @@ func (service *HotWalletService) InitHotWallet(DB *gorm.DB) error {
 			if coinTypeToAddrMap[asset.CoinType] != "" {
 				address = coinTypeToAddrMap[asset.CoinType]
 			} else {
-				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
 				address, err = KeyManagementService.GenerateAddressWithoutSub(serviceID, asset.AssetSymbol)
 				if err != nil {
 					return err

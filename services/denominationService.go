@@ -27,12 +27,12 @@ type DenominationServices struct {
 	Repository database.IRepository
 }
 
-func NewDenominationServices(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *DenominationServices {
+func NewDenominationServices(cache *cache.Memory, config Config.Data, repository database.IRepository) *DenominationServices {
 	baseService := DenominationServices{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }

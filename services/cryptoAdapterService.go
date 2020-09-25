@@ -23,12 +23,12 @@ type CryptoAdapterService struct {
 	Repository database.IRepository
 }
 
-func NewCryptoAdapterService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *CryptoAdapterService {
+func NewCryptoAdapterService(cache *cache.Memory, config Config.Data, repository database.IRepository) *CryptoAdapterService {
 	baseService := CryptoAdapterService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
@@ -150,7 +150,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNStatusByRef(transactionRef
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := service.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
-		if service.Error.StatusCode != http.StatusNotFound {
+		if err.(appError.Err).ErrCode != http.StatusNotFound {
 			return true
 		}
 		return false
@@ -167,7 +167,7 @@ func (service *CryptoAdapterService) GetBroadcastedTXNDetailsByRefAndSymbol(tran
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := service.TransactionStatus(transactionStatusRequest, &transactionStatusResponse); err != nil {
 		logger.Error("Error getting broadcasted transaction status : %+v", err)
-		if service.Error.StatusCode != http.StatusNotFound {
+		if err.(appError.Err).ErrCode != http.StatusNotFound {
 			return false, dto.TransactionStatusResponse{}, err
 		}
 		return false, dto.TransactionStatusResponse{}, nil

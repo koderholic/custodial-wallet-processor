@@ -14,6 +14,7 @@ import (
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
 	"wallet-adapter/tasks/sweep"
+	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/constants"
 	"wallet-adapter/utility/errorcode"
@@ -103,7 +104,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	batchedRecipients := []dto.BatchRecipients{}
 	batchedTransactionsIds := []uuid.UUID{}
 	queuedBatchedTransactionsIds := []uuid.UUID{}
-	HotWalletService := services.NewHotWalletService(processor.Cache, processor.Config, processor.Repository, nil)
+	HotWalletService := services.NewHotWalletService(processor.Cache, processor.Config, processor.Repository)
 	floatAccount, err := HotWalletService.GetHotWalletAddressFor(processor.Repository.Db(), batch.AssetSymbol)
 	if err != nil {
 		logger.Error("Error response from ProcessBatchBTCTransactions : %+v", err)
@@ -131,12 +132,11 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 	// Calls key-management to sign batched transactions
 	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	serviceErr := dto.ExternalServicesRequestErr{}
-	KeyManagementService := services.NewKeyManagementService(processor.Cache, processor.Config, processor.Repository, &serviceErr)
+	KeyManagementService := services.NewKeyManagementService(processor.Cache, processor.Config, processor.Repository)
 	if err := KeyManagementService.SignBatchTransactionAndBroadcast(nil, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse); err != nil {
 		logger.Error("Error response from ProcessBatchBTCTransactions : %+v ", err)
-		if serviceErr.StatusCode == http.StatusBadRequest {
-			if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
+		if err.(appError.Err).ErrCode == http.StatusBadRequest {
+			if err.(appError.Err).ErrType == errorcode.INSUFFICIENT_FUNDS {
 				total := int64(0)
 				for _, value := range signTransactionRequest.Recipients {
 					total += value.Value
@@ -179,7 +179,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.BatchRequest) error {
 	// Checks status of the TXN broadcast to chain
-	CryptoAdapterService := services.NewCryptoAdapterService(processor.Cache, processor.Config, processor.Repository, nil)
+	CryptoAdapterService := services.NewCryptoAdapterService(processor.Cache, processor.Config, processor.Repository)
 	txnExist, broadcastedTXNDetails, err := CryptoAdapterService.GetBroadcastedTXNDetailsByRefAndSymbol(batch.ID.String(), batch.AssetSymbol)
 	if err != nil {
 		logger.Error("Error response from retryBatchProcessing : %+v while fetching broadcasted transaction status for batch with id %+v", err, batch.ID)
@@ -310,9 +310,7 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 
 	DB := database.Database{Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
-
-	serviceErr := dto.ExternalServicesRequestErr{}
-	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, serviceErr, processor.Repository)
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Repository)
 	if !processor.SweepTriggered {
 		go sweep.SweepTransactions(processor.Cache, processor.Config, &baseRepository)
 		processor.SweepTriggered = true
@@ -322,32 +320,28 @@ func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat
 }
 
 func (controller BatchController) obtainLock(identifier string) (string, error) {
-	serviceErr := dto.ExternalServicesRequestErr{}
-
 	lockerServiceRequest := dto.LockerServiceRequest{
 		Identifier:   fmt.Sprintf("%s%s", controller.Config.LockerPrefix, identifier),
 		ExpiresAfter: 600000,
 	}
 	lockerServiceResponse := dto.LockerServiceResponse{}
-	LockerService := services.NewLockerService(controller.Cache, controller.Config, controller.Repository, &serviceErr)
+	LockerService := services.NewLockerService(controller.Cache, controller.Config, controller.Repository)
 	if err := LockerService.AcquireLock(lockerServiceRequest, &lockerServiceResponse); err != nil {
-		logger.Error("Error occured while obtaining lock for (%+v) : %+v; %s", identifier, serviceErr, err)
+		logger.Error("Error occured while obtaining lock for (%+v) : %+v; %s", identifier, err)
 		return "", err
 	}
 	return lockerServiceResponse.Token, nil
 }
 
 func (controller BatchController) releaseLock(identifier string, lockerserviceToken string) error {
-	serviceErr := dto.ExternalServicesRequestErr{}
-
 	lockReleaseRequest := dto.LockReleaseRequest{
 		Identifier: fmt.Sprintf("%s%s", controller.Config.LockerPrefix, identifier),
 		Token:      lockerserviceToken,
 	}
 	lockReleaseResponse := dto.ServicesRequestSuccess{}
-	LockerService := services.NewLockerService(controller.Cache, controller.Config, controller.Repository, &serviceErr)
+	LockerService := services.NewLockerService(controller.Cache, controller.Config, controller.Repository)
 	if err := LockerService.ReleaseLock(lockReleaseRequest, &lockReleaseResponse); err != nil || !lockReleaseResponse.Success {
-		logger.Error("Error occured while releasing lock for (%+v) : %+v; %s", identifier, serviceErr, err)
+		logger.Error("Error occured while releasing lock for (%+v) : %+v; %s", identifier, err)
 		return err
 	}
 	return nil

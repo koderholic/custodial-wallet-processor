@@ -42,7 +42,7 @@ func (controller UserAddressController) GetAssetAddress(responseWriter http.Resp
 	}
 
 	// Check if deposit is ACTIVE on this asset
-	DenominationServices := services.NewDenominationServices(controller.Cache, controller.Config, controller.Repository, nil)
+	DenominationServices := services.NewDenominationServices(controller.Cache, controller.Config, controller.Repository)
 	isActive, err := DenominationServices.IsDepositActive(userAsset.AssetSymbol)
 	if err != nil {
 		ReturnError(responseWriter, "GetAssetAddress", err, apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s, for get asset address with id = %s", appError.GetSQLErr(err), assetID)))
@@ -53,7 +53,7 @@ func (controller UserAddressController) GetAssetAddress(responseWriter http.Resp
 		return
 	}
 
-	UserAddressService := services.NewUserAddressService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAddressService := services.NewUserAddressService(controller.Cache, controller.Config, controller.Repository)
 	if addressVersion == constants.ADDRESS_VERSION_V2 && userAsset.RequiresMemo {
 		v2Address, err := UserAddressService.GetV2AddressWithMemo(userAsset)
 		if err != nil {
@@ -102,7 +102,7 @@ func (controller UserAddressController) GetAllAssetAddresses(responseWriter http
 	}
 
 	// Check if deposit is ACTIVE on this asset
-	DenominationServices := services.NewDenominationServices(controller.Cache, controller.Config, controller.Repository, nil)
+	DenominationServices := services.NewDenominationServices(controller.Cache, controller.Config, controller.Repository)
 	isActive, err := DenominationServices.IsDepositActive(userAsset.AssetSymbol)
 	if err != nil {
 		ReturnError(responseWriter, "GetAllAssetAddresses", err, apiResponse.PlainError("SERVER_ERR", fmt.Sprintf("%s, for get asset address with id = %s", appError.GetSQLErr(err), assetID)))
@@ -113,7 +113,7 @@ func (controller UserAddressController) GetAllAssetAddresses(responseWriter http
 		return
 	}
 
-	UserAddressService := services.NewUserAddressService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAddressService := services.NewUserAddressService(controller.Cache, controller.Config, controller.Repository)
 	if userAsset.RequiresMemo {
 		v2Address, err := UserAddressService.GetV2AddressWithMemo(userAsset)
 		if err != nil {

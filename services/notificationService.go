@@ -26,12 +26,12 @@ type NotificationService struct {
 	Repository database.IRepository
 }
 
-func NewNotificationService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *NotificationService {
+func NewNotificationService(cache *cache.Memory, config Config.Data, repository database.IRepository) *NotificationService {
 	baseService := NotificationService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }

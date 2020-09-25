@@ -34,7 +34,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	}
 
 	// Create user asset record for each given denominationcontroller
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	userAsset, err := UserAssetService.CreateAsset(requestData.Assets, requestData.UserID)
 	if err != nil {
 		ReturnError(responseWriter, "CreateUserAssets", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
@@ -64,7 +64,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	}
 	logger.Info("GetUserAssets Logs : Incoming request details > userId : %+v", userID)
 
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	userAsset, err := UserAssetService.FetchAssets(userID)
 	if err != nil {
 		ReturnError(responseWriter, "GetUserAssets", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
@@ -92,7 +92,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	}
 	logger.Info("GetUserAssetById Logs : Incoming request details > assetId : %+v", assetID)
 
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	responseData, err := UserAssetService.GetAssetById(assetID)
 	if err != nil {
 		ReturnError(responseWriter, "GetUserAssetById", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
@@ -116,7 +116,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	userAssetMemo := requestReader.URL.Query().Get("userAssetMemo")
 	logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v, symbol : %s", address, userAssetMemo, assetSymbol)
 
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	responseData, err := UserAssetService.GetAssetByAddressSymbolAndMemo(address, assetSymbol, userAssetMemo)
 	if err != nil {
 		ReturnError(responseWriter, "GetUserAssetByAddress", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
@@ -137,7 +137,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	logger.Info("Incoming request details for CreditUserAssets : %+v", requestData)
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 
 	// Validate request
 	if err := ValidateRequest(controller.Validator, requestData); len(err.(appError.Err).ErrData.([]map[string]string)) > 0 {
@@ -177,7 +177,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	apiResponse := Response.New()
 	requestData := dto.OnChainCreditUserAssetRequest{}
 	responseData := dto.TransactionReceipt{}
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	logger.Info("Incoming request details for OnChainCreditUserAssets : %+v", requestData)
@@ -229,31 +229,36 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		return
 	}
 	// Ensure asset exist and get asset
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	initiatorAssetDetails, err := UserAssetService.GetAssetBy(requestData.InitiatorAssetId)
 	if err != nil {
 		err := err.(appError.Err)
 		ReturnError(responseWriter, "InternalTransfer", err, apiResponse.PlainError(err.ErrType, err.Error()))
+		return
 	}
 	// Ensure asset exist and get asset
 	recipientAssetDetails, err := UserAssetService.GetAssetBy(requestData.RecipientAssetId)
 	if err != nil {
 		err := err.(appError.Err)
 		ReturnError(responseWriter, "InternalTransfer", err, apiResponse.PlainError(err.ErrType, err.Error()))
+		return
 	}
 	// Ensure transfer cannot be done to self
 	if requestData.InitiatorAssetId == requestData.RecipientAssetId {
-		ReturnError(responseWriter, "InternalTransfer", errorcode.NON_MATCHING_DENOMINATION, apiResponse.PlainError(errorcode.INPUT_ERR_CODE, errorcode.TRANSFER_TO_SELF))
+		appErr := appError.Err{ErrType: errorcode.INPUT_ERR_CODE, ErrCode: http.StatusBadGateway, Err: errors.New(errorcode.NON_MATCHING_DENOMINATION)}
+		ReturnError(responseWriter, "InternalTransfer", appErr, apiResponse.PlainError(appErr.ErrType, appErr.Error()))
 		return
 	}
 	// Check if the denomination in the transction request is same for initiator and recipient
 	if initiatorAssetDetails.DenominationID != recipientAssetDetails.DenominationID {
-		ReturnError(responseWriter, "InternalTransfer", errorcode.NON_MATCHING_DENOMINATION, apiResponse.PlainError(errorcode.INPUT_ERR_CODE, errorcode.NON_MATCHING_DENOMINATION))
+		appErr := appError.Err{ErrType: errorcode.INPUT_ERR_CODE, ErrCode: http.StatusBadGateway, Err: errors.New(errorcode.NON_MATCHING_DENOMINATION)}
+		ReturnError(responseWriter, "InternalTransfer", appErr, apiResponse.PlainError(appErr.ErrType, appErr.Error()))
 		return
 	}
 	// Checks if initiator has enough value to transfer
 	if !utility.IsGreater(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal) {
-		ReturnError(responseWriter, "InternalTransfer", errorcode.INSUFFICIENT_FUNDS_ERR, apiResponse.PlainError(errorcode.INPUT_ERR_CODE, errorcode.INSUFFICIENT_FUNDS_ERR))
+		appErr := appError.Err{ErrType: errorcode.INSUFFICIENT_FUNDS, ErrCode: http.StatusBadGateway, Err: errors.New(errorcode.INSUFFICIENT_FUNDS_ERR)}
+		ReturnError(responseWriter, "InternalTransfer", appErr, apiResponse.PlainError(appErr.ErrType, appErr.Error()))
 		return
 	}
 	// Call user asset service
@@ -289,7 +294,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	}
 
 	// Ensure asset exist and get asset
-	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository, nil)
+	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	assetDetails, err := UserAssetService.GetAssetBy(requestData.AssetID)
 	if err != nil {
 		appErr := err.(appError.Err)

@@ -24,12 +24,12 @@ type SharedAddressService struct {
 	Repository database.IRepository
 }
 
-func NewSharedAddressService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *SharedAddressService {
+func NewSharedAddressService(cache *cache.Memory, config Config.Data, repository database.IRepository) *SharedAddressService {
 	baseService := SharedAddressService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }
@@ -58,7 +58,7 @@ func (service *SharedAddressService) InitSharedAddress(DB *gorm.DB) error {
 			}
 
 			if address == "" {
-				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository, service.Error)
+				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
 				address, err = KeyManagementService.GenerateAddress(userID, asset.AssetSymbol, asset.CoinType)
 				if err != nil {
 					return err

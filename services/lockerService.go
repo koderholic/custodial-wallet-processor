@@ -21,12 +21,12 @@ type LockerService struct {
 	Repository database.IRepository
 }
 
-func NewLockerService(cache *cache.Memory, config Config.Data, repository database.IRepository, serviceErr *dto.ExternalServicesRequestErr) *LockerService {
+func NewLockerService(cache *cache.Memory, config Config.Data, repository database.IRepository) *LockerService {
 	baseService := LockerService{
 		Cache:      cache,
 		Config:     config,
 		Repository: repository,
-		Error:      serviceErr,
+		Error:      &dto.ExternalServicesRequestErr{},
 	}
 	return &baseService
 }

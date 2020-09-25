@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -21,50 +20,44 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func AcquireLock(repository database.IUserAssetRepository, identifier string, ttl int64, cache *cache.Memory, config Config.Data, serviceErr dto.ExternalServicesRequestErr) (string, error) {
+func AcquireLock(repository database.IUserAssetRepository, identifier string, ttl int64, cache *cache.Memory, config Config.Data) (string, error) {
 	// It calls the lock service to obtain a lock for the transaction
 	lockerServiceRequest := dto.LockerServiceRequest{
 		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, identifier),
 		ExpiresAfter: ttl,
 	}
 	lockerServiceResponse := dto.LockerServiceResponse{}
-	LockerService := services.NewLockerService(cache, config, repository, &serviceErr)
+	LockerService := services.NewLockerService(cache, config, repository)
 	if err := LockerService.AcquireLock(lockerServiceRequest, &lockerServiceResponse); err != nil {
-		logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
-		if !serviceErr.Success && serviceErr.Message != "" {
-			return "", errors.New(serviceErr.Message)
-		}
+		logger.Error("Error occured while obtaining lock : %s", err)
 		return "", err
 	}
 	return lockerServiceResponse.Token, nil
 }
 
-func ReleaseLock(repository database.IUserAssetRepository, cache *cache.Memory, config Config.Data, lockerServiceToken string, serviceErr dto.ExternalServicesRequestErr) error {
+func ReleaseLock(repository database.IUserAssetRepository, cache *cache.Memory, config Config.Data, lockerServiceToken string) error {
 	lockReleaseRequest := dto.LockReleaseRequest{
 		Identifier: fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
 		Token:      lockerServiceToken,
 	}
 	lockReleaseResponse := dto.ServicesRequestSuccess{}
-	LockerService := services.NewLockerService(cache, config, repository, &serviceErr)
+	LockerService := services.NewLockerService(cache, config, repository)
 	if err := LockerService.ReleaseLock(lockReleaseRequest, &lockReleaseResponse); err != nil {
-		if serviceErr.Code != "" {
-			return errors.New(serviceErr.Message)
-		}
 		return err
 	}
 	return nil
 }
 
-func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *cache.Memory, serviceErr dto.ExternalServicesRequestErr, repository database.IUserAddressRepository) {
+func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *cache.Memory, repository database.IUserAddressRepository) {
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from NotifyColdWalletUsersViaSMS : %+v while trying to denomination of float asset", err)
 	}
 	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
 	//send sms
-	if _, err := AcquireLock(repository, errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS, cache, config, serviceErr); err == nil {
+	if _, err := AcquireLock(repository, errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS, cache, config); err == nil {
 		//lock was successfully acquired
-		NotificationService := services.NewNotificationService(cache, config, repository, &serviceErr)
+		NotificationService := services.NewNotificationService(cache, config, repository)
 		NotificationService.BuildAndSendSms(assetSymbol, decimalBalance)
 	}
 }

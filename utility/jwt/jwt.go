@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	Config "wallet-adapter/config"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/errorcode"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -57,16 +60,17 @@ func DecodeToken(authToken string, config Config.Data, tokenClaims interface{}) 
 	authenticatorKey := config.AuthenticatorKey
 	keyByte, err := base64.URLEncoding.DecodeString(authenticatorKey)
 	if err != nil {
-		return err
+		return appError.Err{ErrType: errorcode.INPUT_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: err}
 	}
 
 	token, err := jwt.Parse(authToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError,
+				Err: errors.New(fmt.Sprintf("Unexpected signing method: %v", token.Header["alg"]))}
 		}
 		rsa, err := jwt.ParseRSAPublicKeyFromPEM(keyByte)
 		if err != nil {
-			return nil, err
+			return nil, appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: err}
 		}
 		return rsa, nil
 	})
@@ -78,7 +82,7 @@ func DecodeToken(authToken string, config Config.Data, tokenClaims interface{}) 
 	jwtClaims, _ := token.Claims.(jwt.MapClaims)
 	base64Bytes, err := json.Marshal(jwtClaims)
 	if err != nil {
-		return err
+		return appError.Err{ErrType: errorcode.SERVER_ERR_CODE, ErrCode: http.StatusInternalServerError, Err: err}
 	}
 	json.Unmarshal(base64Bytes, tokenClaims)
 	return nil
