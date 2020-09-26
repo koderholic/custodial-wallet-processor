@@ -243,13 +243,14 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		Reference:   addressTransactions[0].TransactionReference,
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, serviceErr); err != nil {
+	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)
 		switch serviceErr.Code {
 		case errorcode.INSUFFICIENT_FUNDS:
 			if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
 				return err
 			}
+			return nil
 		default:
 			return err
 		}
@@ -390,7 +391,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			Reference:   fmt.Sprintf("%s-%s", denomination.MainCoinAssetSymbol, assetTransactions[0].TransactionReference),
 		}
 		signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
+		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 			logger.Error("Error response from Sweep job : %+v while funding sweep fee for  %+v", err, recipientAddress)
 			return err, true
 		}
@@ -628,9 +629,10 @@ func updateSweptStatus(assetTransactions []model.Transaction, repository databas
 		assetIdList = append(assetIdList, tx.ID)
 	}
 	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
-		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+		logger.Error("Error response from Sweep job : %+v while updating swept status "+utility.UPDATE_SWEPT_STATUS_FAILURE, err)
 		return err
 	}
+	logger.Info(utility.UPDATE_SWEPT_STATUS_SUCCESS)
 	return nil
 }
 
