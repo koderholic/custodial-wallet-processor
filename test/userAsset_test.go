@@ -10,30 +10,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func (s *Suite) Test_CreateAsset_pass_ForSupportedAssets() {
+func (s *Suite) Test_CreateAssets_pass_ForSupportedAssets() {
 
 	denominations := []string{"LINK", "ETH", "BNB"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
-	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
-	assert.Equal(s.T(), nil, err, "Expected CreateAsset to not return error")
+	createdAsset, err := UserAssetService.CreateAssets(denominations, userId)
+	assert.Equal(s.T(), nil, err, "Expected CreateAssets to not return error")
 	assert.Equal(s.T(), 3, len(createdAsset), "Assets not completely created")
 }
 
-func (s *Suite) Test_CreateAsset_failCompletely_ForNonSupportedAssets() {
+func (s *Suite) Test_CreateAssets_failCompletely_ForNonSupportedAssets() {
 	denominations := []string{"LINK", "ETH", "THG"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
-	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
-	assert.NotEqual(s.T(), nil, err, "Expected CreateAsset to return error")
-	assert.Equal(s.T(), 404, err.(appError.Err).ErrCode, "Expected CreateAsset to return error")
-	assert.Equal(s.T(), "ASSET_NOT_SUPPORTED", err.(appError.Err).ErrType, "Expected CreateAsset to return ASSET_NOT_SUPPORTED")
+	createdAsset, err := UserAssetService.CreateAssets(denominations, userId)
+	assert.NotEqual(s.T(), nil, err, "Expected CreateAssets to return error")
+	assert.Equal(s.T(), 404, err.(appError.Err).ErrCode, "Expected CreateAssets to return error")
+	assert.Equal(s.T(), "ASSET_NOT_SUPPORTED", err.(appError.Err).ErrType, "Expected CreateAssets to return ASSET_NOT_SUPPORTED")
 	assert.Equal(s.T(), 0, len(createdAsset), "Assets not completely created")
 }
 
-func (s *Suite) Test_CreateAsset_returnsCorrectFields() {
+func (s *Suite) Test_CreateAssets_returnsCorrectFields() {
 	denominations := []string{"LINK"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 
@@ -44,9 +44,9 @@ func (s *Suite) Test_CreateAsset_returnsCorrectFields() {
 		Decimal:          18,
 	}
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
-	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
+	createdAsset, err := UserAssetService.CreateAssets(denominations, userId)
 
-	assert.Equal(s.T(), nil, err, "Expected CreateAsset to return error")
+	assert.Equal(s.T(), nil, err, "Expected CreateAssets to return error")
 	assert.Equal(s.T(), 1, len(createdAsset), "Assets not successfully created")
 	assert.NotEqual(s.T(), "", createdAsset[0].ID, "Assets not successfully created")
 	assert.Equal(s.T(), expected.AssetSymbol, createdAsset[0].AssetSymbol, "Assets not successfully created")
@@ -59,7 +59,7 @@ func (s *Suite) Test_FetchAssets_pass_ForExistingUserId() {
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	userAssets, err := UserAssetService.FetchAssets(testUserId1)
 
-	assert.Equal(s.T(), nil, err, "Expected CreateAsset to return error")
+	assert.Equal(s.T(), nil, err, "Expected CreateAssets to return error")
 	assert.Equal(s.T(), 5, len(userAssets), "Assets not successfully crereturnedated")
 	assert.Equal(s.T(), testDenominations[0].AssetSymbol, userAssets[0].AssetSymbol, "Assets not successfully created")
 	assert.Equal(s.T(), "0", userAssets[0].AvailableBalance, "Assets not successfully created")
@@ -83,11 +83,11 @@ func (s *Suite) Test_GetAssetById_pass_ForExistingAssetId() {
 	denominations := []string{"BNB"}
 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
-	createdAsset, err := UserAssetService.CreateAsset(denominations, userId)
+	createdAsset, err := UserAssetService.CreateAssets(denominations, userId)
 
 	userAsset, err := UserAssetService.GetAssetById(createdAsset[0].ID)
 
-	assert.Equal(s.T(), nil, err, "Expected CreateAsset to return error")
+	assert.Equal(s.T(), nil, err, "Expected CreateAssets to return error")
 	assert.Equal(s.T(), testDenominations[0].AssetSymbol, userAsset.AssetSymbol, "Assets not successfully created")
 	assert.Equal(s.T(), "0", userAsset.AvailableBalance, "Assets not successfully created")
 	assert.Equal(s.T(), testDenominations[0].Decimal, userAsset.Decimal, "Assets not successfully created")
@@ -108,7 +108,7 @@ func (s *Suite) Test_GetAssetById_Fails_ForNonExistingUserId() {
 // 	denominations := []string{"LINK", "ETH", "BNB"}
 // 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
 // 	UserAssetService := services.NewUserAssetService(authCache, s.Config)
-// 	createdAsset, err := UserAssetService.CreateAsset(&testUserAssetRepository, denominations, userId)
+// 	createdAsset, err := UserAssetService.CreateAssets(&testUserAssetRepository, denominations, userId)
 
 // 	asset, err := UserAssetService.GetAssetByAddressSymbolAndMemo(&testUserAssetRepository, "bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a", "BNB", "639469678")
 // 	expected := testUserAssets1[0]

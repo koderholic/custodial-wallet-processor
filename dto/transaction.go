@@ -71,15 +71,7 @@ type SignTransactionResponse struct {
 	Fee        int64  `json:"fee"`
 }
 
-// BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
-type BroadcastToChainRequest struct {
-	SignedData  string `json:"signedData"`
-	AssetSymbol string `json:"assetSymbol"`
-	Reference   string `json:"reference"`
-	ProcessType string `json:"processType"`
-}
-
-// BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
+// SignAndBroadcastResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
 type SignAndBroadcastResponse struct {
 	TransactionHash string `json:"transactionHash"`
 }

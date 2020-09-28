@@ -33,34 +33,6 @@ func NewCryptoAdapterService(cache *cache.Memory, config Config.Data, repository
 	return &baseService
 }
 
-// broadcastToChain ... Calls crypto adapter with signed transaction to be broadcast to chain
-func (service *CryptoAdapterService) BroadcastToChain(requestData dto.BroadcastToChainRequest, responseData *dto.SignAndBroadcastResponse) error {
-	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
-	authToken, err := AuthService.GetAuthToken()
-	if err != nil {
-		return err
-	}
-	metaData := GetRequestMetaData("broadcastTransaction", service.Config)
-
-	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
-	if err != nil {
-		return err
-	}
-	APIClient.AddHeader(APIRequest, map[string]string{
-		"x-auth-token": authToken,
-	})
-	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		appErr := err.(appError.Err)
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
-			return err
-		}
-		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
-	}
-
-	return nil
-}
-
 func (service *CryptoAdapterService) SubscribeAddressV2(requestData dto.SubscriptionRequestV2, responseData *dto.SubscriptionResponse) error {
 	metaData := GetRequestMetaData("subscribeAddressV2", service.Config)
 	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))

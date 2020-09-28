@@ -67,7 +67,6 @@ func (s *Suite) SetupSuite() {
 	}
 	db, err := gorm.Open("sqlite3", dir+"/walletAdapter.db")
 	db.DB().SetMaxOpenConns(1)
-	db.LogMode(true)
 
 	s.DB = db
 	require.NoError(s.T(), err)
