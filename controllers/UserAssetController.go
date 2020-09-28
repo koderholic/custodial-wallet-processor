@@ -34,7 +34,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 
 	// Create user asset record for each given denominationcontroller
 	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
-	userAsset, err := UserAssetService.CreateAsset(requestData.Assets, requestData.UserID)
+	userAsset, err := UserAssetService.CreateAssets(requestData.Assets, requestData.UserID)
 	if err != nil {
 		ReturnError(responseWriter, "CreateUserAssets", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
 		return

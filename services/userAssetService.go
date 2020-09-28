@@ -25,7 +25,7 @@ type UserAssetService struct {
 	Cache      *cache.Memory
 	Config     Config.Data
 	Error      *dto.ExternalServicesRequestErr
-	Repository database.IRepository
+	Repository database.IUserAssetRepository
 }
 
 func NewUserAssetService(cache *cache.Memory, config Config.Data, repository database.IRepository) *UserAssetService {
@@ -39,41 +39,36 @@ func NewUserAssetService(cache *cache.Memory, config Config.Data, repository dat
 }
 
 // CreateUserAsset ... Create given assets for the specified user
-func (service *UserAssetService) CreateAsset(assetDenominations []string, userID uuid.UUID) ([]dto.Asset, error) {
-	repository := service.Repository.(database.IUserAssetRepository)
+func (service *UserAssetService) CreateAssets(denominationSymbols []string, userID uuid.UUID) ([]dto.Asset, error) {
 	assets := []dto.Asset{}
-	for i := 0; i < len(assetDenominations); i++ {
-		denominationSymbol := assetDenominations[i]
-		denomination := model.Denomination{}
-
-		if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
-			if err.Error() == errorcode.SQL_404 {
-				return []dto.Asset{}, appError.Err{
-					ErrCode: err.(appError.Err).ErrCode,
-					ErrType: errorcode.ASSET_NOT_SUPPORTED,
-					Err:     errors.New(fmt.Sprintf("Asset (%s) is currently not supported", assetDenominations[i])),
-				}
-			}
-			return []dto.Asset{}, err
+	for i := 0; i < len(denominationSymbols); i++ {
+		DenominationService := NewDenominationServices(service.Cache, service.Config, service.Repository)
+		denomination, err := DenominationService.GetDenominationByAssetSymbol(denominationSymbols[i])
+		if err != nil {
+			return assets, err
 		}
-		balance, _ := decimal.NewFromString("0.00")
-		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: userID, AvailableBalance: balance.String()}
-		_ = repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: userID}, &userAssetmodel)
-
-		asset := service.Normalize(userAssetmodel)
+		createdAsset := service.CreateUserAssetPerDenomination(denomination, userID)
+		asset := service.Normalize(createdAsset)
 		assets = append(assets, asset)
 	}
 	return assets, nil
 }
 
+func (service *UserAssetService) CreateUserAssetPerDenomination(denomination model.Denomination, userID uuid.UUID) model.UserAsset {
+	balance, _ := decimal.NewFromString("0.00")
+	userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: userID, AvailableBalance: balance.String()}
+	_ = service.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: userID}, &userAssetmodel)
+	return userAssetmodel
+
+}
+
 // FetchAssets by userId
 func (service *UserAssetService) FetchAssets(userID uuid.UUID) ([]dto.Asset, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
 
 	var userAssets []model.UserAsset
 	var assets []dto.Asset
 
-	if err := repository.GetAssetsByID(&model.UserAsset{UserID: userID}, &userAssets); err != nil {
+	if err := service.RepositoryGetAssetsByID(&model.UserAsset{UserID: userID}, &userAssets); err != nil {
 		return assets, err
 	}
 	if len(userAssets) < 1 {
@@ -133,10 +128,10 @@ func (service *UserAssetService) GetAssetByAddressSymbolAndMemo(address, assetSy
 	return service.Normalize(userAsset), nil
 }
 func (service *UserAssetService) GetAssetForV1Address(address string, assetSymbol string) (model.UserAsset, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
+
 	var userAsset model.UserAsset
 
-	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
+	if err := service.RepositoryGetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
 		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
 		return model.UserAsset{}, err
 	}
@@ -146,10 +141,10 @@ func (service *UserAssetService) GetAssetForV1Address(address string, assetSymbo
 }
 
 func (service *UserAssetService) GetAssetForV2Address(address string, assetSymbol string, memo string) (model.UserAsset, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
+
 	var userAsset model.UserAsset
 
-	if err := repository.GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address, &userAsset); err != nil {
+	if err := service.RepositoryGetAssetBySymbolMemoAndAddress(assetSymbol, memo, address, &userAsset); err != nil {
 		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
 		return model.UserAsset{}, err
 	}
@@ -159,13 +154,12 @@ func (service *UserAssetService) GetAssetForV2Address(address string, assetSymbo
 }
 
 func (service *UserAssetService) CreditAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
 
 	// increment user account by value
 	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 	transaction := BuildTxnObject(assetDetails, requestDetails, newAssetBalance, initiatorId)
 
-	tx := database.NewTx(repository.Db())
+	tx := database.NewTx(service.RepositoryDb())
 	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
 		Create(&transaction).Commit(); err != nil {
 		return dto.TransactionReceipt{}, serviceError(err.(appError.Err).ErrCode, err.(appError.Err).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
@@ -176,7 +170,6 @@ func (service *UserAssetService) CreditAsset(requestDetails dto.CreditUserAssetR
 
 func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUserAssetRequest, chainData dto.ChainData, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
 
-	repository := service.Repository.(database.IUserAddressRepository)
 	// increment user account by value
 	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 
@@ -191,7 +184,7 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUse
 		BlockHeight:      chainData.BlockHeight,
 		RecipientAddress: chainData.RecipientAddress,
 	}
-	if err := repository.FindOrCreate(newChainTransaction, &chainTransaction); err != nil {
+	if err := service.RepositoryFindOrCreate(newChainTransaction, &chainTransaction); err != nil {
 		err := err.(appError.Err)
 		return dto.TransactionReceipt{}, serviceError(err.ErrCode, err.ErrType, err)
 	}
@@ -207,7 +200,7 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUse
 	transaction.TransactionTag = model.TransactionTag.DEPOSIT
 	transaction.OnChainTxId = chainTransaction.ID
 
-	tx := database.NewTx(repository.Db())
+	tx := database.NewTx(service.RepositoryDb())
 	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
 		Create(&transaction).Commit(); err != nil {
 		return dto.TransactionReceipt{}, serviceError(err.(appError.Err).ErrCode, err.(appError.Err).ErrType, errors.New(fmt.Sprintf("User asset account (%s) could not be credited :  %s", requestDetails.AssetID, err)))
@@ -217,7 +210,6 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUse
 }
 
 func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserAssetRequest, initiatorAssetDetails model.UserAsset, recipientAssetDetails model.UserAsset) (dto.TransactionReceipt, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
 
 	// Increment initiator asset balance and decrement recipient asset balance
 	initiatorCurrentBalance := utility.Subtract(requestDetails.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
@@ -228,7 +220,7 @@ func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserA
 	transaction.RecipientID = recipientAssetDetails.ID
 	transaction.TransactionTag = model.TransactionTag.TRANSFER
 
-	tx := database.NewTx(repository.Db())
+	tx := database.NewTx(service.RepositoryDb())
 	if err := tx.Update(&model.UserAsset{BaseModel: model.BaseModel{ID: initiatorAssetDetails.ID}}, model.UserAsset{AvailableBalance: initiatorCurrentBalance}).
 		Update(&model.UserAsset{BaseModel: model.BaseModel{ID: recipientAssetDetails.ID}}, model.UserAsset{AvailableBalance: recipientCurrentBalance}).
 		Create(&transaction).Commit(); err != nil {
@@ -240,13 +232,13 @@ func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserA
 }
 
 func (service *UserAssetService) DebitAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
+
 	// decrement user account by value
 	newAssetBalance := utility.Subtract(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
 	transaction := BuildTxnObject(assetDetails, requestDetails, newAssetBalance, initiatorId)
 	transaction.TransactionTag = model.TransactionTag.DEBIT
 
-	tx := database.NewTx(repository.Db())
+	tx := database.NewTx(service.RepositoryDb())
 	if err := tx.Update(&assetDetails, model.UserAsset{AvailableBalance: newAssetBalance}).
 		Create(&transaction).Commit(); err != nil {
 		appErr := err.(appError.Err)
@@ -280,9 +272,9 @@ func BuildTxnObject(assetDetails model.UserAsset, requestDetails dto.CreditUserA
 }
 
 func (service *UserAssetService) GetAssetBy(id uuid.UUID) (model.UserAsset, error) {
-	repository := service.Repository.(database.IUserAddressRepository)
+
 	userAsset := model.UserAsset{}
-	if err := repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: id}}, &userAsset); err != nil {
+	if err := service.RepositoryGetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: id}}, &userAsset); err != nil {
 		if err.Error() == errorcode.SQL_404 {
 			return userAsset, appError.Err{
 				ErrCode: err.(appError.Err).ErrCode,

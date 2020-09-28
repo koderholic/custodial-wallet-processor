@@ -14,6 +14,7 @@ import (
 	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/constants"
+	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 
 	"github.com/jinzhu/gorm"
@@ -186,4 +187,20 @@ func (service *DenominationServices) IsDepositActive(assetSymbol string) (bool, 
 	}
 
 	return true, nil
+}
+
+func (service *DenominationServices) GetDenominationByAssetSymbol(assetSymbol string) (model.Denomination, error) {
+	repository := service.Repository.(database.IUserAssetRepository)
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			return denomination, appError.Err{
+				ErrCode: err.(appError.Err).ErrCode,
+				ErrType: errorcode.ASSET_NOT_SUPPORTED,
+				Err:     errors.New(fmt.Sprintf("Asset (%s) is currently not supported", assetSymbol)),
+			}
+		}
+		return denomination, err
+	}
+	return denomination, nil
 }
