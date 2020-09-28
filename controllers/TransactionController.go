@@ -96,17 +96,15 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Ensure transaction value is above minimum send to chain
-	minimumSpendable := decimal.NewFromFloat(utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
-	if value.Cmp(minimumSpendable) <= 0 {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %v", errorcode.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
+	// Batch transaction, if asset is batchable
+	isSweepable, err := userAssetService.IsBatchable(debitReferenceTransaction.AssetSymbol, controller.Repository)
+	if err != nil {
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
-
-	// Batch transaction, if asset is BTC
 	var activeBatchId uuid.UUID
-	if debitReferenceAsset.AssetSymbol == utility.COIN_BTC {
-		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.COIN_BTC)
+	if isSweepable {
+		activeBatchId, err = batchService.GetWaitingBatchId(controller.Repository, debitReferenceTransaction.AssetSymbol)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 			return

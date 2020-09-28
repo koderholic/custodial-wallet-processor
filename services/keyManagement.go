@@ -169,7 +169,7 @@ func SignTransactionAndBroadcast(cache *utility.MemoryCache, logger *utility.Log
 	return nil
 }
 
-func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
+func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
@@ -202,7 +202,7 @@ func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, l
 
 }
 
-func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
