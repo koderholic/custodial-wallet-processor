@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
