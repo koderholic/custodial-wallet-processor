@@ -311,8 +311,7 @@ func signTxAndBroadcastToChain(cache *cache.Memory, repository database.IReposit
 		Reference:   uuid.NewV1().String(),
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	KeyManagementService := services.NewKeyManagementService(cache, config, repository, &serviceErr)
-	if err := KeyManagementService.SignTransactionAndBroadcast(signTransactionRequest, &signTransactionAndBroadcastResponse); err != nil {
+	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return err
 	}

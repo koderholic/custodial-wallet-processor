@@ -14,6 +14,7 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/tasks"
+	"wallet-adapter/utility"
 	"wallet-adapter/utility/appError"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/constants"
@@ -251,14 +252,14 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 		Reference:   addressTransactions[0].TransactionReference,
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	KeyManagementService := services.NewKeyManagementService(cache, config, repository, &serviceErr)
-	if err := KeyManagementService.SignTransactionAndBroadcast(signTransactionRequest, &SignTransactionAndBroadcastResponse); err != nil {
+	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)
 		switch serviceErr.Code {
 		case errorcode.INSUFFICIENT_FUNDS:
 			if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
 				return err
 			}
+			return nil
 		default:
 			return err
 		}
@@ -400,8 +401,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			Reference:   fmt.Sprintf("%s-%s", denomination.MainCoinAssetSymbol, assetTransactions[0].TransactionReference),
 		}
 		signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-		KeyManagementService := services.NewKeyManagementService(cache, config, repository, &serviceErr)
-		if err := KeyManagementService.SignTransactionAndBroadcast(signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse); err != nil {
+		if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 			logger.Error("Error response from Sweep job : %+v while funding sweep fee for  %+v", err, recipientAddress)
 			return err, true
 		}
@@ -642,11 +642,11 @@ func updateSweptStatus(assetTransactions []model.Transaction, repository databas
 	for _, tx := range assetTransactions {
 		assetIdList = append(assetIdList, tx.ID)
 	}
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
-	if err := userAssetRepository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
-		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
+	if err := repository.BulkUpdateTransactionSweptStatus(assetIdList); err != nil {
+		logger.Error("Error response from Sweep job : %+v while updating swept status "+utility.UPDATE_SWEPT_STATUS_FAILURE, err)
 		return err
 	}
+	logger.Info(utility.UPDATE_SWEPT_STATUS_SUCCESS)
 	return nil
 }
 
