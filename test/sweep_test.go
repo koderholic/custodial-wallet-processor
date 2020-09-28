@@ -225,7 +225,8 @@ func (s *Suite) TestSumSweepTx() {
 
 func (s *Suite) TestCheckSweepMinimum() {
 	denomination := model.Denomination{
-		AssetSymbol: "ETH",
+		AssetSymbol:      "ETH",
+		MinimumSweepable: 0.9,
 	}
 	sum := float64(0.5)
 	s.Config.ETH_minimumSweep = 0.9
