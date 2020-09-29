@@ -10,13 +10,14 @@ import (
 
 	"github.com/jinzhu/gorm"
 )
+
 var (
-	batchable = true
+	batchable    = true
 	notBatchable = false
-	isBatchable = map[int64]*bool{
-		0 : &batchable,
-		145 : &batchable,
-		2 : &batchable,
+	isBatchable  = map[int64]*bool{
+		0:   &batchable,
+		145: &batchable,
+		2:   &batchable,
 	}
 )
 
@@ -69,8 +70,8 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
 			TransferActivity:    denom.TransferActivity,
-			MinimumSweepable : MinimumSweepable(denom.Symbol, config),
-			IsBatchable : isBatchable[denom.CoinType],
+			MinimumSweepable:    MinimumSweepable(denom.Symbol, config),
+			IsBatchable:         isBatchable[denom.CoinType],
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
 	}
@@ -97,7 +98,6 @@ func getAssetSweepFee(coinType int64) int64 {
 		return 0
 	}
 }
-
 
 func MinimumSweepable(assetSymbol string, config Config.Data) float64 {
 	switch assetSymbol {
@@ -145,8 +145,5 @@ func (service BaseService) IsBatchable(assetSymbol string, repository database.I
 		return false, err
 	}
 
-	if *denomination.IsBatchable{
-		return true, nil
-	}
-	return false, nil
+	return *denomination.IsBatchable, nil
 }

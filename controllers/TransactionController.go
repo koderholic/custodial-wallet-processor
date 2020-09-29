@@ -97,13 +97,13 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	}
 
 	// Batch transaction, if asset is batchable
-	isSweepable, err := userAssetService.IsBatchable(debitReferenceTransaction.AssetSymbol, controller.Repository)
+	isBatchable, err := userAssetService.IsBatchable(debitReferenceTransaction.AssetSymbol, controller.Repository)
 	if err != nil {
 		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
 	var activeBatchId uuid.UUID
-	if isSweepable {
+	if isBatchable {
 		activeBatchId, err = batchService.GetWaitingBatchId(controller.Repository, debitReferenceTransaction.AssetSymbol)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
