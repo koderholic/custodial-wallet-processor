@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -9,6 +10,7 @@ import (
 	"wallet-adapter/utility"
 
 	"github.com/jinzhu/gorm"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -72,7 +74,7 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
 			TransferActivity:    denom.TransferActivity,
-			MinimumSweepable:    config.MinimumSweepable[denom.Symbol],
+			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
 			IsBatchable:         isBatchable[denom.CoinType],
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
