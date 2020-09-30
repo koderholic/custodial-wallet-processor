@@ -8,6 +8,8 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
+	"github.com/spf13/viper"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -18,6 +20,15 @@ var (
 		0:   &batchable,
 		145: &batchable,
 		2:   &batchable,
+	}
+	minimumSweepable = map[string]float64{
+		utility.COIN_BTC:  viper.GetFloat64("BTC_minimumSweep"),
+		utility.COIN_BNB:  viper.GetFloat64("BNB_minimumSweep"),
+		utility.COIN_ETH:  viper.GetFloat64("ETH_minimumSweep"),
+		utility.COIN_BUSD: viper.GetFloat64("BUSD_minimumSweep"),
+	}
+	sweepFee = map[int64]int64{
+		714: 37500,
 	}
 )
 
@@ -65,12 +76,12 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 			IsEnabled:           denom.Enabled,
 			IsToken:             &isToken,
 			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
-			SweepFee:            getAssetSweepFee(denom.CoinType),
+			SweepFee:            sweepFee[denom.CoinType],
 			TradeActivity:       denom.TradeActivity,
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
 			TransferActivity:    denom.TransferActivity,
-			MinimumSweepable:    MinimumSweepable(denom.Symbol, config),
+			MinimumSweepable:    minimumSweepable[denom.Symbol],
 			IsBatchable:         isBatchable[denom.CoinType],
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
@@ -88,29 +99,6 @@ func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination
 		}
 	}
 	return ""
-}
-
-func getAssetSweepFee(coinType int64) int64 {
-	switch coinType {
-	case 714:
-		return 37500
-	default:
-		return 0
-	}
-}
-
-func MinimumSweepable(assetSymbol string, config Config.Data) float64 {
-	switch assetSymbol {
-	case utility.COIN_BTC:
-		return config.BTC_minimumSweep
-	case utility.COIN_BNB:
-		return config.BNB_minimumSweep
-	case utility.COIN_ETH:
-		return config.ETH_minimumSweep
-	case utility.COIN_BUSD:
-		return config.BUSD_minimumSweep
-	}
-	return float64(0)
 }
 
 func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
