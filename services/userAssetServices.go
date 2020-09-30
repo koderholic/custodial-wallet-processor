@@ -8,8 +8,6 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
-	"github.com/spf13/viper"
-
 	"github.com/jinzhu/gorm"
 )
 
@@ -20,12 +18,6 @@ var (
 		0:   &batchable,
 		145: &batchable,
 		2:   &batchable,
-	}
-	minimumSweepable = map[string]float64{
-		utility.COIN_BTC:  viper.GetFloat64("BTC_minimumSweep"),
-		utility.COIN_BNB:  viper.GetFloat64("BNB_minimumSweep"),
-		utility.COIN_ETH:  viper.GetFloat64("ETH_minimumSweep"),
-		utility.COIN_BUSD: viper.GetFloat64("BUSD_minimumSweep"),
 	}
 	sweepFee = map[int64]int64{
 		714: 37500,
@@ -66,7 +58,6 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 		if !strings.EqualFold(denom.TokenType, "NATIVE") {
 			isToken = true
 		}
-
 		normalizedAsset := model.Denomination{
 			Name:                denom.Name,
 			AssetSymbol:         denom.Symbol,
@@ -81,7 +72,7 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
 			TransferActivity:    denom.TransferActivity,
-			MinimumSweepable:    minimumSweepable[denom.Symbol],
+			MinimumSweepable:    config.MinimumSweepable[denom.Symbol],
 			IsBatchable:         isBatchable[denom.CoinType],
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
