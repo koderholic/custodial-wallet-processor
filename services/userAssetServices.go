@@ -51,7 +51,6 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 }
 
 func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
-
 	normalizedAssets := []model.Denomination{}
 
 	for _, denom := range denominations {
