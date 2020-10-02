@@ -1,8 +1,8 @@
 config:
   enableFloatManager: 'true'
   floatCronInterval: '10 */4 * * *'
-  MINIMUMSWEEP_BTC: '0.15'
+  MINIMUMSWEEP_BTC: '1.0'
   MINIMUMSWEEP_BNB: '5'
-  MINIMUMSWEEP_ETH: '0.1'
+  MINIMUMSWEEP_ETH: '0.05'
   MINIMUMSWEEP_BUSD: '300'
   coldWalletSmsNumber: '+2349084859418'
