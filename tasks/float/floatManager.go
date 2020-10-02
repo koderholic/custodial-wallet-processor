@@ -231,7 +231,7 @@ func saveFloatVariables(repository database.IRepository, depositSumFromLastRun, 
 
 func notifyColdWalletUsers(emailType string, params map[string]string, config Config.Data, err error, cache *cache.Memory) error {
 	coldWalletEmails := []dto.EmailUser{
-		dto.EmailUser{
+		{
 			Name:  "Binance Cold wallet user",
 			Email: config.ColdWalletEmail,
 		},

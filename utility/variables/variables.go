@@ -10,7 +10,7 @@ var (
 		"ETH": 0.000015,
 		"BNB": 0.000375,
 	}
-	DefaultAddressesTypes = map[int64]string{
-		constants.BTC_COINTYPE: constants.ADDRESS_TYPE_SEGWIT,
+	AddressTypes = map[int64][]string{
+		constants.BTC_COINTYPE: []string{constants.ADDRESS_TYPE_SEGWIT, constants.ADDRESS_TYPE_LEGACY},
 	}
 )

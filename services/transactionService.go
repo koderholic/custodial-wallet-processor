@@ -23,10 +23,10 @@ type TransactionService struct {
 	Cache      *cache.Memory
 	Config     Config.Data
 	Error      *dto.ExternalServicesRequestErr
-	Repository database.IRepository
+	Repository database.ITransactionRepository
 }
 
-func NewTransactionService(cache *cache.Memory, config Config.Data, repository database.IRepository) *TransactionService {
+func NewTransactionService(cache *cache.Memory, config Config.Data, repository database.ITransactionRepository) *TransactionService {
 	baseService := TransactionService{
 		Cache:      cache,
 		Config:     config,
@@ -51,30 +51,27 @@ func (service *TransactionService) GetTransaction(reference string) (model.Trans
 }
 
 func (service *TransactionService) GetTransactionByRef(reference string) (model.Transaction, error) {
-	repository := service.Repository.(database.ITransactionRepository)
 
 	transaction := model.Transaction{}
-	if err := repository.GetByFieldName(&model.Transaction{TransactionReference: reference}, &transaction); err != nil {
+	if err := service.Repository.GetByFieldName(&model.Transaction{TransactionReference: reference}, &transaction); err != nil {
 		appErr := err.(appError.Err)
 		return model.Transaction{}, serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf(`Error fetching transaction record for reference : %s, additional context : %s`, reference, appErr)))
 	}
 	return transaction, nil
 }
 func (service *TransactionService) GetTransactionById(id uuid.UUID) (model.Transaction, error) {
-	repository := service.Repository.(database.ITransactionRepository)
 
 	transaction := model.Transaction{}
-	if err := repository.GetByFieldName(&model.Transaction{BaseModel: model.BaseModel{ID: id}}, &transaction); err != nil {
+	if err := service.Repository.GetByFieldName(&model.Transaction{BaseModel: model.BaseModel{ID: id}}, &transaction); err != nil {
 		appErr := err.(appError.Err)
 		return model.Transaction{}, serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf(`Error fetching transaction record for id : %v, additional context : %s`, id, appErr)))
 	}
 	return transaction, nil
 }
 func (service *TransactionService) GetQueuedTransactionById(id uuid.UUID) (model.TransactionQueue, error) {
-	repository := service.Repository.(database.ITransactionRepository)
 
 	transaction := model.TransactionQueue{}
-	if err := repository.GetByFieldName(&model.TransactionQueue{BaseModel: model.BaseModel{ID: id}}, &transaction); err != nil {
+	if err := service.Repository.GetByFieldName(&model.TransactionQueue{BaseModel: model.BaseModel{ID: id}}, &transaction); err != nil {
 		appErr := err.(appError.Err)
 		return model.TransactionQueue{}, serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf(`Error fetching transaction record for id : %v, additional context : %s`, id, appErr)))
 	}
@@ -86,13 +83,12 @@ func normalize() {
 }
 
 func (service *TransactionService) PopulateChainData(transaction *dto.TransactionResponse, chainTxnId uuid.UUID) {
-	repository := service.Repository.(database.ITransactionRepository)
 
 	//get and populate chain transaction if exists, if this call fails, log error but proceed on
 	chainTransaction := model.ChainTransaction{}
 	chainData := dto.ChainData{}
 	if transaction.TransactionType == "ONCHAIN" && chainTxnId != uuid.Nil {
-		if err := repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: chainTxnId}}, &chainTransaction); err != nil {
+		if err := service.Repository.Get(&model.ChainTransaction{BaseModel: model.BaseModel{ID: chainTxnId}}, &chainTransaction); err != nil {
 			logger.Error("Failed to populate chain record for transaction, id : %v and reference : %s", transaction.ID, transaction.TransactionReference)
 			transaction.ChainData = nil
 			return

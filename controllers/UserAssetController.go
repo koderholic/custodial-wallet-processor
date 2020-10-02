@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"wallet-adapter/dto"
 	"wallet-adapter/services"
@@ -114,6 +115,13 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
 	userAssetMemo := requestReader.URL.Query().Get("userAssetMemo")
 	logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v, symbol : %s", address, userAssetMemo, assetSymbol)
+
+	// Ensure assetSymbol is not empty
+	if assetSymbol == "" {
+		err := appError.Err{ErrCode: http.StatusBadRequest, ErrType: errorcode.INPUT_ERR_CODE, Err: errors.New(fmt.Sprintf("assetSymbol cannot be empty"))}
+		ReturnError(responseWriter, "GetUserAssetByAddress", err, apiResponse.PlainError(err.ErrType, err.Error()))
+		return
+	}
 
 	UserAssetService := services.NewUserAssetService(controller.Cache, controller.Config, controller.Repository)
 	responseData, err := UserAssetService.GetAssetByAddressSymbolAndMemo(address, assetSymbol, userAssetMemo)

@@ -42,12 +42,9 @@ func (service *KeyManagementService) GenerateAddress(userID uuid.UUID, symbol st
 	if err != nil {
 		return "", err
 	}
-
-	//call subscribe
 	if err := service.subscribeAddress([]string{generatedAddress}, userID, coinType); err != nil {
 		return "", err
 	}
-
 	return generatedAddress, nil
 }
 
