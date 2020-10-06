@@ -121,7 +121,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		queuedBatchedTransactionsIds = append(queuedBatchedTransactionsIds, transaction.ID)
 	}
 
-	signTransactionRequest := dto.BatchBTCRequest{
+	signTransactionRequest := dto.BatchRequest{
 		AssetSymbol:   batch.AssetSymbol,
 		ChangeAddress: floatAccount,
 		Origins:       []string{floatAccount},

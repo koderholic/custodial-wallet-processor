@@ -18,6 +18,7 @@ import (
 	"wallet-adapter/utility/logger"
 
 	"github.com/jinzhu/gorm"
+	"github.com/spf13/viper"
 )
 
 //HotWalletService object
@@ -37,6 +38,19 @@ func NewDenominationServices(cache *cache.Memory, config Config.Data, repository
 	}
 	return &baseService
 }
+
+var (
+	batchable    = true
+	notBatchable = false
+	isBatchable  = map[int64]*bool{
+		0:   &batchable,
+		145: &batchable,
+		2:   &batchable,
+	}
+	sweepFee = map[int64]int64{
+		714: 37500,
+	}
+)
 
 // GetAssetDenominations Fetch all supported asset denominations from rate service
 func (service *DenominationServices) GetAssetDenominations() (dto.AssetDenominations, error) {
@@ -129,11 +143,13 @@ func (service *DenominationServices) normalizeAsset(denominations []dto.AssetDen
 			IsEnabled:           denom.Enabled,
 			IsToken:             &isToken,
 			MainCoinAssetSymbol: service.getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
-			SweepFee:            service.getAssetSweepFee(denom.CoinType),
+			SweepFee:            sweepFee[denom.CoinType],
 			TradeActivity:       denom.TradeActivity,
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
 			TransferActivity:    denom.TransferActivity,
+			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
+			IsBatchable:         isBatchable[denom.CoinType],
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
 	}
@@ -203,4 +219,13 @@ func (service *DenominationServices) GetDenominationByAssetSymbol(assetSymbol st
 		return denomination, err
 	}
 	return denomination, nil
+}
+
+func (service *DenominationServices) IsBatchable(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	return *denomination.IsBatchable, nil
 }
