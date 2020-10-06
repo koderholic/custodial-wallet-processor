@@ -21,13 +21,6 @@ const (
 	SUCCESSFUL                      = "SUCCESS"
 	ADDRESS_TYPE_LEGACY             = "Legacy"
 	ADDRESS_TYPE_SEGWIT             = "Segwit"
-	BTC_COINTYPE                    = 0
-	ETH_COINTYPE                    = 60
-	BNB_COINTYPE                    = 714
-	BNB_COLD_WALLET_ADDRESS         = "bnb136ns6lfw4zs5hg4n85vdthaad7hq5m4gtkgf23"
-	BNB_COLD_WALLET_ADDRESS_MEMO    = 109630239
-	BTC_COLD_WALLET_ADDRESS         = "17mN6BpX8k7TecMGvC1jWqztd8SYF7VbpZ"
-	ETH_COLD_WALLET_ADDRESS         = "0xad7651a207ab7a0fdcefc30c5a4fcc68d830b2f5"
 	ENV_PRODUCTION                  = "production"
 	ENV_STAGING                     = "staging"
 	NOTIFICATION_SMS_TYPE           = "OTHERS"
@@ -41,6 +34,7 @@ const (
 	SWEEP_ERROR_ASSET_NOT_SUPPORTED = "Sweep checkInsufficient sum asset not supported"
 	ACTIVE                          = "ACTIVE"
 	MIN_WAIT_TIME_IN_PROCESSING     = 120
+	MIN_WAIT_TIME_AFTER_BROADCAST   = 60
 	COULD_NOT_SUBSCRIBE_ADDRESS     = "COULD_NOT_SUBSCRIBE_ADDRESS"
 	UPDATE_SWEPT_STATUS_SUCCESS     = "UPDATE_SWEPT_STATUS_SUCCESS"
 	UPDATE_SWEPT_STATUS_FAILURE     = "UPDATE_SWEPT_STATUS_FAILURE"
