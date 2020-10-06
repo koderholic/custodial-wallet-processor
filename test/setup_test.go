@@ -97,7 +97,6 @@ func (s *Suite) SetupSuite() {
 		MaxOpenConns:           50,
 		ConnMaxLifetime:        300,
 		LockerPrefix:           "Wallet-Adapter-Lock-",
-		ETH_minimumSweep:       0.9,
 	}
 
 	Database := database.Database{
@@ -164,7 +163,6 @@ func (s *Suite) RegisterRoutes(Config config.Data, router *mux.Router, validator
 		apiRouter.HandleFunc("/assets/transfer-internal", middlewares.NewMiddleware(s.Config, userAssetController.InternalTransfer).ValidateAuthToken(permissions.All["InternalTransfer"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/by-id/{assetId}", middlewares.NewMiddleware(s.Config, userAssetController.GetUserAssetById).ValidateAuthToken(permissions.All["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/by-address/{address}", middlewares.NewMiddleware(s.Config, userAssetController.GetUserAssetByAddress).ValidateAuthToken(permissions.All["GetUserAssets"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
-		apiRouter.HandleFunc("/assets/{assetId}/address", middlewares.NewMiddleware(s.Config, userAddressController.GetAssetAddress).ValidateAuthToken(permissions.All["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/all-addresses", middlewares.NewMiddleware(s.Config, userAddressController.GetAllAssetAddresses).ValidateAuthToken(permissions.All["GetAssetAddress"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/transactions/{reference}", middlewares.NewMiddleware(s.Config, transactionController.GetTransaction).ValidateAuthToken(permissions.All["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)
 		apiRouter.HandleFunc("/assets/{assetId}/transactions", middlewares.NewMiddleware(s.Config, transactionController.GetTransactionsByAssetId).ValidateAuthToken(permissions.All["GetTransaction"]).LogAPIRequests().Timeout(requestTimeout).Build()).Methods(http.MethodGet)

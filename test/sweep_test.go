@@ -227,7 +227,6 @@ func (s *Suite) TestCheckSweepMinimum() {
 		MinimumSweepable: 0.9,
 	}
 	sum := float64(0.5)
-	s.Config.ETH_minimumSweep = 0.9
 	isAmountSufficient, _ := tasks.CheckSweepMinimum(denomination, s.Config, sum)
 
 	assert.Equal(s.T(), isAmountSufficient, false, "Sum should not be sufficient")
