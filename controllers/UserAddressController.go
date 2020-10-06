@@ -18,7 +18,6 @@ func (controller UserAddressController) GetAllAssetAddresses(responseWriter http
 	var responseData dto.AllAssetAddresses
 	apiResponse := Response.New()
 	routeParams := mux.Vars(requestReader)
-	addressVersion := requestReader.URL.Query().Get("addressVersion")
 	assetID, err := utility.ToUUID(routeParams["assetId"])
 	if err != nil {
 		err := err.(appError.Err)
@@ -27,7 +26,7 @@ func (controller UserAddressController) GetAllAssetAddresses(responseWriter http
 	}
 
 	UserAddressService := services.NewUserAddressService(controller.Cache, controller.Config, controller.Repository)
-	responseData, err = UserAddressService.GetAddressesFor(assetID, addressVersion)
+	responseData, err = UserAddressService.GetAddressesFor(assetID)
 	if err != nil {
 		err := err.(appError.Err)
 		ReturnError(responseWriter, "GetAllAssetAddresses", err, apiResponse.PlainError(err.ErrType, err.Error()))

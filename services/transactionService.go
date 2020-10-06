@@ -141,7 +141,7 @@ func (service *TransactionService) GetTransactionStatus(txnExist bool, broadcast
 
 	tx := database.NewTx(service.Repository.Db())
 	if !txnExist {
-		if utility.IsExceedWaitTime(time.Since(transactionQueue.CreatedAt), time.Duration(constants.MIN_WAIT_TIME_IN_PROCESSING)) {
+		if utility.IsExceedWaitTime(time.Now(), transactionQueue.CreatedAt.Add(time.Duration(constants.MIN_WAIT_TIME_IN_PROCESSING)*time.Second)) {
 			// Revert the transaction status back to pending, as transaction has not been broadcasted
 			if err := tx.Update(&transaction, &model.Transaction{TransactionStatus: model.TransactionStatus.PENDING}).Update(&transactionQueue, &model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING}).Commit(); err != nil {
 				logger.Error("GetTransactionStatus logs : Error occured while updating transaction %v to PENDING : %+v; %s", transaction.ID, service.Error, err)

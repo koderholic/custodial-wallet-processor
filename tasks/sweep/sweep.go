@@ -270,6 +270,7 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 			if err := updateSweptStatus(addressTransactions, repository, config); err != nil {
 				return err
 			}
+			return nil
 		default:
 			return err
 		}
@@ -640,6 +641,7 @@ func updateSweptStatus(assetTransactions []model.Transaction, repository databas
 		logger.Error("Error response from Sweep job : %+v while broadcasting to chain", err)
 		return err
 	}
+	logger.Info("Swept status updated for %d transactions", len(assetTransactions))
 	return nil
 }
 

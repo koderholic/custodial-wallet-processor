@@ -95,8 +95,16 @@ func (service *NotificationService) BuildAndSendSms(assetSymbol string, amount *
 	if !strings.HasPrefix(service.Config.ColdWalletSmsNumber, "+") {
 		formattedPhoneNumber = "+" + service.Config.ColdWalletSmsNumber
 	}
+
+	notificationEnv := ""
+	if service.Config.SENTRY_ENVIRONMENT == constants.ENV_PRODUCTION {
+		notificationEnv = "LIVE"
+	} else {
+		notificationEnv = "TEST"
+	}
+
 	sendSmsRequest := dto.SendSmsRequest{
-		Message:     fmt.Sprintf("Please fund Bundle hot wallet address for %s with at least %f %s", assetSymbol, amount, assetSymbol),
+		Message:     fmt.Sprintf("%s - Please fund Bundle hot wallet address for %s with at least %f %s", notificationEnv, assetSymbol, amount, assetSymbol),
 		PhoneNumber: formattedPhoneNumber,
 		SmsType:     constants.NOTIFICATION_SMS_TYPE,
 		Country:     constants.NOTIFICATION_SMS_COUNTRY,
