@@ -210,13 +210,21 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	if e != nil {
 		return e
 	}
-	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, logger)
-	if err != nil {
+
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: transactionListInfo.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
 		return err
 	}
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
+
+	//Check that sweep amount is not below the minimum sweep amount
+	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
+	if !isAmountSufficient {
+		return err
+	}
+
+	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, logger)
+	if err != nil {
 		return err
 	}
 
@@ -226,11 +234,6 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
-	//Check that sweep amount is not below the minimum sweep amount
-	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
-	if !isAmountSufficient {
-		return err
-	}
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.RequiresMemo && *denomination.IsToken {
 		//send sweep fee to main address
@@ -250,8 +253,9 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
-		Reference:   addressTransactions[0].TransactionReference,
+		Reference:   fmt.Sprintf("%s-%d", recipientAddress, time.Now().Unix()),
 	}
+
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)

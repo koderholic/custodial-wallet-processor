@@ -7,9 +7,11 @@ SECURITY_BUNDLE_PUBLICKEY : "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZU1BMEdDU3F
 authenticationServiceURL: "https://internal.dev.bundlewallet.com/authentication"
 keyManagementServiceURL: "https://internal.dev.bundlewallet.com/key-management"
 cryptoAdapterServiceURL: "https://internal.dev.bundlewallet.com/crypto-adapter"
-depositWebhookURL: "http://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit"
-withdrawToHotWalletUrl: "http://internal.dev.bundlewallet.com/order-book"
-notificationServiceUrl: "http://internal.dev.bundlewallet.com/notifications"
+depositWebhookURL: "https://internal.dev.bundlewallet.com/crypto-adapter/incoming-deposit"
+withdrawToHotWalletUrl: "https://internal.dev.bundlewallet.com/order-book"
+notificationServiceUrl: "https://internal.dev.bundlewallet.com/notifications"
+rateServiceUrl: https://internal.dev.bundlewallet.com/rates
+TWServiceURL: https://raw.githubusercontent.com/trustwallet
 coldWalletEmail: "akinyemi@bundle.africa"
 coldWalletEmailTemplateId: "d-c2c966c47fc3405598733a6a7178b28f"
 lockerServiceURL: "https://internal.dev.bundlewallet.com/locker"
