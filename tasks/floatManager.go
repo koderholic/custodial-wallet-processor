@@ -429,7 +429,7 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		Reference:   uuid.NewV1().String(),
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, serviceErr); err != nil {
+	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return err
 	}

@@ -39,11 +39,8 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "rateServiceUrl: http://rates" >> config.yaml && \
     echo "TWServiceURL: https://raw.githubusercontent.com/trustwallet" >> config.yaml && \
     echo "coldWalletEmailTemplateId: d-c2c966c47fc3405598733a6a7178b28f" >> config.yaml && \
-    echo "BTC_SLIP_VALUE: 0" >> config.yaml && \
-    echo "BNB_SLIP_VALUE: 714" >> config.yaml && \
     echo "expireCacheDuration: 400" >> config.yaml && \
     echo "requestTimeout: 60" >> config.yaml && \
-    echo "ETH_SLIP_VALUE: 60" >> config.yaml && \
     echo "maxIdleConns : 25" >> config.yaml && \
     echo "maxOpenConns : 50" >> config.yaml && \
     echo "connMaxLifetime: 300" >> config.yaml && \

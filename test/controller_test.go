@@ -127,10 +127,6 @@ func (s *Suite) SetupSuite() {
 		MaxOpenConns:           50,
 		ConnMaxLifetime:        300,
 		LockerPrefix:           "Wallet-Adapter-Lock-",
-		ETH_minimumSweep:       0.9,
-		BnbSlipValue:           "714",
-		BtcSlipValue:           "0",
-		EthSlipValue:           "60",
 	}
 
 	Database := database.Database{
@@ -588,58 +584,58 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 	}
 }
 
-func (s *Suite) Test_ProcessTransfer() {
-	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
-	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
-	createAssetRequest.Header.Set("x-auth-token", authToken)
-	createResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(createResponse, createAssetRequest)
-	resBody, err := ioutil.ReadAll(createResponse.Body)
-	if err != nil {
-		require.NoError(s.T(), err)
-	}
-	createAssetResponse := dto.UserAssetResponse{}
-	err = json.Unmarshal(resBody, &createAssetResponse)
-	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
-		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
-	}
+// func (s *Suite) Test_ProcessTransfer() {
+// 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+// 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
+// 	createAssetRequest.Header.Set("x-auth-token", authToken)
+// 	createResponse := httptest.NewRecorder()
+// 	s.Router.ServeHTTP(createResponse, createAssetRequest)
+// 	resBody, err := ioutil.ReadAll(createResponse.Body)
+// 	if err != nil {
+// 		require.NoError(s.T(), err)
+// 	}
+// 	createAssetResponse := dto.UserAssetResponse{}
+// 	err = json.Unmarshal(resBody, &createAssetResponse)
+// 	if createResponse.Code != http.StatusCreated || len(createAssetResponse.Assets) < 1 {
+// 		require.NoError(s.T(), errors.New("Expected asset creation to not error"))
+// 	}
 
-	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
-	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
-	creditAssetRequest.Header.Set("x-auth-token", authToken)
-	creditAssetResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
-	if creditAssetResponse.Code != http.StatusOK {
-		require.NoError(s.T(), errors.New("Expected credit asset to not error"))
-	}
+// 	creditAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 200.30,"transactionReference" : "ra29bv7y111p945e17514","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+// 	creditAssetRequest, _ := http.NewRequest("POST", test.CreditAssetEndpoint, bytes.NewBuffer(creditAssetInputData))
+// 	creditAssetRequest.Header.Set("x-auth-token", authToken)
+// 	creditAssetResponse := httptest.NewRecorder()
+// 	s.Router.ServeHTTP(creditAssetResponse, creditAssetRequest)
+// 	if creditAssetResponse.Code != http.StatusOK {
+// 		require.NoError(s.T(), errors.New("Expected credit asset to not error"))
+// 	}
 
-	debitAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 10.30,"transactionReference" : "ra29bv7y111p945e17515","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
-	debitAssetRequest, _ := http.NewRequest("POST", test.DebitAssetEndpoint, bytes.NewBuffer(debitAssetInputData))
-	debitAssetRequest.Header.Set("x-auth-token", authToken)
-	debitAssetResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(debitAssetResponse, debitAssetRequest)
-	if debitAssetResponse.Code != http.StatusOK {
-		require.NoError(s.T(), errors.New("Expected debit asset to not error"))
-	}
+// 	debitAssetInputData := []byte(fmt.Sprintf(`{"assetId" : "%s","value" : 10.30,"transactionReference" : "ra29bv7y111p945e17515","memo" :"Test credit transaction"}`, createAssetResponse.Assets[0].ID))
+// 	debitAssetRequest, _ := http.NewRequest("POST", test.DebitAssetEndpoint, bytes.NewBuffer(debitAssetInputData))
+// 	debitAssetRequest.Header.Set("x-auth-token", authToken)
+// 	debitAssetResponse := httptest.NewRecorder()
+// 	s.Router.ServeHTTP(debitAssetResponse, debitAssetRequest)
+// 	if debitAssetResponse.Code != http.StatusOK {
+// 		require.NoError(s.T(), errors.New("Expected debit asset to not error"))
+// 	}
 
-	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516"}`)
-	externalTransferRequest, _ := http.NewRequest("POST", test.TransferExternalEndpoint, bytes.NewBuffer(externalTransferInputData))
-	externalTransferRequest.Header.Set("x-auth-token", authToken)
-	externalTransferResponse := httptest.NewRecorder()
-	s.Router.ServeHTTP(externalTransferResponse, externalTransferRequest)
-	if externalTransferResponse.Code != http.StatusOK {
-		require.NoError(s.T(), errors.New(fmt.Sprintf("Expected external transfer asset to not error >> %+v", externalTransferResponse)))
-	}
+// 	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516"}`)
+// 	externalTransferRequest, _ := http.NewRequest("POST", test.TransferExternalEndpoint, bytes.NewBuffer(externalTransferInputData))
+// 	externalTransferRequest.Header.Set("x-auth-token", authToken)
+// 	externalTransferResponse := httptest.NewRecorder()
+// 	s.Router.ServeHTTP(externalTransferResponse, externalTransferRequest)
+// 	if externalTransferResponse.Code != http.StatusOK {
+// 		require.NoError(s.T(), errors.New(fmt.Sprintf("Expected external transfer asset to not error >> %+v", externalTransferResponse)))
+// 	}
 
-	processTransactionRequest, _ := http.NewRequest("POST", test.ProcessTransactionEndpoint, bytes.NewBuffer([]byte("")))
-	processTransactionRequest.Header.Set("x-auth-token", authToken)
-	response := httptest.NewRecorder()
-	s.Router.ServeHTTP(response, processTransactionRequest)
+// 	processTransactionRequest, _ := http.NewRequest("POST", test.ProcessTransactionEndpoint, bytes.NewBuffer([]byte("")))
+// 	processTransactionRequest.Header.Set("x-auth-token", authToken)
+// 	response := httptest.NewRecorder()
+// 	s.Router.ServeHTTP(response, processTransactionRequest)
 
-	if response.Code != http.StatusOK {
-		s.T().Errorf("Expected statusCode to be %d. Got %d \n", http.StatusOK, response.Code)
-	}
-}
+// 	if response.Code != http.StatusOK {
+// 		s.T().Errorf("Expected statusCode to be %d. Got %d \n", http.StatusOK, response.Code)
+// 	}
+// }
 
 func (s *Suite) Test_GetTransactionByRef() {
 	createAssetInputData := []byte(`{"assets" : ["BTC","ETH","BNB"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)

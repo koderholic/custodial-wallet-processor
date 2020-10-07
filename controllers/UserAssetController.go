@@ -648,7 +648,8 @@ func (controller UserAssetController) GetTransaction(responseWriter http.Respons
 		json.NewEncoder(responseWriter).Encode(apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get transaction with transactionReference = %s", utility.GetSQLErr(err), transactionRef)))
 		return
 	}
-	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN {
+	isExceedWaitTime := utility.IsExceedWaitTime(time.Now(), transaction.UpdatedAt.Add(time.Duration(utility.MIN_WAIT_TIME_AFTER_BROADCAST)*time.Second))
+	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN && isExceedWaitTime {
 		status, _ := controller.verifyTransactionStatus(transaction)
 		if status != "" {
 			transaction.TransactionStatus = status
@@ -762,7 +763,7 @@ func (controller UserAssetController) verifyTransactionStatus(transaction model.
 	}
 
 	if !txnExist {
-		if utility.IsExceedWaitTime(time.Since(transactionQueue.CreatedAt), time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING)) {
+		if utility.IsExceedWaitTime(time.Now(), transactionQueue.CreatedAt.Add(time.Duration(utility.MIN_WAIT_TIME_IN_PROCESSING)*time.Second)) {
 			// Revert the transaction status back to pending, as transaction has not been broadcasted
 			if err := controller.updateTransactions(transactionQueue, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 				controller.Logger.Error("verifyTransactionStatus logs :Error occured while updating transaction %+v to PENDING : %+v; %s", transactionQueue.TransactionId, serviceErr, err)
