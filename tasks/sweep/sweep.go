@@ -57,7 +57,7 @@ func SweepTransactions(cache *cache.Memory, config Config.Data, repository datab
 
 	var batchAddresses []string
 	var batchAssetTransactionsToSweep []model.Transaction
-	baseRepository := database.BaseRepository{database.Database{Config: config, DB: repository.Db()}}
+	baseRepository := database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}
 	userAssetRepository = database.UserAssetRepository{BaseRepository: baseRepository}
 	for _, tx := range transactions {
 		//Filter batchable assets, save in a seperate list for batch processing and skip individual processing
