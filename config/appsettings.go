@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -48,10 +49,6 @@ type Data struct {
 	DBMigrationPath           string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                 string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 	SENTRY_ENVIRONMENT        string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
-	BTC_minimumSweep          float64       `mapstructure:"BTC_minimumSweep"  yaml:"BTC_minimumSweep,omitempty"`
-	BNB_minimumSweep          float64       `mapstructure:"BNB_minimumSweep"  yaml:"BNB_minimumSweep,omitempty"`
-	ETH_minimumSweep          float64       `mapstructure:"ETH_minimumSweep"  yaml:"ETH_minimumSweep,omitempty"`
-	BUSD_minimumSweep         float64       `mapstructure:"BUSD_minimumSweep"  yaml:"BUSD_minimumSweep,omitempty"`
 }
 
 //Init : initialize data
@@ -62,7 +59,8 @@ func (c *Data) Init(configDir string) {
 		log.Printf("Cannot set default input/output directory to the current working directory >> %s", dirErr)
 	}
 
-	// viper.SetEnvPrefix("") // wPrefix all env variable with WAS(Wallet adapter Service) i.e WAS-APPPORT
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 	viper.BindEnv("AUTHENTICATION_SERVICE_SERVICE_ID")
 	viper.BindEnv("AUTHENTICATION_SERVICE_TOKEN")
@@ -72,11 +70,7 @@ func (c *Data) Init(configDir string) {
 	viper.BindEnv("DB_PASSWORD")
 	viper.BindEnv("DB_NAME")
 	viper.BindEnv("SENTRY_ENVIRONMENT")
-
-	viper.BindEnv("BTC_minimumSweep")
-	viper.BindEnv("BNB_minimumSweep")
-	viper.BindEnv("ETH_minimumSweep")
-	viper.BindEnv("BUSD_minimumSweep")
+	viper.BindEnv("MINIMUMSWEEP")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("../")

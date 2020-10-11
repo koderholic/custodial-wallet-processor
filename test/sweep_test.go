@@ -81,7 +81,7 @@ func (s *Suite) TestCalculateSumOfBtcBatch() {
 	addressTransactions = append(addressTransactions, transation1)
 	addressTransactions = append(addressTransactions, transation2)
 
-	sum := tasks.CalculateSumOfBtcBatch(addressTransactions)
+	sum := tasks.CalculateSumOfBatch(addressTransactions)
 
 	if sum < 0.2 {
 		s.T().Errorf("Expected sum returned to be greater than  %s, got %f\n", "0.2", sum)
@@ -105,7 +105,7 @@ func (s *Suite) TestRemoveBTCTx() {
 	addressTransactions = append(addressTransactions, transation2)
 	btcTransactions = append(btcTransactions, transation1)
 
-	result := tasks.RemoveBTCTransactions(addressTransactions, btcTransactions)
+	result := tasks.RemoveBatchTransactions(addressTransactions, btcTransactions)
 
 	if len(result) != 1 {
 		fmt.Println(result[0].ID)
@@ -223,10 +223,10 @@ func (s *Suite) TestSumSweepTx() {
 
 func (s *Suite) TestCheckSweepMinimum() {
 	denomination := model.Denomination{
-		AssetSymbol: "ETH",
+		AssetSymbol:      "ETH",
+		MinimumSweepable: 0.9,
 	}
 	sum := float64(0.5)
-	s.Config.ETH_minimumSweep = 0.9
 	isAmountSufficient, _ := tasks.CheckSweepMinimum(denomination, s.Config, sum)
 
 	assert.Equal(s.T(), isAmountSufficient, false, "Sum should not be sufficient")

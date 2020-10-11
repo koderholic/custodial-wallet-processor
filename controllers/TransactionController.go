@@ -24,7 +24,6 @@ import (
 	"wallet-adapter/utility/jwt"
 	"wallet-adapter/utility/logger"
 	Response "wallet-adapter/utility/response"
-	"wallet-adapter/utility/variables"
 
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
@@ -237,18 +236,16 @@ func (controller TransactionController) ExternalTransfer(responseWriter http.Res
 		return
 	}
 
-	// Ensure transaction value is above minimum send to chain
-	minimumSpendable := decimal.NewFromFloat(variables.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
-	if value.Cmp(minimumSpendable) <= 0 {
-		ReturnError(responseWriter, "ExternalTransfer", errorcode.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %v", errorcode.MINIMUM_SPENDABLE_ERR, variables.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])))
+	// Batch transaction, if asset is batchable
+	isBatchable, err := DenominationServices.IsBatchable(debitReferenceTransaction.AssetSymbol, controller.Repository)
+	if err != nil {
+		ReturnError(responseWriter, "ExternalTransfer", err, apiResponse.PlainError(errorcode.SERVER_ERR_CODE, fmt.Sprintf("%s : %s", errorcode.SERVER_ERR, err)))
 		return
 	}
-
-	// Batch transaction, if asset is BTC
 	var activeBatchId uuid.UUID
-	if debitReferenceAsset.AssetSymbol == constants.COIN_BTC {
+	if isBatchable {
 		BatchService := services.NewBatchService(controller.Cache, controller.Config, controller.Repository)
-		activeBatchId, err = BatchService.GetWaitingBatchId(constants.COIN_BTC)
+		activeBatchId, err = BatchService.GetWaitingBatchId(debitReferenceTransaction.AssetSymbol)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", err, apiResponse.PlainError("SERVER_ERR", errorcode.SERVER_ERR))
 			return

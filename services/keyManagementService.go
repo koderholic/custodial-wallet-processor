@@ -42,12 +42,9 @@ func (service *KeyManagementService) GenerateAddress(userID uuid.UUID, symbol st
 	if err != nil {
 		return "", err
 	}
-
-	//call subscribe
 	if err := service.subscribeAddress([]string{generatedAddress}, userID, coinType); err != nil {
 		return "", err
 	}
-
 	return generatedAddress, nil
 }
 
@@ -187,7 +184,7 @@ func (service *KeyManagementService) SignTransactionAndBroadcast(requestData dto
 	return nil
 }
 
-func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Client, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse) error {
+func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Client, requestData dto.BatchRequest, responseData *dto.SignTransactionResponse) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
@@ -217,7 +214,7 @@ func (service *KeyManagementService) SignBatchTransaction(HttpClient *http.Clien
 
 }
 
-func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient *http.Client, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse) error {
+func (service *KeyManagementService) SignBatchTransactionAndBroadcast(HttpClient *http.Client, requestData dto.BatchRequest, responseData *dto.SignAndBroadcastResponse) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
