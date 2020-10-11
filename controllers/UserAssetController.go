@@ -139,7 +139,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 func (controller UserAssetController) CreditUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := Response.New()
-	requestData := dto.CreditUserAssetRequest{}
+	requestData := dto.UserAssetTXRequest{}
 	responseData := dto.TransactionReceipt{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
@@ -198,7 +198,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		ReturnError(responseWriter, "OnChainCreditUserAsset", err, apiResponse.PlainError(err.ErrType, err.Error()))
 	}
 	// credit asset
-	requestDetails := dto.CreditUserAssetRequest{AssetID: requestData.AssetID, Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
+	requestDetails := dto.UserAssetTXRequest{AssetID: requestData.AssetID, Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
 	responseData, err = UserAssetService.OnChainCreditAsset(requestDetails, requestData.ChainData, assetDetails, controller.GetInitiatingServiceId(requestReader))
 	if err != nil {
 		ReturnError(responseWriter, "OnChainCreditUserAsset", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
@@ -260,7 +260,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		return
 	}
 	// Call user asset service
-	requestDetails := dto.CreditUserAssetRequest{Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
+	requestDetails := dto.UserAssetTXRequest{Value: requestData.Value, TransactionReference: requestData.TransactionReference, Memo: requestData.Memo}
 	responseData, err = UserAssetService.InternalTransfer(requestDetails, initiatorAssetDetails, recipientAssetDetails)
 	if err != nil {
 		ReturnError(responseWriter, "InternalTransfer", err, apiResponse.PlainError(err.(appError.Err).ErrType, err.(appError.Err).Error()))
@@ -278,7 +278,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 func (controller UserAssetController) DebitUserAsset(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := Response.New()
-	requestData := dto.CreditUserAssetRequest{}
+	requestData := dto.UserAssetTXRequest{}
 	responseData := dto.TransactionReceipt{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)

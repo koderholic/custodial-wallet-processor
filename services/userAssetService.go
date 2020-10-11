@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
@@ -158,7 +156,7 @@ func (service *UserAssetService) GetAssetForV2Address(address string, assetSymbo
 	return userAsset, nil
 }
 
-func (service *UserAssetService) CreditAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) CreditAsset(requestDetails dto.UserAssetTXRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
 
 	// increment user account by value
 	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
@@ -174,7 +172,7 @@ func (service *UserAssetService) CreditAsset(requestDetails dto.CreditUserAssetR
 	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
-func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUserAssetRequest, chainData dto.ChainData, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.UserAssetTXRequest, chainData dto.ChainData, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
 
 	// increment user account by value
 	newAssetBalance := utility.Add(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
@@ -218,7 +216,7 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.CreditUse
 	return TxnReceipt(transaction, requestDetails.AssetID), nil
 }
 
-func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserAssetRequest, initiatorAssetDetails model.UserAsset, recipientAssetDetails model.UserAsset) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) InternalTransfer(requestDetails dto.UserAssetTXRequest, initiatorAssetDetails model.UserAsset, recipientAssetDetails model.UserAsset) (dto.TransactionReceipt, error) {
 
 	// Increment initiator asset balance and decrement recipient asset balance
 	initiatorCurrentBalance := utility.Subtract(requestDetails.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
@@ -244,7 +242,7 @@ func (service *UserAssetService) InternalTransfer(requestDetails dto.CreditUserA
 
 }
 
-func (service *UserAssetService) DebitAsset(requestDetails dto.CreditUserAssetRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
+func (service *UserAssetService) DebitAsset(requestDetails dto.UserAssetTXRequest, assetDetails model.UserAsset, initiatorId uuid.UUID) (dto.TransactionReceipt, error) {
 
 	// decrement user account by value
 	newAssetBalance := utility.Subtract(requestDetails.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
@@ -261,29 +259,6 @@ func (service *UserAssetService) DebitAsset(requestDetails dto.CreditUserAssetRe
 	}
 	logger.Info(fmt.Sprintf("UserAssetService logs : Asset %v debited of %v with ref:%s", assetDetails.ID, requestDetails.Value, requestDetails.TransactionReference))
 	return TxnReceipt(transaction, requestDetails.AssetID), nil
-}
-
-func BuildTxnObject(assetDetails model.UserAsset, requestDetails dto.CreditUserAssetRequest, newAssetBalance string, initiatorId uuid.UUID) model.Transaction {
-	// Create transaction record
-	paymentRef := utility.RandomString(16)
-	value := strconv.FormatFloat(requestDetails.Value, 'g', utility.DigPrecision, 64)
-	return model.Transaction{
-		InitiatorID:          initiatorId, // serviceId
-		RecipientID:          assetDetails.ID,
-		TransactionReference: requestDetails.TransactionReference,
-		PaymentReference:     paymentRef,
-		Memo:                 requestDetails.Memo,
-		TransactionType:      model.TransactionType.OFFCHAIN,
-		TransactionStatus:    model.TransactionStatus.COMPLETED,
-		TransactionTag:       model.TransactionTag.CREDIT,
-		Value:                value,
-		PreviousBalance:      assetDetails.AvailableBalance,
-		AvailableBalance:     newAssetBalance,
-		ProcessingType:       model.ProcessingType.SINGLE,
-		TransactionStartDate: time.Now(),
-		TransactionEndDate:   time.Now(),
-		AssetSymbol:          assetDetails.AssetSymbol,
-	}
 }
 
 func (service *UserAssetService) GetAssetBy(id uuid.UUID) (model.UserAsset, error) {

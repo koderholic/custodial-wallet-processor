@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -177,32 +178,40 @@ func (service *DenominationServices) getAssetSweepFee(coinType int64) int64 {
 	}
 }
 
-func (service *DenominationServices) IsWithdrawalActive(assetSymbol string) (bool, error) {
+func (service *DenominationServices) CheckWithdrawalIsActive(assetSymbol string) error {
 	repository := service.Repository.(database.IUserAssetRepository)
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return false, err
+		return err
 	}
 
 	if !strings.EqualFold(denomination.WithdrawActivity, constants.ACTIVE) {
-		return false, nil
+		return appError.Err{
+			ErrCode: http.StatusBadRequest,
+			ErrType: errorcode.WITHDRAWAL_NOT_ACTIVE_CODE,
+			Err:     errors.New(errorcode.WITHDRAWAL_NOT_ACTIVE),
+		}
 	}
 
-	return true, nil
+	return nil
 }
 
-func (service *DenominationServices) IsDepositActive(assetSymbol string) (bool, error) {
+func (service *DenominationServices) CheckDepositIsActive(assetSymbol string) error {
 	repository := service.Repository.(database.IUserAssetRepository)
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return false, err
+		return err
 	}
 
 	if !strings.EqualFold(denomination.DepositActivity, constants.ACTIVE) {
-		return false, nil
+		return appError.Err{
+			ErrCode: http.StatusBadRequest,
+			ErrType: errorcode.DEPOSIT_NOT_ACTIVE_CODE,
+			Err:     errors.New(errorcode.DEPOSIT_NOT_ACTIVE),
+		}
 	}
 
-	return true, nil
+	return nil
 }
 
 func (service *DenominationServices) GetDenominationByAssetSymbol(assetSymbol string) (model.Denomination, error) {
@@ -221,9 +230,9 @@ func (service *DenominationServices) GetDenominationByAssetSymbol(assetSymbol st
 	return denomination, nil
 }
 
-func (service *DenominationServices) IsBatchable(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+func (service *DenominationServices) IsBatchable(assetSymbol string) (bool, error) {
 	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+	if err := service.Repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		return false, err
 	}
 

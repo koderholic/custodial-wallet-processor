@@ -32,7 +32,7 @@ func NewLockerService(cache *cache.Memory, config Config.Data, repository databa
 }
 
 // AcquireLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func (service *LockerService) AcquireLock(requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse) error {
+func (service *LockerService) acquireLock(requestData dto.LockerServiceRequest, responseData *dto.LockerServiceResponse) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
@@ -88,7 +88,7 @@ func (service *LockerService) RenewLock(requestData dto.LockerServiceRequest, re
 }
 
 // ReleaseLock ... Calls locker service with information about the lock to lock down a transaction for processing
-func (service *LockerService) ReleaseLock(requestData dto.LockReleaseRequest, responseData *dto.ServicesRequestSuccess) error {
+func (service *LockerService) releaseLock(requestData dto.LockReleaseRequest, responseData *dto.ServicesRequestSuccess) error {
 	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
 	authToken, err := AuthService.GetAuthToken()
 	if err != nil {
@@ -112,5 +112,29 @@ func (service *LockerService) ReleaseLock(requestData dto.LockReleaseRequest, re
 		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
 	}
 
+	return nil
+}
+
+func (service *LockerService) AcquireLock(identifier string, ttl int64) (dto.LockerServiceResponse, error) {
+	lockerServiceRequest := dto.LockerServiceRequest{
+		Identifier:   fmt.Sprintf("%s%s", service.Config.LockerPrefix, identifier),
+		ExpiresAfter: ttl,
+	}
+	lockerServiceResponse := dto.LockerServiceResponse{}
+	if err := service.acquireLock(lockerServiceRequest, &lockerServiceResponse); err != nil {
+		return dto.LockerServiceResponse{}, err
+	}
+	return lockerServiceResponse, nil
+}
+
+func (service *LockerService) ReleaseLock(identifier string, lockerserviceToken string) error {
+	lockReleaseRequest := dto.LockReleaseRequest{
+		Identifier: fmt.Sprintf("%s%s", service.Config.LockerPrefix, identifier),
+		Token:      lockerserviceToken,
+	}
+	lockReleaseResponse := dto.ServicesRequestSuccess{}
+	if err := service.releaseLock(lockReleaseRequest, &lockReleaseResponse); err != nil || !lockReleaseResponse.Success {
+		return err
+	}
 	return nil
 }

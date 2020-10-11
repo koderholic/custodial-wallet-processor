@@ -3,7 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
-	"net/http"
+	"sort"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -60,9 +60,26 @@ func (service *UserAddressService) GetAddressesFor(assetID uuid.UUID) (dto.AllAs
 		addresses = append(addresses, assetAddress)
 	} else {
 		if *denomination.IsBatchable {
-			addresses, err = service.GetAddresses(userAsset)
+			KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
+			responseAddresses, err := KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, "")
+			if err != nil {
+				return dto.AllAssetAddresses{}, err
+			}
+			addresses, err = service.GetAddresses(userAsset, responseAddresses)
 		} else {
 			assetAddress.Address, err = service.GetV1Address(userAsset)
+			if err != nil {
+				return dto.AllAssetAddresses{}, err
+			}
+			if assetAddress.Address == "" {
+				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
+				addressResponse, err := KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, "")
+				if err != nil {
+					logger.Error("UserAddressService logs : Error generating v1 address for asset %v, error : %s ", err)
+					return dto.AllAssetAddresses{}, err
+				}
+				assetAddress.Address, err = service.CreateV1Address(userAsset, addressResponse)
+			}
 			addresses = append(addresses, assetAddress)
 		}
 	}
@@ -87,20 +104,13 @@ func (service *UserAddressService) GetAddressesFor(assetID uuid.UUID) (dto.AllAs
 func (service *UserAddressService) AssetAddresses(assetSymbol string, addressAndMemo []dto.AssetAddress) ([]dto.AssetAddress, error) {
 	// Check if deposit is ACTIVE on this asset
 	DenominationServices := NewDenominationServices(service.Cache, service.Config, service.Repository)
-	isActive, err := DenominationServices.IsDepositActive(assetSymbol)
-	if err != nil {
-		return []dto.AssetAddress{}, err
-	}
-	if !isActive {
+	if err := DenominationServices.CheckDepositIsActive(assetSymbol); err != nil {
 		logger.Error(fmt.Sprintf("UserAddressService logs : Deposit is not available for asset %s Error : %s", assetSymbol, err))
-		return []dto.AssetAddress{}, appError.Err{
-			ErrCode: http.StatusBadRequest,
-			ErrType: errorcode.INPUT_ERR_CODE,
-			Err:     errors.New(fmt.Sprintf("%s, for get %s address", errorcode.DEPOSIT_NOT_ACTIVE, assetSymbol)),
-		}
+		return []dto.AssetAddress{}, err
 	}
 	return addressAndMemo, nil
 }
+
 func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (string, error) {
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
@@ -115,18 +125,20 @@ func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (stri
 		userAddress.Address = assetAddress.Address
 
 		if !isExist {
-			userAddress.Address, err = service.GenerateV1Address(userAsset)
+			return "", nil
 		}
-
-		if err := service.Repository.Create(&userAddress); err != nil {
-			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-			return "", err
-		}
-
 	} else if err != nil {
 		return "", err
 	}
+	return userAddress.Address, nil
+}
 
+func (service *UserAddressService) CreateV1Address(userAsset model.UserAsset, addressResponse []dto.AllAddressResponse) (string, error) {
+	userAddress := model.UserAddress{AssetID: userAsset.ID, Address: addressResponse[0].Data}
+	if err := service.Repository.Create(&userAddress); err != nil {
+		logger.Error("Error response from userAddress service, could not create user address %+v : %s ", userAddress, err)
+		return "", err
+	}
 	return userAddress.Address, nil
 }
 
@@ -158,17 +170,6 @@ func (service *UserAddressService) CheckCoinTypeAddressExist(userAsset model.Use
 		return true, nil
 	}
 	return false, nil
-}
-
-func (service *UserAddressService) GenerateV1Address(userAsset model.UserAsset) (string, error) {
-	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
-	addressResponse, err := KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, "")
-	if err != nil {
-		logger.Error("UserAddressService logs : Error generating v1 address for asset %v, error : %s ", err)
-		return "", err
-	}
-	logger.Error("UserAddressService logs : Address generated for asset with id: %v, symbol:%s, coinType:%d", userAsset.ID, userAsset.AssetSymbol, userAsset.CoinType)
-	return addressResponse[0].Data, nil
 }
 
 // GetV2Address returns address with memo for mostly BEP2 assets
@@ -243,34 +244,19 @@ func (service *UserAddressService) CheckV2Address(address string) (bool, error) 
 
 }
 
-func (service *UserAddressService) GetAddresses(userAsset model.UserAsset) ([]dto.AssetAddress, error) {
+func (service *UserAddressService) GetAddresses(userAsset model.UserAsset, responseAddresses []dto.AllAddressResponse) ([]dto.AssetAddress, error) {
 
 	var assetAddresses []dto.AssetAddress
-	responseAddresses, err := service.GenerateAndCreateAddresses(userAsset, "")
-	if err != nil {
-		return []dto.AssetAddress{}, err
+
+	for _, address := range responseAddresses {
+		if err := service.Repository.FindOrCreate(model.UserAddress{AddressType: address.Type, AssetID: userAsset.ID}, &model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: userAsset.ID}); err != nil {
+			logger.Error("Error response from userAddress service, could not save user %s addresses : %s ", userAsset.AssetSymbol, err)
+			return []dto.AssetAddress{}, errors.New(appError.GetSQLErr(err))
+		}
 	}
 	assetAddresses = service.TransformAddressesResponse(responseAddresses)
 
 	return assetAddresses, nil
-}
-
-func (service *UserAddressService) GenerateAndCreateAddresses(asset model.UserAsset, addressType string) ([]dto.AllAddressResponse, error) {
-
-	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
-	responseAddresses, err := KeyManagementService.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
-	if err != nil {
-		return []dto.AllAddressResponse{}, err
-	}
-
-	for _, address := range responseAddresses {
-		if err := service.Repository.FindOrCreate(model.UserAddress{AddressType: address.Type, AssetID: asset.ID}, &model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID}); err != nil {
-			logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
-			return []dto.AllAddressResponse{}, errors.New(appError.GetSQLErr(err))
-		}
-	}
-
-	return responseAddresses, nil
 }
 
 func (service *UserAddressService) TransformAddressesResponse(responseAddresses []dto.AllAddressResponse) []dto.AssetAddress {
@@ -282,5 +268,9 @@ func (service *UserAddressService) TransformAddressesResponse(responseAddresses 
 		}
 		assetAddresses = append(assetAddresses, address)
 	}
+	// Sort by addressType
+	sort.Slice(assetAddresses, func(i, j int) bool {
+		return assetAddresses[i].Type > assetAddresses[j].Type
+	})
 	return assetAddresses
 }

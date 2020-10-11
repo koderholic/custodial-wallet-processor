@@ -105,14 +105,8 @@ func (s *Suite) Test_GetAssetById_Fails_ForNonExistingUserId() {
 }
 
 // func (s *Suite) Test_GetAssetByAddress_pass_ForV2Address() {
-// 	denominations := []string{"LINK", "ETH", "BNB"}
-// 	userId, _ := uuid.FromString("a10fce7b-7844-43af-9ed1-e130723a1ea3")
-// 	UserAssetService := services.NewUserAssetService(authCache, s.Config)
-// 	createdAsset, err := UserAssetService.CreateAssets(&testUserAssetRepository, denominations, userId)
-
-// 	asset, err := UserAssetService.GetAssetByAddressSymbolAndMemo(&testUserAssetRepository, "bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a", "BNB", "639469678")
-// 	expected := testUserAssets1[0]
-
+// 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
+// 	asset, err := UserAssetService.GetAssetForV2Address("bnb10f7jqrvg3d978cgtsqydtlk20y992yeapjzd3a", "BNB", "639469678")
 // 	assert.Equal(s.T(), nil, err, "Expected GetAssetByAddressSymbolAndMemo to not error")
-// 	assert.Equal(s.T(), expected, asset, "Expected asset not returned")
+// 	assert.Equal(s.T(), testUserAssets1[0].ID, asset.ID, "Expected asset not returned")
 // }

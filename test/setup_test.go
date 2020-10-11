@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"wallet-adapter/database"
 	"wallet-adapter/middlewares"
 	"wallet-adapter/model"
+	"wallet-adapter/utility"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 	"wallet-adapter/utility/permissions"
@@ -177,7 +179,7 @@ func (s *Suite) RegisterRoutes(Config config.Data, router *mux.Router, validator
 
 // RunDbMigrations ... This creates corresponding tables for dtos on the db for testing
 func (s *Suite) RunMigration() {
-	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.SharedAddress{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{})
+	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.SharedAddress{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{}, &model.UserMemo{})
 }
 
 // DBSeeder .. This seeds supported assets into the database for testing
@@ -307,6 +309,40 @@ func (s *Suite) DBSeeder() {
 	}
 	if err := s.DB.Create(&testSharedAddress).Error; err != nil {
 		logger.Error(fmt.Sprintf("Error with creating shared address record for %v : %s", testSharedAddress.Address, err))
+	}
+
+	testUserMemos := []model.UserMemo{
+		{
+			UserID: testUserId1,
+			Memo:   "639469678",
+		},
+	}
+	for _, memo := range testUserMemos {
+		if err := s.DB.Create(&memo).Error; err != nil {
+			logger.Error(fmt.Sprintf("Error with creating user memo record for %v : %s", memo.UserID, err))
+		}
+	}
+
+	paymentRef := utility.RandomString(16)
+	value := strconv.FormatFloat(requestDetails.Value, 'g', utility.DigPrecision, 64)
+	testTransaction := model.Transaction{
+		InitiatorID:          "579ad9b5-6c19-4a32-959d-795f20fdeb8e",
+		RecipientID:          estUserAssets1[2].ID,
+		TransactionReference: paymentRef,
+		PaymentReference:     paymentRef,
+		TransactionType:      model.TransactionType,
+		TransactionStatus:    model.TransactionStatus.COMPLETED,
+		TransactionTag:       model.TransactionTag.CREDIT,
+		Value:                value,
+		PreviousBalance:      assetDetails.AvailableBalance,
+		AvailableBalance:     newAssetBalance,
+		ProcessingType:       model.ProcessingType.SINGLE,
+		TransactionStartDate: time.Now(),
+		TransactionEndDate:   time.Now(),
+		AssetSymbol:          assetDetails.AssetSymbol,
+	}
+	if err := s.DB.Create(&testTransaction).Error; err != nil {
+		logger.Error(fmt.Sprintf("Error with creating test transaction record for %v : %s", memo.UserID, err))
 	}
 
 	logger.Info("Supported assets seeded successfully")

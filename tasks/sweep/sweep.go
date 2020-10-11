@@ -36,8 +36,8 @@ type (
 func SweepTransactions(cache *cache.Memory, config Config.Data, repository database.IRepository) {
 	logger.Info("Sweep operation begins")
 	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
-
-	token, err := tasks.AcquireLock(&userAssetRepository, "sweep", constants.SIX_HUNDRED_MILLISECONDS, cache, config)
+	LockerService := services.NewLockerService(cache, config, repository)
+	lockerServiceResponse, err := LockerService.AcquireLock("sweep", constants.SIX_HUNDRED_MILLISECONDS)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -46,7 +46,7 @@ func SweepTransactions(cache *cache.Memory, config Config.Data, repository datab
 	var transactions []model.Transaction
 	if err := repository.FetchSweepCandidates(&transactions); err != nil {
 		logger.Error("Error response from Sweep job : could not fetch sweep candidates %+v", err)
-		if err := tasks.ReleaseLock(&userAssetRepository, cache, config, token); err != nil {
+		if err := tasks.ReleaseLock(&userAssetRepository, cache, config, lockerServiceResponse.Token); err != nil {
 			logger.Error("Could not release lock", err)
 			return
 		}
@@ -66,7 +66,7 @@ func SweepTransactions(cache *cache.Memory, config Config.Data, repository datab
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
 		if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: tx.RecipientID}}, &recipientAsset); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
-			if err := tasks.ReleaseLock(&userAssetRepository, cache, config, token); err != nil {
+			if err := tasks.ReleaseLock(&userAssetRepository, cache, config, lockerServiceResponse.Token); err != nil {
 				logger.Error("Could not release lock", err)
 				return
 			}
@@ -117,14 +117,14 @@ func SweepTransactions(cache *cache.Memory, config Config.Data, repository datab
 		if err := sweepBatchTx(cache, config, repository, batchAddresses, batchAssetTransactionsToSweep); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweeping batch transactions", err)
 			userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{Config: config, DB: repository.Db()}}}
-			if err := tasks.ReleaseLock(&userAssetRepository, cache, config, token); err != nil {
+			if err := tasks.ReleaseLock(&userAssetRepository, cache, config, lockerServiceResponse.Token); err != nil {
 				logger.Error("Could not release lock", err)
 				return
 			}
 			return
 		}
 	}
-	if err := tasks.ReleaseLock(&userAssetRepository, cache, config, token); err != nil {
+	if err := tasks.ReleaseLock(&userAssetRepository, cache, config, lockerServiceResponse.Token); err != nil {
 		logger.Error("Could not release lock", err)
 		return
 	}
