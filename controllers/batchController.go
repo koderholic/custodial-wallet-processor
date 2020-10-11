@@ -156,6 +156,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	chainTransaction := model.ChainTransaction{
 		TransactionHash: SignBatchTransactionAndBroadcastResponse.TransactionHash,
 		BatchID:         batch.ID,
+		AssetSymbol:     batch.AssetSymbol,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		processor.Logger.Error("Error response from ProcessBatchBTCTransactions : %+v while creating chain transaction", err)
@@ -199,6 +200,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 	chainTransaction := model.ChainTransaction{
 		TransactionHash: broadcastedTXNDetails.TransactionHash,
 		BatchID:         batch.ID,
+		AssetSymbol:     batch.AssetSymbol,
 	}
 	switch broadcastedTXNDetails.Status {
 	case utility.FAILED:
