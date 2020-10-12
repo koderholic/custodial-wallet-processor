@@ -14,6 +14,7 @@ type IRepository interface {
 	GetCount(model, count interface{}) error
 	Get(id interface{}, model interface{}) error
 	GetByFieldName(field interface{}, model interface{}) error
+	GetByFieldNameAndOrderBy(field, order, model interface{}) error
 	FetchByFieldName(field interface{}, model interface{}) error
 	Fetch(model interface{}) error
 	Create(model interface{}) error
@@ -82,6 +83,18 @@ func (repo *BaseRepository) Get(id interface{}, model interface{}) error {
 // GetByFieldName ... Retrieves a record for the specified model from the database for a given field name
 func (repo *BaseRepository) GetByFieldName(field interface{}, model interface{}) error {
 	if err := repo.DB.Where(field).First(model).Error; err != nil {
+		repo.Logger.Error("Error with repository GetByFieldName : %+v", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+// GetByFieldNameAndOrderBy ... Retrieves a record for the specified model from the database for a given field name
+func (repo *BaseRepository) GetByFieldNameAndOrderBy(field, order, model interface{}) error {
+	if err := repo.DB.Where(field).Order(order).First(model).Error; err != nil {
 		repo.Logger.Error("Error with repository GetByFieldName : %+v", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
