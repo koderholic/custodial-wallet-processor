@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/cache"
 
 	"github.com/magiconair/properties/assert"
 )
@@ -11,7 +12,7 @@ import (
 func TestCachePurgesAfterSetTime(t *testing.T) {
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := utility.InitializeCache(expiry, purgeInterval)
+	newCache := cache.Initialize(expiry, purgeInterval)
 
 	testKey, testValue := "test", "boy"
 
@@ -32,7 +33,7 @@ func TestCachePurgesAfterSetTime(t *testing.T) {
 func TestCacheNeverExpires(t *testing.T) {
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := utility.InitializeCache(expiry, purgeInterval)
+	newCache := cache.Initialize(expiry, purgeInterval)
 
 	testKey, testValue := "test", "boy"
 
@@ -58,7 +59,7 @@ func TestCacheSetAndGetsProperly(t *testing.T) {
 	}
 
 	expiry, purgeInterval := 5*time.Second, 10*time.Second
-	newCache := utility.InitializeCache(expiry, purgeInterval)
+	newCache := cache.Initialize(expiry, purgeInterval)
 
 	testKey1, testValue1 := "test", "boy"
 

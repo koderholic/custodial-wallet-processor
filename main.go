@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"wallet-adapter/app"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/migration"
+	"wallet-adapter/routes"
 	"wallet-adapter/services"
-	"wallet-adapter/utility"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/logger"
 
 	"github.com/getsentry/sentry-go"
 
@@ -24,33 +25,35 @@ func main() {
 	config := Config.Data{}
 	config.Init("")
 
-	logger := utility.NewLogger()
 	router := mux.NewRouter()
 	validator := validation.New()
 
 	Database := &database.Database{
-		Logger: logger,
 		Config: config,
 	}
 	Database.LoadDBInstance()
 	defer Database.CloseDBInstance()
-	if err := migration.RunDbMigrations(logger, config); err != nil {
-		log.Fatalf("Error running migration: %s", err)
+	if err := migration.RunDbMigrations(config); err != nil {
+		logger.Fatal("Error running migration: ", err)
 	}
 
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
-	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
+	authCache := cache.Initialize(cacheDuration, purgeInterval)
 
-	services.SeedSupportedAssets(Database.DB, logger, config, authCache)
-	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
+	DenominationServices := services.NewDenominationServices(authCache, config, nil)
+	DenominationServices.SeedSupportedAssets(Database.DB)
+
+	HotWalletService := services.NewHotWalletService(authCache, config, nil)
+	if err := HotWalletService.InitHotWallet(Database.DB); err != nil {
 		logger.Error("Error with InitHotWallet %s", err)
 	}
-	if err := services.InitSharedAddress(authCache, Database.DB, logger, config); err != nil {
+	SharedAddressService := services.NewSharedAddressService(authCache, config, nil)
+	if err := SharedAddressService.InitSharedAddress(Database.DB); err != nil {
 		logger.Error("Error with InitSharedAddress %s", err)
 	}
 
-	app.RegisterRoutes(router, validator, config, logger, Database.DB, authCache)
+	routes.Register(router, validator, config, Database.DB, authCache)
 
 	serviceAddress := ":" + config.AppPort
 

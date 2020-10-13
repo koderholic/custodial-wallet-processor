@@ -6,38 +6,62 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
-	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
+	"wallet-adapter/utility/appError"
+	"wallet-adapter/utility/cache"
+	"wallet-adapter/utility/constants"
+	"wallet-adapter/utility/errorcode"
+	"wallet-adapter/utility/logger"
+
 	"wallet-adapter/utility"
 
 	uuid "github.com/satori/go.uuid"
 )
 
-func GenerateV1Address(logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (string, error) {
-	var externalServiceErr dto.ServicesRequestErr
+//UserAddressService object
+type UserAddressService struct {
+	Cache      *cache.Memory
+	Config     Config.Data
+	Error      *dto.ExternalServicesRequestErr
+	Repository database.IRepository
+}
 
-	// Calls key-management service to create an address for the user asset
-	AddressService := BaseService{Config: config, Cache: cache, Logger: logger}
-	v1Address, err := AddressService.GenerateAddress(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, &externalServiceErr)
+func NewUserAddressService(cache *cache.Memory, config Config.Data, repository database.IRepository) *UserAddressService {
+	baseService := UserAddressService{
+		Cache:      cache,
+		Config:     config,
+		Repository: repository,
+		Error:      &dto.ExternalServicesRequestErr{},
+	}
+	return &baseService
+}
+
+func (service *UserAddressService) GenerateV1Address(userAsset model.UserAsset) (string, error) {
+	var externalServiceErr dto.ExternalServicesRequestErr
+	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
+	v1Address, err := KeyManagementService.GenerateAddress(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType)
 	if err != nil || v1Address == "" {
 		logger.Error("Error response from userAddress service, could not generate user address : %v => %s ", externalServiceErr, err)
 		if externalServiceErr.Code != "" {
 			return v1Address, errors.New(externalServiceErr.Message)
 		}
-		return v1Address, errors.New(errorcode.SYSTEM_ERR)
+		return v1Address, errors.New(errorcode.SERVER_ERR)
 	}
 
 	return v1Address, nil
 }
 
-func GenerateV2AddressWithMemo(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset, addressWithMemo *dto.AssetAddress) error {
-	v2Address, err := GetSharedAddressFor(cache, repository.Db(), logger, config, userAsset.AssetSymbol)
+func (service *UserAddressService) GenerateV2AddressWithMemo(userAsset model.UserAsset, addressWithMemo *dto.AssetAddress) error {
+	repository := service.Repository.(database.IUserAddressRepository)
+
+	SharedAddressService := NewSharedAddressService(service.Cache, service.Config, service.Repository)
+	v2Address, err := SharedAddressService.GetSharedAddressFor(repository.Db(), userAsset.AssetSymbol)
 	if err != nil || v2Address == "" {
 		logger.Error("Error response from shared address service : %s ", err)
-		return errors.New(errorcode.SYSTEM_ERR)
+		return errors.New(errorcode.SERVER_ERR)
 	}
 	addressWithMemo.Address = v2Address
-	addressWithMemo.Memo, err = GenerateMemo(repository, userAsset.UserID)
+	addressWithMemo.Memo, err = service.GenerateMemo(userAsset.UserID)
 	if err != nil {
 		return err
 	}
@@ -45,7 +69,8 @@ func GenerateV2AddressWithMemo(repository database.IUserAssetRepository, logger 
 }
 
 // CheckCoinTypeAddressExist... checks if an address has been created for one of it's user's assets with same coinType and use that instead
-func CheckCoinTypeAddressExist(repository database.IUserAssetRepository, logger *utility.Logger, userAsset model.UserAsset, coinTypeAddress *dto.AssetAddress) (bool, error) {
+func (service *UserAddressService) CheckCoinTypeAddressExist(userAsset model.UserAsset, coinTypeAddress *dto.AssetAddress) (bool, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	coinTypeToAddrMap := map[int64]dto.AssetAddress{}
 
@@ -74,16 +99,16 @@ func CheckCoinTypeAddressExist(repository database.IUserAssetRepository, logger 
 	return false, nil
 }
 
-func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (string, error) {
+func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (string, error) {
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
 	var addressResponse []dto.AllAddressResponse
-	var externalServiceErr dto.ServicesRequestErr
 	var addressType string
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddress)
 	if (err != nil && err.Error() == errorcode.SQL_404) || (err == nil && userAddress.Address == "") {
-		isExist, err := CheckCoinTypeAddressExist(repository, logger, userAsset, &assetAddress)
+		isExist, err := service.CheckCoinTypeAddressExist(userAsset, &assetAddress)
 		if err != nil {
 			return "", err
 		}
@@ -91,11 +116,11 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 		userAddress.Address = assetAddress.Address
 		userAddress.AddressType = assetAddress.Type
 		if !isExist {
-			AddressService := BaseService{Config: config, Cache: cache, Logger: logger}
-			if userAsset.AssetSymbol == utility.COIN_BTC {
-				addressType = utility.ADDRESS_TYPE_SEGWIT
+			if userAsset.AssetSymbol == constants.COIN_BTC {
+				addressType = constants.ADDRESS_TYPE_SEGWIT
 			}
-			addressResponse, err = AddressService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, addressType, externalServiceErr)
+			KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
+			addressResponse, err = KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, addressType)
 			if err != nil {
 				return "", err
 			}
@@ -106,7 +131,7 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 
 		if err := repository.Create(&userAddress); err != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-			return "", errors.New(utility.GetSQLErr(err))
+			return "", err
 		}
 
 	} else if err != nil {
@@ -116,13 +141,15 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 	return userAddress.Address, nil
 }
 
-func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (dto.AssetAddress, error) {
+func (service *UserAddressService) GetV2AddressWithMemo(userAsset model.UserAsset) (dto.AssetAddress, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
+
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddress)
 	if (err != nil && err.Error() == errorcode.SQL_404) || (err == nil && userAddress.V2Address == "") {
-		if err := GenerateV2AddressWithMemo(repository, logger, cache, config, userAsset, &assetAddress); err != nil {
+		if err := service.GenerateV2AddressWithMemo(userAsset, &assetAddress); err != nil {
 			return dto.AssetAddress{}, err
 		}
 		userAddress.AssetID = userAsset.ID
@@ -131,7 +158,7 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 
 		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo}); createErr != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
-			return dto.AssetAddress{}, errors.New(utility.GetSQLErr(err))
+			return dto.AssetAddress{}, err
 		}
 		userAddress.V2Address = assetAddress.Address
 		userAddress.Memo = assetAddress.Memo
@@ -142,7 +169,8 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 	return dto.AssetAddress{Address: userAddress.V2Address, Memo: userAddress.Memo}, nil
 }
 
-func GenerateMemo(repository database.IUserAssetRepository, userId uuid.UUID) (string, error) {
+func (service *UserAddressService) GenerateMemo(userId uuid.UUID) (string, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 	// Memo lookup on the db
 	memo := strconv.Itoa(utility.RandNo(100000000, 999999999))
 	userMemo := model.UserMemo{
@@ -156,8 +184,9 @@ func GenerateMemo(repository database.IUserAssetRepository, userId uuid.UUID) (s
 	return userMemo.Memo, nil
 }
 
-func CheckV2Address(repository database.IUserAssetRepository, address string) (bool, error) {
+func (service *UserAddressService) CheckV2Address(address string) (bool, error) {
 	sharedAddress := model.SharedAddress{}
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	if err := repository.GetByFieldName(&model.SharedAddress{Address: address}, &sharedAddress); err != nil {
 		if err.Error() == errorcode.SQL_404 {
@@ -170,47 +199,24 @@ func CheckV2Address(repository database.IUserAssetRepository, address string) (b
 
 }
 
-func GetAssetForV1Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string) (model.UserAsset, error) {
-	var userAsset model.UserAsset
-
-	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
-		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
-		return model.UserAsset{}, err
-	}
-	logger.Info("GetAssetForV1Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
-
-	return userAsset, nil
-}
-
-func GetAssetForV2Address(repository database.IUserAssetRepository, logger *utility.Logger, address string, assetSymbol string, memo string) (model.UserAsset, error) {
-	var userAsset model.UserAsset
-
-	if err := repository.GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address, &userAsset); err != nil {
-		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, error : %+v", address, memo, assetSymbol, err)
-		return model.UserAsset{}, err
-	}
-	logger.Info("GetAssetForV2Address logs : address : %s and memo : %s, assetSymbol : %s, assest : %+v", address, memo, assetSymbol, userAsset)
-
-	return userAsset, nil
-}
-
-func (service BaseService) GetBTCAddresses(repository database.IUserAssetRepository, userAsset model.UserAsset) ([]dto.AssetAddress, error) {
+func (service *UserAddressService) GetBTCAddresses(userAsset model.UserAsset) ([]dto.AssetAddress, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 	var userAddresses []model.UserAddress
 	var assetAddresses []dto.AssetAddress
 	var responseAddresses []dto.AllAddressResponse
 
 	err := repository.FetchByFieldName(&model.UserAddress{AssetID: userAsset.ID}, &userAddresses)
 	if err != nil {
-		service.Logger.Error("Error response from userAddress service, could not generate user BTC addresses : %s ", err)
+		logger.Error("Error response from userAddress service, could not generate user BTC addresses : %s ", err)
 		return []dto.AssetAddress{}, err
 	}
 
 	if len(userAddresses) == 0 {
-		responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, "")
+		responseAddresses, err = service.GenerateAndCreateBTCAddresses(userAsset, "")
 		if err != nil {
 			return []dto.AssetAddress{}, err
 		}
-		assetAddresses = TransformAddressesResponse(responseAddresses)
+		assetAddresses = service.TransformAddressesResponse(responseAddresses)
 	} else {
 		// Create for the missing address
 		availbleAddress := map[string]bool{}
@@ -223,23 +229,23 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 			assetAddresses = append(assetAddresses, assetAddress)
 		}
 
-		if !availbleAddress[utility.ADDRESS_TYPE_SEGWIT] {
+		if !availbleAddress[constants.ADDRESS_TYPE_SEGWIT] {
 			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_SEGWIT)
+			responseAddresses, err = service.GenerateAndCreateBTCAddresses(userAsset, constants.ADDRESS_TYPE_SEGWIT)
 			if err != nil {
 				return []dto.AssetAddress{}, err
 			}
-			transformedResponse := TransformAddressesResponse(responseAddresses)
+			transformedResponse := service.TransformAddressesResponse(responseAddresses)
 			assetAddresses = append(assetAddresses, transformedResponse...)
 		}
 
-		if !availbleAddress[utility.ADDRESS_TYPE_LEGACY] {
+		if !availbleAddress[constants.ADDRESS_TYPE_LEGACY] {
 			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_LEGACY)
+			responseAddresses, err = service.GenerateAndCreateBTCAddresses(userAsset, constants.ADDRESS_TYPE_LEGACY)
 			if err != nil {
 				return []dto.AssetAddress{}, err
 			}
-			transformedResponse := TransformAddressesResponse(responseAddresses)
+			transformedResponse := service.TransformAddressesResponse(responseAddresses)
 			assetAddresses = append(assetAddresses, transformedResponse...)
 		}
 
@@ -248,25 +254,26 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 	return assetAddresses, nil
 }
 
-func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUserAssetRepository, asset model.UserAsset, addressType string) ([]dto.AllAddressResponse, error) {
-	var externalServiceErr dto.ServicesRequestErr
+func (service *UserAddressService) GenerateAndCreateBTCAddresses(asset model.UserAsset, addressType string) ([]dto.AllAddressResponse, error) {
+	repository := service.Repository.(database.IUserAddressRepository)
 
-	responseAddresses, err := service.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType, externalServiceErr)
+	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
+	responseAddresses, err := KeyManagementService.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
 	if err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
 
 	for _, address := range responseAddresses {
 		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID}); err != nil {
-			service.Logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
-			return []dto.AllAddressResponse{}, errors.New(utility.GetSQLErr(err))
+			logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
+			return []dto.AllAddressResponse{}, errors.New(appError.GetSQLErr(err))
 		}
 	}
 
 	return responseAddresses, nil
 }
 
-func TransformAddressesResponse(responseAddresses []dto.AllAddressResponse) []dto.AssetAddress {
+func (service *UserAddressService) TransformAddressesResponse(responseAddresses []dto.AllAddressResponse) []dto.AssetAddress {
 	assetAddresses := []dto.AssetAddress{}
 	for _, item := range responseAddresses {
 		address := dto.AssetAddress{
