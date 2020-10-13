@@ -94,7 +94,7 @@ func (repo *BaseRepository) GetByFieldName(field interface{}, model interface{})
 
 // GetChainTransactionByHash ... Retrieves a record for the specified model from the database for a given field name
 func (repo *BaseRepository) GetChainTransactionByHash(transactionHash string, model interface{}) error {
-	if err := repo.DB.Raw(`SELECT * FROM chain_transactions  WHERE transaction_hash = ? ORDER BY created_at DESC LIMIT 1`, transactionHash).Scan(model).Error; err != nil {
+	if err := repo.DB.Raw(`SELECT * FROM chain_transactions  WHERE transaction_hash = ? ORDER BY created_at ASC LIMIT 1`, transactionHash).Scan(model).Error; err != nil {
 		repo.Logger.Error("Error with repository GetChainTransactionByHash %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
