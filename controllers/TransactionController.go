@@ -348,7 +348,7 @@ func (controller TransactionController) ConfirmTransaction(responseWriter http.R
 
 	// Get the chain transaction for the request hash
 	chainTransaction := model.ChainTransaction{}
-	err := controller.Repository.Get(&model.ChainTransaction{TransactionHash: requestData.TransactionHash}, &chainTransaction)
+	err := controller.Repository.GetChainTransactionByHash(requestData.TransactionHash, &chainTransaction)
 	if err != nil {
 		ReturnError(responseWriter, "ConfirmTransaction", err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get chainTransaction with transactionHash = %s", appError.GetSQLErr(err), requestData.TransactionHash)))
 		return

@@ -216,28 +216,29 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 	if e != nil {
 		return e
 	}
-	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol)
-	if err != nil {
-		return err
-	}
 	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: transactionListInfo.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
 		return err
 	}
 
-	userAssetRepository := database.UserAssetRepository{BaseRepository: database.BaseRepository{Database: database.Database{config, repository.Db()}}}
-	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, config, &userAssetRepository, floatAccount)
+	//Check that sweep amount is not below the minimum sweep amount
+	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
+	if !isAmountSufficient {
+		return err
+	}
+
+	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, logger)
+	if err != nil {
+		return err
+	}
+
+	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
 		return err
 	}
 
-	//Check that sweep amount is not below the minimum sweep amount
-	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum)
-	if !isAmountSufficient {
-		return err
-	}
 	//Do this only for BEp-2 tokens and not for BNB itself
 	if denomination.RequiresMemo && *denomination.IsToken {
 		//send sweep fee to main address
@@ -256,9 +257,10 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 		Amount:      big.NewInt(0),
 		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
-		ProcessType: constants.SWEEPPROCESS,
-		Reference:   addressTransactions[0].TransactionReference,
+		ProcessType: utility.SWEEPPROCESS,
+		Reference:   fmt.Sprintf("%s-%d", recipientAddress, time.Now().Unix()),
 	}
+
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &SignTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)
