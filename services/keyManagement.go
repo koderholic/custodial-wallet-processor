@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
 	"wallet-adapter/utility"
@@ -168,7 +169,7 @@ func SignTransactionAndBroadcast(cache *utility.MemoryCache, logger *utility.Log
 	return nil
 }
 
-func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
+func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
@@ -201,7 +202,7 @@ func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, l
 
 }
 
-func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchBTCRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
@@ -239,17 +240,9 @@ func (service BaseService) subscribeAddress(serviceErr interface{}, addressArray
 
 	subscriptionRequestDataV2 := dto.SubscriptionRequestV2{}
 	subscriptionRequestDataV2.Subscriptions = make(map[string][]string)
-	switch coinType {
-	case 0:
-		subscriptionRequestDataV2.Subscriptions[service.Config.BtcSlipValue] = addressArray
-		break
-	case 60:
-		subscriptionRequestDataV2.Subscriptions[service.Config.EthSlipValue] = addressArray
-		break
-	case 714:
-		subscriptionRequestDataV2.Subscriptions[service.Config.BnbSlipValue] = addressArray
-		break
-	}
+
+	subscriptionRequestDataV2.Subscriptions[strconv.Itoa(int(coinType))] = addressArray
+
 	subscriptionResponseData := dto.SubscriptionResponse{}
 	if err := SubscribeAddressV2(service.Cache, service.Logger, service.Config, subscriptionRequestDataV2, &subscriptionResponseData, serviceErr); err != nil {
 		service.Logger.Error("Failing to subscribe to addresses %+v with err %s\n", addressArray, err)

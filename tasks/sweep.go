@@ -19,9 +19,9 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// BTCSweepParam ... Model definition for BTC sweep
+// SweepParam ... Model definition for batch sweep
 type (
-	BTCSweepParam struct {
+	SweepParam struct {
 		FloatAddress     string
 		BrokerageAddress string
 		FloatPercent     int64
@@ -50,11 +50,11 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 
 	logger.Info("Fetched %d sweep candidates", len(transactions))
 
-	var btcAddresses []string
-	var btcAssetTransactionsToSweep []model.Transaction
+	var batchAddresses []string
+	var batchAssetTransactionsToSweep []model.Transaction
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	for _, tx := range transactions {
-		//Filter BTC assets, save in a seperate list for batch processing and skip individual processing
+		//Filter batchable assets, save in a seperate list for batch processing and skip individual processing
 		//need recipient Asset to check assetSymbol
 		recipientAsset := model.UserAsset{}
 		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
@@ -66,7 +66,12 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			}
 			return
 		}
-		if recipientAsset.AssetSymbol == utility.COIN_BTC {
+
+		denomination := model.Denomination{}
+		if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: tx.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+			continue
+		}
+		if *denomination.IsBatchable {
 			//get recipient address for transaction
 			chainTransaction := model.ChainTransaction{}
 			err = getChainTransaction(repository, tx, &chainTransaction, logger)
@@ -76,16 +81,16 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 				continue
 
 			}
-			btcAddresses = append(btcAddresses, chainTransaction.RecipientAddress)
-			btcAssetTransactionsToSweep = append(btcAssetTransactionsToSweep, tx)
-			//skip futher processing for this asset, will be included a part of batch btc processing
+			batchAddresses = append(batchAddresses, chainTransaction.RecipientAddress)
+			batchAssetTransactionsToSweep = append(batchAssetTransactionsToSweep, tx)
+			//skip futher processing for this asset, will be included a part of batch processing
 			continue
 		}
 	}
-	btcAddresses = ToUniqueAddresses(btcAddresses)
+	batchAddresses = ToUniqueAddresses(batchAddresses)
 	//remove btc transactions from list of remaining transactions
-	transactions = RemoveBTCTransactions(transactions, btcAssetTransactionsToSweep)
-	//Do other Coins apart from BTC
+	transactions = RemoveBatchTransactions(transactions, batchAssetTransactionsToSweep)
+	//Do other Coins apart from batchable assets
 	transactionsPerAddressPerAssetSymbol, err := GroupTxByAddressByAssetSymbol(transactions, repository, logger)
 	if err != nil {
 		logger.Error("Error grouping By Address", err)
@@ -102,9 +107,9 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		}
 	}
 	//batch process btc
-	if len(btcAddresses) > 0 {
-		if err := sweepBatchTx(cache, logger, config, repository, serviceErr, btcAddresses, btcAssetTransactionsToSweep); err != nil {
-			logger.Error("Error response from Sweep job : %+v while sweeping batch transactions for BTC", err)
+	if len(batchAddresses) > 0 {
+		if err := sweepBatchTx(cache, logger, config, repository, serviceErr, batchAddresses, batchAssetTransactionsToSweep); err != nil {
+			logger.Error("Error response from Sweep job : %+v while sweeping batch transactions", err)
 			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 				logger.Error("Could not release lock", err)
 				return
@@ -129,7 +134,7 @@ func CalculateSum(addressTransactions []model.Transaction) float64 {
 	return sum
 }
 
-func CalculateSumOfBtcBatch(addressTransactions []model.Transaction) float64 {
+func CalculateSumOfBatch(addressTransactions []model.Transaction) float64 {
 	//Get total sum to be swept for this batch
 	var sum = float64(0)
 	for _, tx := range addressTransactions {
@@ -139,19 +144,24 @@ func CalculateSumOfBtcBatch(addressTransactions []model.Transaction) float64 {
 	return sum
 }
 
-func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, btcAddresses []string, btcAssetTransactionsToSweep []model.Transaction) error {
+func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, batchAddresses []string, batchAssetTransactionsToSweep []model.Transaction) error {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: batchAssetTransactionsToSweep[0].AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return err
+	}
+
 	// Calls key-management to batch sign transaction
 	recipientData := []dto.BatchRecipients{}
 	//get float
-	floatAccount, err := getFloatDetails(repository, "BTC", logger)
+	floatAccount, err := getFloatDetails(repository, denomination.AssetSymbol, logger)
 	if err != nil {
 		return err
 	}
 
 	//check total sum threshold for this batch
-	totalSweepSum := CalculateSumOfBtcBatch(btcAssetTransactionsToSweep)
-	if totalSweepSum < config.BTC_minimumSweep {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, utility.COIN_BTC, config.BTC_minimumSweep, err)
+	totalSweepSum := CalculateSumOfBatch(batchAssetTransactionsToSweep)
+	if totalSweepSum < denomination.MinimumSweepable {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, denomination.AssetSymbol, denomination.MinimumSweepable, err)
 		return err
 	}
 
@@ -175,20 +185,20 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		}
 		recipientData = append(recipientData, brokerageRecipient)
 	}
-	signBatchTransactionAndBroadcastRequest := dto.BatchBTCRequest{
-		AssetSymbol:   "BTC",
+	signBatchTransactionAndBroadcastRequest := dto.BatchRequest{
+		AssetSymbol:   denomination.AssetSymbol,
 		ChangeAddress: sweepParam.BrokerageAddress,
 		IsSweep:       true,
-		Origins:       btcAddresses,
+		Origins:       batchAddresses,
 		Recipients:    recipientData,
 		ProcessType:   utility.SWEEPPROCESS,
 	}
 	signBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	if err := services.SignBatchTransactionAndBroadcast(nil, cache, logger, config, signBatchTransactionAndBroadcastRequest, &signBatchTransactionAndBroadcastResponse, serviceErr); err != nil {
-		logger.Error("Error response from SignBatchTransactionAndBroadcast : %+v while sweeping batch transactions for BTC", err)
+		logger.Error("Error response from SignBatchTransactionAndBroadcast : %+v while sweeping batch transactions", err)
 		return err
 	}
-	if err := updateSweptStatus(btcAssetTransactionsToSweep, repository, logger); err != nil {
+	if err := updateSweptStatus(batchAssetTransactionsToSweep, repository, logger); err != nil {
 		return err
 	}
 	return nil
@@ -225,7 +235,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 
 	//Do this only for BEp-2 tokens and not for BNB itself
-	if denomination.CoinType == utility.BNBTOKENSLIP && denomination.AssetSymbol != utility.COIN_BNB {
+	if denomination.RequiresMemo && *denomination.IsToken {
 		//send sweep fee to main address
 		err, _ := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, addressTransactions, repository)
 		if err != nil {
@@ -266,23 +276,8 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 }
 
 func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) (bool, error) {
-	var minimumSweep float64
-	switch denomination.AssetSymbol {
-	case utility.COIN_ETH:
-		minimumSweep = config.ETH_minimumSweep
-
-	case utility.COIN_BNB:
-		minimumSweep = config.BNB_minimumSweep
-	case utility.COIN_BUSD:
-		minimumSweep = config.BUSD_minimumSweep
-	default:
-		return false, utility.AppError{
-			ErrType: utility.SWEEP_ERROR_ASSET_NOT_SUPPORTED,
-			Err:     errors.New(utility.SWEEP_ERROR_ASSET_NOT_SUPPORTED),
-		}
-	}
-	if sum < minimumSweep {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, minimumSweep)
+	if sum < denomination.MinimumSweepable {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, denomination.MinimumSweepable)
 		return false, utility.AppError{
 			ErrType: utility.SWEEP_ERROR_INSUFFICIENT,
 			Err:     errors.New(utility.SWEEP_ERROR_INSUFFICIENT),
@@ -341,8 +336,8 @@ func getChainTransaction(repository database.BaseRepository, tx model.Transactio
 	return nil
 }
 
-// RemoveBTCTransactions returns the elements in `a` that aren't in `b`.
-func RemoveBTCTransactions(a []model.Transaction, b []model.Transaction) []model.Transaction {
+// RemoveBatchTransactions returns the elements in `a` that aren't in `b`.
+func RemoveBatchTransactions(a []model.Transaction, b []model.Transaction) []model.Transaction {
 
 	mb := make(map[uuid.UUID]struct{}, len(b))
 	for _, x := range b {
@@ -389,7 +384,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			ToAddress:   recipientAddress,
 			Amount:      big.NewInt(denomination.SweepFee),
 			AssetSymbol: denomination.MainCoinAssetSymbol,
-			//this currently only supports coins that supports Memo, ETH will be ignored
+			//this currently only supports coins that supports Memo,  other coins will be ignored
 			Memo:        utility.SWEEPMEMOBNB,
 			ProcessType: utility.FLOATPROCESS,
 			Reference:   fmt.Sprintf("%s-%s", denomination.MainCoinAssetSymbol, assetTransactions[0].TransactionReference),
@@ -407,9 +402,9 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	return nil, false
 }
 
-func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, sweepFund float64) (BTCSweepParam, error) {
+func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, sweepFund float64) (SweepParam, error) {
 
-	sweepParam := BTCSweepParam{}
+	sweepParam := SweepParam{}
 	serviceErr := dto.ServicesRequestErr{}
 
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
@@ -465,7 +460,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 
 	floatPercent, brokeragePercent := GetSweepPercentages(floatOnChainBalance, minimumFloatBalance, floatDeficit, big.NewFloat(sweepFund), totalUsersBalance, floatManagerParams, logger)
 
-	sweepParam = BTCSweepParam{
+	sweepParam = SweepParam{
 		FloatAddress:     floatAccount.Address,
 		FloatPercent:     floatPercent,
 		BrokerageAddress: brokerageAccountResponse.Address,

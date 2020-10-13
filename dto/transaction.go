@@ -43,7 +43,7 @@ type ExternalTransferResponse struct {
 	TransactionStatus    string `json:"transactionStatus,omitempty"`
 }
 
-type BatchBTCRequest struct {
+type BatchRequest struct {
 	AssetSymbol   string            `json:"assetSymbol"`
 	ChangeAddress string            `json:"changeAddress"`
 	IsSweep       bool              `json:"isSweep"`
