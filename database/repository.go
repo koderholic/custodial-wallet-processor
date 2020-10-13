@@ -19,6 +19,7 @@ import (
 type IRepository interface {
 	Get(id interface{}, model interface{}) error
 	GetByFieldName(field interface{}, model interface{}) error
+	GetChainTransactionByHash(transactionHash string, model interface{}) error
 	FetchByFieldName(field interface{}, model interface{}) error
 	Fetch(model interface{}) error
 	Create(model interface{}) error
@@ -69,6 +70,18 @@ func (repo *BaseRepository) GetByFieldName(field interface{}, model interface{})
 	if err := repo.DB.Where(field).First(model).Error; err != nil {
 		logger.Error("Error with repository GetByFieldName : %+v", err)
 		return repoError(err)
+	}
+	return nil
+}
+
+// GetChainTransactionByHash ... Retrieves a record for the specified model from the database for a given field name
+func (repo *BaseRepository) GetChainTransactionByHash(transactionHash string, model interface{}) error {
+	if err := repo.DB.Raw(`SELECT * FROM chain_transactions  WHERE transaction_hash = ? ORDER BY created_at ASC LIMIT 1`, transactionHash).Scan(model).Error; err != nil {
+		logger.Error("Error with repository GetChainTransactionByHash %s", err)
+		return appError.Err{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
 	}
 	return nil
 }

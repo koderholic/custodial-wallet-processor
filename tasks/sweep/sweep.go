@@ -259,7 +259,7 @@ func sweepPerAddress(cache *cache.Memory, config Config.Data, repository databas
 		AssetSymbol: transactionListInfo.AssetSymbol,
 		IsSweep:     true,
 		ProcessType: constants.SWEEPPROCESS,
-		Reference:   addressTransactions[0].TransactionReference,
+		Reference:   fmt.Sprintf("%s-%d", recipientAddress, time.Now().Unix()),
 	}
 	SignTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
 	KeyManagementService := services.NewKeyManagementService(cache, config, repository)
