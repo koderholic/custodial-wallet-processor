@@ -27,7 +27,9 @@ const (
 	INSUFFICIENT_FUNDS                  = "INSUFFICIENT_FUNDS"
 	BROADCAST_FAILED_ERR                = "TRANSACTION_BROADCAST_FAILED"
 	BROADCAST_REJECTED_ERR              = "TRANSACTION_REJECTED_ON_BROADCAST"
+	WITHDRAWAL_NOT_ACTIVE_CODE          = "WITHDRAWAL_NOT_ACTIVE"
 	WITHDRAWAL_NOT_ACTIVE               = "Withdrawal operation is currently not available for this asset"
+	DEPOSIT_NOT_ACTIVE_CODE             = "DEPOSIT_NOT_ACTIVE"
 	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
 	ASSET_NOT_SUPPORTED                 = "ASSET_NOT_SUPPORTED"
 	VALIDATION_ERR_CODE                 = "VALIDATION_ERR"
@@ -37,4 +39,6 @@ const (
 	SWEEP_ERROR_ASSET_NOT_SUPPORTED     = "Sweep checkInsufficient sum asset not supported"
 	COULD_NOT_SUBSCRIBE_ADDRESS         = "COULD_NOT_SUBSCRIBE_ADDRESS"
 	SWEEP_ERROR_INSUFFICIENT            = "Sweep amount is insufficient"
+	INVALID_DEBIT_CODE                  = "INVALID_DEBIT"
+	INVALID_DEBIT_AMOUNT_CODE           = "INVALID_DEBIT_AMOUNT"
 )

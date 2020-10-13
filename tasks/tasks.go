@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -9,7 +8,6 @@ import (
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
-	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility/cache"
@@ -20,29 +18,9 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func AcquireLock(repository database.IUserAssetRepository, identifier string, ttl int64, cache *cache.Memory, config Config.Data) (string, error) {
-	// It calls the lock service to obtain a lock for the transaction
-	lockerServiceRequest := dto.LockerServiceRequest{
-		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, identifier),
-		ExpiresAfter: ttl,
-	}
-	lockerServiceResponse := dto.LockerServiceResponse{}
-	LockerService := services.NewLockerService(cache, config, repository)
-	if err := LockerService.AcquireLock(lockerServiceRequest, &lockerServiceResponse); err != nil {
-		logger.Error("Error occured while obtaining lock : %s", err)
-		return "", err
-	}
-	return lockerServiceResponse.Token, nil
-}
-
 func ReleaseLock(repository database.IUserAssetRepository, cache *cache.Memory, config Config.Data, lockerServiceToken string) error {
-	lockReleaseRequest := dto.LockReleaseRequest{
-		Identifier: fmt.Sprintf("%s%s", config.LockerPrefix, "sweep"),
-		Token:      lockerServiceToken,
-	}
-	lockReleaseResponse := dto.ServicesRequestSuccess{}
 	LockerService := services.NewLockerService(cache, config, repository)
-	if err := LockerService.ReleaseLock(lockReleaseRequest, &lockReleaseResponse); err != nil {
+	if err := LockerService.ReleaseLock("sweep", lockerServiceToken); err != nil {
 		return err
 	}
 	return nil
@@ -55,7 +33,9 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	}
 	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
 	//send sms
-	if _, err := AcquireLock(repository, errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS, cache, config); err == nil {
+	LockerService := services.NewLockerService(cache, config, repository)
+	_, err := LockerService.AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS)
+	if err != nil {
 		//lock was successfully acquired
 		NotificationService := services.NewNotificationService(cache, config, repository)
 		NotificationService.BuildAndSendSms(assetSymbol, decimalBalance)

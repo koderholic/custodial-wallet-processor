@@ -177,7 +177,7 @@ func (s *Suite) RegisterRoutes(Config config.Data, router *mux.Router, validator
 
 // RunDbMigrations ... This creates corresponding tables for dtos on the db for testing
 func (s *Suite) RunMigration() {
-	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.SharedAddress{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{})
+	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.SharedAddress{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{}, &model.UserMemo{})
 }
 
 // DBSeeder .. This seeds supported assets into the database for testing
@@ -307,6 +307,18 @@ func (s *Suite) DBSeeder() {
 	}
 	if err := s.DB.Create(&testSharedAddress).Error; err != nil {
 		logger.Error(fmt.Sprintf("Error with creating shared address record for %v : %s", testSharedAddress.Address, err))
+	}
+
+	testUserMemos := []model.UserMemo{
+		{
+			UserID: testUserId1,
+			Memo:   "639469678",
+		},
+	}
+	for _, memo := range testUserMemos {
+		if err := s.DB.Create(&memo).Error; err != nil {
+			logger.Error(fmt.Sprintf("Error with creating user memo record for %v : %s", memo.UserID, err))
+		}
 	}
 
 	logger.Info("Supported assets seeded successfully")

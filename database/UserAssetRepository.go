@@ -58,16 +58,16 @@ func (repo *UserAssetRepository) FindOrCreateAssets(checkExistOrUpdate interface
 	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(checkExistOrUpdate).Find(model).Error; err != nil {
 		if err.Error() == "record not found" {
 			if err := repo.DB.Create(model).Error; err != nil {
-				logger.Error("Error with repository Create : %s", err)
+				logger.Error("Error with repository FindOrCreateAssets : %s", err)
 				return repoError(err)
 			}
 			if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(checkExistOrUpdate).Find(model).Error; err != nil {
-				logger.Error("Error with repository GetAssetsByID %s", err)
+				logger.Error("Error with repository FindOrCreateAssets %s", err)
 				return repoError(err)
 			}
 			return nil
 		}
-		logger.Error("Error with repository GetAssetsByID %s", err)
+		logger.Error("Error with repository FindOrCreateAssets %s", err)
 		return repoError(err)
 	}
 

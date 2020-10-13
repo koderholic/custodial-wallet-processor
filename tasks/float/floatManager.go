@@ -24,7 +24,8 @@ import (
 
 func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IRepository, userAssetRepository database.IUserAssetRepository) {
 	logger.Info("Float manager process begins")
-	token, err := tasks.AcquireLock(userAssetRepository, "float", constants.SIX_HUNDRED_MILLISECONDS, cache, config)
+	LockerService := services.NewLockerService(cache, config, repository)
+	lockerServiceResponse, err := LockerService.AcquireLock("float", constants.SIX_HUNDRED_MILLISECONDS)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -203,7 +204,7 @@ func ManageFloat(cache *cache.Memory, config Config.Data, repository database.IR
 
 	}
 
-	if err := tasks.ReleaseLock(userAssetRepository, cache, config, token); err != nil {
+	if err := tasks.ReleaseLock(userAssetRepository, cache, config, lockerServiceResponse.Token); err != nil {
 		logger.Error("Could not release lock", err)
 		return
 	}
@@ -231,7 +232,7 @@ func saveFloatVariables(repository database.IRepository, depositSumFromLastRun, 
 
 func notifyColdWalletUsers(emailType string, params map[string]string, config Config.Data, err error, cache *cache.Memory) error {
 	coldWalletEmails := []dto.EmailUser{
-		dto.EmailUser{
+		{
 			Name:  "Binance Cold wallet user",
 			Email: config.ColdWalletEmail,
 		},
@@ -404,4 +405,14 @@ func IsSentColdWalletMail(repository database.IRepository, deficit *big.Float, a
 	}
 
 	return false, nil
+}
+
+func GetFloatAddressFor(repository database.IRepository, symbol string) (string, error) {
+	//Get the float address
+	var floatAccount model.HotWalletAsset
+	if err := repository.Get(&model.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id and trying to get float detials", err)
+		return "", err
+	}
+	return floatAccount.Address, nil
 }
