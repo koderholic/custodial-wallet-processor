@@ -209,7 +209,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 
 	// Get the chain transaction for the request hash
 	chainTransaction := model.ChainTransaction{}
-	err := controller.Repository.GetByFieldNameAndOrderByDesc(&model.ChainTransaction{TransactionHash: requestData.TransactionHash}, &chainTransaction)
+	err := controller.Repository.GetChainTransactionByHash(requestData.TransactionHash, &chainTransaction)
 	if err != nil {
 		ReturnError(responseWriter, "ConfirmTransaction", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get chainTransaction with transactionHash = %s", utility.GetSQLErr(err), requestData.TransactionHash)), controller.Logger)
 		return
