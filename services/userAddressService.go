@@ -215,7 +215,6 @@ func (service *UserAddressService) GenerateV2Address(userAsset model.UserAsset, 
 }
 
 func (service *UserAddressService) GenerateMemo(userId uuid.UUID) (string, error) {
-
 	// Memo lookup on the db
 	memo := strconv.Itoa(utility.RandNo(100000000, 999999999))
 	userMemo := model.UserMemo{
@@ -231,6 +230,7 @@ func (service *UserAddressService) GenerateMemo(userId uuid.UUID) (string, error
 
 func (service *UserAddressService) CheckV2Address(address string) (bool, error) {
 	sharedAddress := model.SharedAddress{}
+	repository := service.Repository.(database.IUserAddressRepository)
 
 	if err := service.Repository.GetByFieldName(&model.SharedAddress{Address: address}, &sharedAddress); err != nil {
 		if err.Error() == errorcode.SQL_404 {
@@ -242,7 +242,6 @@ func (service *UserAddressService) CheckV2Address(address string) (bool, error) 
 	return true, nil
 
 }
-
 func (service *UserAddressService) GetAddresses(userAsset model.UserAsset) ([]dto.AssetAddress, error) {
 
 	var assetAddresses []dto.AssetAddress
@@ -252,10 +251,12 @@ func (service *UserAddressService) GetAddresses(userAsset model.UserAsset) ([]dt
 	}
 	assetAddresses = service.TransformAddressesResponse(responseAddresses)
 
+
 	return assetAddresses, nil
 }
 
 func (service *UserAddressService) GenerateAndCreateAddresses(asset model.UserAsset, addressType string) ([]dto.AllAddressResponse, error) {
+
 
 	KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
 	responseAddresses, err := KeyManagementService.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
@@ -265,6 +266,7 @@ func (service *UserAddressService) GenerateAndCreateAddresses(asset model.UserAs
 
 	for _, address := range responseAddresses {
 		if err := service.Repository.FindOrCreate(model.UserAddress{AddressType: address.Type, AssetID: asset.ID}, &model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID}); err != nil {
+
 			logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
 			return []dto.AllAddressResponse{}, errors.New(appError.GetSQLErr(err))
 		}

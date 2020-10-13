@@ -33,8 +33,11 @@ func NewBatchService(cache *cache.Memory, config Config.Data, repository databas
 
 func (service BatchService) GetWaitingBatchId(assetSymbol string) (uuid.UUID, error) {
 
+func (service BatchService) GetWaitingBatchId(assetSymbol string) (uuid.UUID, error) {
+	repository := service.Repository.(database.IBatchRepository)
 	var currentBatch model.BatchRequest
 	if err := service.Repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE, AssetSymbol: assetSymbol}, &currentBatch); err != nil {
+
 		appErr := err.(appError.Err)
 		if appErr.ErrType != errorcode.RECORD_NOT_FOUND {
 			logger.Error("GetWaitingBTCBatchId Logs : Error fetching batch in WAIT_MODE for %s  > %s ", assetSymbol, err)
@@ -55,6 +58,7 @@ func (service BatchService) GetAllActiveBatches() ([]model.BatchRequest, error) 
 
 	var activeBatches []model.BatchRequest
 	if err := service.Repository.FetchBatchesWithStatus([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE, model.BatchStatus.START_MODE}, &activeBatches); err != nil {
+
 		logger.Error("GetAllActiveBatches Logs : Error fetching all active batches > %s", err)
 		return []model.BatchRequest{}, err
 	}

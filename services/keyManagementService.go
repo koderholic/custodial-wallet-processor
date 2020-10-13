@@ -262,4 +262,3 @@ func (service *KeyManagementService) subscribeAddress(addressArray []string, use
 	}
 
 	return nil
-}

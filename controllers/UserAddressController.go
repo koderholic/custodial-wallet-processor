@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"wallet-adapter/utility/variables"
+
 	"encoding/json"
 	"net/http"
 	"wallet-adapter/dto"

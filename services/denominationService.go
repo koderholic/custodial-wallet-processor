@@ -228,4 +228,3 @@ func (service *DenominationServices) IsBatchable(assetSymbol string, repository 
 	}
 
 	return *denomination.IsBatchable, nil
-}
