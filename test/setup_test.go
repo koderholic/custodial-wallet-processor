@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"wallet-adapter/database"
 	"wallet-adapter/middlewares"
 	"wallet-adapter/model"
-	"wallet-adapter/utility"
 	"wallet-adapter/utility/cache"
 	"wallet-adapter/utility/logger"
 	"wallet-adapter/utility/permissions"
@@ -321,28 +319,6 @@ func (s *Suite) DBSeeder() {
 		if err := s.DB.Create(&memo).Error; err != nil {
 			logger.Error(fmt.Sprintf("Error with creating user memo record for %v : %s", memo.UserID, err))
 		}
-	}
-
-	paymentRef := utility.RandomString(16)
-	value := strconv.FormatFloat(requestDetails.Value, 'g', utility.DigPrecision, 64)
-	testTransaction := model.Transaction{
-		InitiatorID:          "579ad9b5-6c19-4a32-959d-795f20fdeb8e",
-		RecipientID:          estUserAssets1[2].ID,
-		TransactionReference: paymentRef,
-		PaymentReference:     paymentRef,
-		TransactionType:      model.TransactionType,
-		TransactionStatus:    model.TransactionStatus.COMPLETED,
-		TransactionTag:       model.TransactionTag.CREDIT,
-		Value:                value,
-		PreviousBalance:      assetDetails.AvailableBalance,
-		AvailableBalance:     newAssetBalance,
-		ProcessingType:       model.ProcessingType.SINGLE,
-		TransactionStartDate: time.Now(),
-		TransactionEndDate:   time.Now(),
-		AssetSymbol:          assetDetails.AssetSymbol,
-	}
-	if err := s.DB.Create(&testTransaction).Error; err != nil {
-		logger.Error(fmt.Sprintf("Error with creating test transaction record for %v : %s", memo.UserID, err))
 	}
 
 	logger.Info("Supported assets seeded successfully")

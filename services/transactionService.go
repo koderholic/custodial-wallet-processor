@@ -45,11 +45,15 @@ func (service *TransactionService) GetTransaction(reference string) (model.Trans
 	if err != nil {
 		return model.Transaction{}, err
 	}
+	transactionQueue, err := service.GetQueuedTransactionById(transaction.ID)
+	if err != nil {
+		return model.Transaction{}, err
+	}
 	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN {
 		txnExist, broadcastedTX, err := service.VerifyBroadcastedTx(transaction)
 		if err != nil {
-			logger.Error("verifyTransactionStatus logs : Error checking the broadcasted state for queued transaction (%v) : %s", transactionQueue.ID, err)
-			return "", err
+			logger.Error("verifyTransactionStatus logs : Error checking the broadcasted state for transaction (%v) : %s", transaction.ID, err)
+			return model.Transaction{}, err
 		}
 		status, err := service.GetTransactionStatus(txnExist, broadcastedTX, transaction, transactionQueue)
 		if status != "" {
@@ -120,6 +124,16 @@ func (service *TransactionService) GetQueuedTransactionById(id uuid.UUID) (model
 	if err := service.Repository.GetByFieldName(&model.TransactionQueue{BaseModel: model.BaseModel{ID: id}}, &transaction); err != nil {
 		appErr := err.(appError.Err)
 		return model.TransactionQueue{}, serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf(`Error fetching transaction record for id : %v, additional context : %s`, id, appErr)))
+	}
+	return transaction, nil
+}
+
+func (service *TransactionService) GetQueuedTransactionByTxId(txID uuid.UUID) (model.TransactionQueue, error) {
+
+	transaction := model.TransactionQueue{}
+	if err := service.Repository.GetByFieldName(&model.TransactionQueue{TransactionId: txID}, &transaction); err != nil {
+		appErr := err.(appError.Err)
+		return model.TransactionQueue{}, serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf(`Error fetching transaction record for transaction id : %v, additional context : %s`, txID, appErr)))
 	}
 	return transaction, nil
 }
