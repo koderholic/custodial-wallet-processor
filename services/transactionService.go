@@ -45,11 +45,11 @@ func (service *TransactionService) GetTransaction(reference string) (model.Trans
 	if err != nil {
 		return model.Transaction{}, err
 	}
-	transactionQueue, err := service.GetQueuedTransactionById(transaction.ID)
-	if err != nil {
-		return model.Transaction{}, err
-	}
 	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN {
+		transactionQueue, err := service.GetQueuedTransactionByTxId(transaction.ID)
+		if err != nil {
+			return model.Transaction{}, err
+		}
 		txnExist, broadcastedTX, err := service.VerifyBroadcastedTx(transaction)
 		if err != nil {
 			logger.Error("verifyTransactionStatus logs : Error checking the broadcasted state for transaction (%v) : %s", transaction.ID, err)
@@ -159,7 +159,7 @@ func (service *TransactionService) PopulateChainData(transaction *dto.Transactio
 func (service *TransactionService) VerifyBroadcastedTx(transaction model.Transaction) (bool, dto.TransactionStatusResponse, error) {
 
 	// Get queued transaction for transactionId
-	transactionQueue, err := service.GetQueuedTransactionById(transaction.ID)
+	transactionQueue, err := service.GetQueuedTransactionByTxId(transaction.ID)
 	if err != nil {
 		logger.Error("verifyTransactionStatus logs : Error fetching queued transaction for transaction (%v) : %s", transaction.ID, err)
 		return false, dto.TransactionStatusResponse{}, err
@@ -315,6 +315,7 @@ func (service *TransactionService) ExternalTx(requestDetails dto.ExternalTransfe
 	transaction.TransactionType = model.TransactionType.ONCHAIN
 	transaction.TransactionTag = model.TransactionTag.WITHDRAW
 	transaction.DebitReference = requestDetails.DebitReference
+	transaction.PreviousBalance = debitTransaction.PreviousBalance
 	transaction.BatchID = activeBatchID
 	tx := database.NewTx(service.Repository.Db())
 	tx = tx.Create(&transaction)
