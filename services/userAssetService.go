@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
@@ -79,15 +78,6 @@ func (service *UserAssetService) FetchAssets(userID uuid.UUID) ([]dto.Asset, err
 	if err := service.Repository.GetAssetsByID(&model.UserAsset{UserID: userID}, &userAssets); err != nil {
 		return assets, err
 	}
-	if len(userAssets) < 1 {
-		logger.Error(fmt.Sprintf("UserAssetService Logs : No assets found for userID : %+v", userID))
-
-		return assets, appError.Err{
-			ErrType: errorcode.RECORD_NOT_FOUND,
-			ErrCode: http.StatusBadRequest,
-			Err:     errors.New(fmt.Sprintf("No assets found for userId : %v", userID)),
-		}
-	}
 
 	for i := 0; i < len(userAssets); i++ {
 		userAssetmodel := userAssets[i]
@@ -144,7 +134,6 @@ func (service *UserAssetService) GetAssetForV1Address(address string, assetSymbo
 	}
 	logger.Info(fmt.Sprintf("UserAssetService logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset))
 
-
 	return userAsset, nil
 }
 
@@ -157,7 +146,6 @@ func (service *UserAssetService) GetAssetForV2Address(address string, assetSymbo
 		return model.UserAsset{}, err
 	}
 	logger.Info(fmt.Sprintf("UserAssetService logs : address : %s and memo : %s, assetSymbol : %s, assest : %+v", address, memo, assetSymbol, userAsset))
-
 
 	return userAsset, nil
 }

@@ -72,6 +72,10 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 	}
 
 	responseData.Assets = userAsset
+	if len(userAsset) == 0 {
+		responseData.Assets = []dto.Asset{}
+	}
+
 	logger.Info("GetUserAssets Logs : Outgoing response to request > %+v", responseData)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
