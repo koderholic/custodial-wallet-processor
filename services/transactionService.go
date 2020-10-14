@@ -316,6 +316,8 @@ func (service *TransactionService) ExternalTx(requestDetails dto.ExternalTransfe
 	transaction.TransactionTag = model.TransactionTag.WITHDRAW
 	transaction.DebitReference = requestDetails.DebitReference
 	transaction.BatchID = activeBatchID
+	tx := database.NewTx(service.Repository.Db())
+	tx = tx.Create(&transaction)
 
 	// Queue transaction up for processing
 	queue := model.TransactionQueue{
@@ -330,8 +332,7 @@ func (service *TransactionService) ExternalTx(requestDetails dto.ExternalTransfe
 		queue.Memo = debitTransaction.Memo
 	}
 
-	tx := database.NewTx(service.Repository.Db())
-	if err := tx.Create(&transaction).Create(&queue).Commit(); err != nil {
+	if err := tx.Create(&queue).Commit(); err != nil {
 		appErr := err.(appError.Err)
 		logger.Error(fmt.Sprintf("TransactionService logs : External transfer failed for asset %v. Error : %s", debitAsset.ID, err))
 		return "", serviceError(appErr.ErrCode, appErr.ErrType, errors.New(fmt.Sprintf("External transfer failed for asset %v :  %s", debitAsset.ID, appErr)))
