@@ -72,9 +72,7 @@ func (s *Suite) Test_FetchAssets_Fails_ForNonExistingUserId() {
 	UserAssetService := services.NewUserAssetService(authCache, s.Config, &testUserAssetRepository)
 	userAssets, err := UserAssetService.FetchAssets(nonExistingUserId)
 
-	assert.NotEqual(s.T(), nil, err, "Expected FetchAssets to return error")
-	assert.Equal(s.T(), 400, err.(appError.Err).ErrCode, "Expected FetchAssets to return error")
-	assert.Equal(s.T(), "RECORD_NOT_FOUND", err.(appError.Err).ErrType, "Expected FetchAssets to return RECORD_NOT_FOUND")
+	assert.Equal(s.T(), nil, err, "Expected FetchAssets to return error")
 	assert.Equal(s.T(), 0, len(userAssets), "Assets should not exist")
 }
 
