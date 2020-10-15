@@ -319,7 +319,7 @@ func (service *TransactionService) ExternalTx(requestDetails dto.ExternalTransfe
 	transaction.TransactionTag = model.TransactionTag.WITHDRAW
 	transaction.DebitReference = requestDetails.DebitReference
 	transaction.PreviousBalance = debitTransaction.PreviousBalance
-	transaction.PreviousBalance = model.TransactionStatus.PENDING
+	transaction.TransactionStatus = model.TransactionStatus.PENDING
 	tx := database.NewTx(service.Repository.Db())
 	tx = tx.Create(&transaction)
 
