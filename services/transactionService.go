@@ -291,6 +291,15 @@ func (service *TransactionService) ExternalTx(requestDetails dto.ExternalTransfe
 	if err != nil {
 		return "", err
 	}
+
+	userAssetTXRequest := dto.UserAssetTXRequest{
+		AssetID:              debitTransaction.RecipientID,
+		TransactionReference: requestDetails.TransactionReference,
+		Memo:                 debitTransaction.Memo,
+		Value:                requestDetails.Value,
+	}
+	transaction := BuildTxnObject(debitAsset, userAssetTXRequest, debitTransaction.AvailableBalance, initiatorID)
+
 	// Batch transaction, if asset is batchable
 	isBatchable, err := DenominationServices.IsBatchable(debitAsset.AssetSymbol)
 	if err != nil {
@@ -303,20 +312,14 @@ func (service *TransactionService) ExternalTx(requestDetails dto.ExternalTransfe
 		if err != nil {
 			return "", err
 		}
+		transaction.BatchID = activeBatchID
+		transaction.ProcessingType = model.ProcessingType.BATCH
 	}
-
-	userAssetTXRequest := dto.UserAssetTXRequest{
-		AssetID:              debitTransaction.RecipientID,
-		TransactionReference: requestDetails.TransactionReference,
-		Memo:                 debitTransaction.Memo,
-		Value:                requestDetails.Value,
-	}
-	transaction := BuildTxnObject(debitAsset, userAssetTXRequest, debitTransaction.AvailableBalance, initiatorID)
 	transaction.TransactionType = model.TransactionType.ONCHAIN
 	transaction.TransactionTag = model.TransactionTag.WITHDRAW
 	transaction.DebitReference = requestDetails.DebitReference
 	transaction.PreviousBalance = debitTransaction.PreviousBalance
-	transaction.BatchID = activeBatchID
+	transaction.TransactionStatus = model.TransactionStatus.PENDING
 	tx := database.NewTx(service.Repository.Db())
 	tx = tx.Create(&transaction)
 
