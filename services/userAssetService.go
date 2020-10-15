@@ -180,6 +180,7 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.UserAsset
 		TransactionFee:   chainData.TransactionFee,
 		BlockHeight:      chainData.BlockHeight,
 		RecipientAddress: chainData.RecipientAddress,
+		AssetSymbol:      assetDetails.AssetSymbol,
 	}
 	if err := service.Repository.FindOrCreate(newChainTransaction, &chainTransaction); err != nil {
 		err := err.(appError.Err)
@@ -187,14 +188,7 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.UserAsset
 			requestDetails.AssetID, chainData.TransactionHash, requestDetails.TransactionReference))
 		return dto.TransactionReceipt{}, serviceError(err.ErrCode, err.ErrType, err)
 	}
-	transactionStatus := model.TransactionStatus.PENDING
-	if chainTransaction.Status == true {
-		transactionStatus = model.TransactionStatus.COMPLETED
-	} else {
-		transactionStatus = model.TransactionStatus.REJECTED
-	}
 	// update transaction object
-	transaction.TransactionStatus = transactionStatus
 	transaction.TransactionType = model.TransactionType.ONCHAIN
 	transaction.TransactionTag = model.TransactionTag.DEPOSIT
 	transaction.OnChainTxId = chainTransaction.ID
