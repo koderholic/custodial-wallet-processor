@@ -35,7 +35,7 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	//send sms
 	LockerService := services.NewLockerService(cache, config, repository)
 	_, err := LockerService.AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS)
-	if err != nil {
+	if err == nil {
 		//lock was successfully acquired
 		NotificationService := services.NewNotificationService(cache, config, repository)
 		NotificationService.BuildAndSendSms(assetSymbol, decimalBalance)
