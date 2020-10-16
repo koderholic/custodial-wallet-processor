@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -28,7 +27,7 @@ func ReleaseLock(repository database.IUserAssetRepository, cache *cache.Memory, 
 }
 
 func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *cache.Memory, repository database.IUserAddressRepository) {
-	if !strings.EqualFold(config.Env, constants.PRODUCTION) {
+	if config.SENTRY_ENVIRONMENT != constants.ENV_PRODUCTION {
 		return
 	}
 	denomination := model.Denomination{}
