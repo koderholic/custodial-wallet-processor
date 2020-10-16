@@ -15,6 +15,7 @@ import (
 type Data struct {
 	AppPort                   string        `mapstructure:"appPort"  yaml:"appPort,omitempty"`
 	ServiceName               string        `mapstructure:"serviceName"  yaml:"serviceName,omitempty"`
+	Env                       string        `mapstructure:"env"  yaml:"env,omitempty"`
 	DBHost                    string        `mapstructure:"DB_HOST"  yaml:"DB_HOST,omitempty"`
 	DBUser                    string        `mapstructure:"DB_USER"  yaml:"DB_USER,omitempty"`
 	DBPassword                string        `mapstructure:"DB_PASSWORD"  yaml:"DB_PASSWORD,omitempty"`

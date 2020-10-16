@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -27,6 +28,9 @@ func ReleaseLock(repository database.IUserAssetRepository, cache *cache.Memory, 
 }
 
 func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Config.Data, cache *cache.Memory, repository database.IUserAddressRepository) {
+	if !strings.EqualFold(config.Env, constants.PRODUCTION) {
+		return
+	}
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from NotifyColdWalletUsersViaSMS : %+v while trying to denomination of float asset", err)
@@ -35,7 +39,7 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	//send sms
 	LockerService := services.NewLockerService(cache, config, repository)
 	_, err := LockerService.AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS)
-	if err != nil {
+	if err == nil {
 		//lock was successfully acquired
 		NotificationService := services.NewNotificationService(cache, config, repository)
 		NotificationService.BuildAndSendSms(assetSymbol, decimalBalance)

@@ -6,3 +6,4 @@ config:
   ETH_minimumSweep: '0.05'
   BUSD_minimumSweep: '300'
   coldWalletSmsNumber: '+2349084859418'
+  env: 'production'
