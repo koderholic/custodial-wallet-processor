@@ -15,6 +15,7 @@ import (
 	"wallet-adapter/utility/errorcode"
 	"wallet-adapter/utility/logger"
 
+	"github.com/go-delve/delve/service"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -35,7 +36,7 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	//send sms
 	LockerService := services.NewLockerService(cache, config, repository)
 	_, err := LockerService.AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+constants.SEPERATOR+assetSymbol, constants.ONE_HOUR_MILLISECONDS)
-	if err == nil {
+	if err == nil && service.Config.SENTRY_ENVIRONMENT == constants.ENV_PRODUCTION {
 		//lock was successfully acquired
 		NotificationService := services.NewNotificationService(cache, config, repository)
 		NotificationService.BuildAndSendSms(assetSymbol, decimalBalance)
