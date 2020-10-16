@@ -27,5 +27,4 @@ const (
 	ACTIVE                      = "ACTIVE"
 	MIN_WAIT_TIME_IN_PROCESSING = 120
 	COIN_ETH                    = "ETH"
-	PRODUCTION                  = "production"
 )
