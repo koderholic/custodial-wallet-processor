@@ -24,6 +24,7 @@ type IRepository interface {
 	Fetch(model interface{}) error
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
+	UpdateWhere(id, field, model interface{}) error
 	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 	FetchTransactionsWhereIn(values []string, model interface{}) error
@@ -144,8 +145,19 @@ func (repo *BaseRepository) Create(model interface{}) error {
 // Update ... Update a specified record from the database for a given id
 func (repo *BaseRepository) Update(id, model interface{}) error {
 
-	if err := repo.DB.Model(id).Update(model).Error; err != nil {
+	if err := repo.DB.Model(id).Updates(model).Error; err != nil {
 		logger.Error("Error with repository Update : %s", err)
+		return repoError(err)
+	}
+	repo.DB.Where(id).First(model)
+	return nil
+}
+
+// UpdateWhere ... Update a specified record from the database for a given id where the condition meets
+func (repo *BaseRepository) UpdateWhere(id, field, model interface{}) error {
+
+	if err := repo.DB.Model(id).Where(field).Updates(model).Error; err != nil {
+		logger.Error("Error with repository UpdateWhere : %s", err)
 		return repoError(err)
 	}
 	repo.DB.Where(id).First(model)
@@ -214,7 +226,24 @@ func (db *TX) Update(model, update interface{}) *TX {
 	if db.err != nil {
 		return db
 	}
-	if err := db.tx.Model(model).Update(update).Error; err != nil {
+	if err := db.tx.Model(model).Updates(update).Error; err != nil {
+		db.tx.Rollback()
+		return &TX{
+			tx:  db.tx,
+			err: repoError(err),
+		}
+	}
+	return &TX{
+		tx:  db.tx,
+		err: nil,
+	}
+}
+
+func (db *TX) UpdateWhere(model, field, update interface{}) *TX {
+	if db.err != nil {
+		return db
+	}
+	if err := db.tx.Model(model).Where(field).Updates(update).Error; err != nil {
 		db.tx.Rollback()
 		return &TX{
 			tx:  db.tx,
