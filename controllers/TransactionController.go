@@ -145,7 +145,7 @@ func (controller TransactionController) ConfirmTransaction(responseWriter http.R
 	// A check is done to ensure the debitReference points to an actual previous debit
 	TransactionService := services.NewTransactionService(controller.Cache, controller.Config, controller.Repository)
 	if err := TransactionService.ConfirmTransaction(requestData.TransactionHash); err != nil {
-		ReturnError(responseWriter, "ExternalTransfer", err, Response.New().PlainError(err.(appError.Err).ErrType, err.Error()))
+		ReturnError(responseWriter, "ConfirmTransaction", err, Response.New().PlainError(err.(appError.Err).ErrType, err.Error()))
 		return
 	}
 

@@ -182,7 +182,10 @@ func (service *UserAssetService) OnChainCreditAsset(requestDetails dto.UserAsset
 		RecipientAddress: chainData.RecipientAddress,
 		AssetSymbol:      assetDetails.AssetSymbol,
 	}
-	if err := service.Repository.FindOrCreate(newChainTransaction, &chainTransaction); err != nil {
+	if err := service.Repository.UpdateOrCreate(model.ChainTransaction{
+		TransactionHash:  chainData.TransactionHash,
+		RecipientAddress: chainData.RecipientAddress,
+	}, &chainTransaction, newChainTransaction); err != nil {
 		err := err.(appError.Err)
 		logger.Error(fmt.Sprintf("UserAssetService logs : Error crediting asset %v for onchain deposit %s with reference : %s",
 			requestDetails.AssetID, chainData.TransactionHash, requestDetails.TransactionReference))

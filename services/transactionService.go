@@ -191,7 +191,7 @@ func (service *TransactionService) GetTransactionStatus(txnExist bool, broadcast
 	if !txnExist {
 		if utility.IsExceedWaitTime(time.Now(), transactionQueue.CreatedAt.Add(time.Duration(constants.MIN_WAIT_TIME_IN_PROCESSING)*time.Second)) {
 			// Revert the transaction status back to pending, as transaction has not been broadcasted
-			if err := tx.Update(&transaction, &model.Transaction{TransactionStatus: model.TransactionStatus.PENDING}).Update(&transactionQueue, &model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING}).Commit(); err != nil {
+			if err := tx.Update(&transaction, &model.Transaction{TransactionStatus: model.TransactionStatus.PENDING}).UpdateWhere(&model.TransactionQueue{}, transactionQueue, &model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING}).Commit(); err != nil {
 				logger.Error("GetTransactionStatus logs : Error occured while updating transaction %v to PENDING : %+v; %s", transaction.ID, service.Error, err)
 				return "", err
 			}
@@ -213,7 +213,7 @@ func (service *TransactionService) GetTransactionStatus(txnExist bool, broadcast
 	switch broadcastedTX.Status {
 	case constants.SUCCESSFUL:
 		chainTransactionUpdate := model.ChainTransaction{Status: true, TransactionFee: broadcastedTX.TransactionFee, BlockHeight: int64(blockHeight)}
-		if err := tx.Update(&chainTransaction, chainTransactionUpdate).Update(&transaction, &model.Transaction{TransactionStatus: model.TransactionStatus.COMPLETED, OnChainTxId: chainTransaction.ID}).Update(&transactionQueue, &model.TransactionQueue{TransactionStatus: model.TransactionStatus.COMPLETED}).Commit(); err != nil {
+		if err := tx.Update(&chainTransaction, chainTransactionUpdate).Update(&transaction, &model.Transaction{TransactionStatus: model.TransactionStatus.COMPLETED, OnChainTxId: chainTransaction.ID}).UpdateWhere(&model.TransactionQueue{}, transactionQueue, &model.TransactionQueue{TransactionStatus: model.TransactionStatus.COMPLETED}).Commit(); err != nil {
 			logger.Error("GetTransactionStatus logs : Error occured while updating transaction %v to COMPLETED : %+v; %s", transaction.ID, service.Error, err)
 			return "", err
 		}
@@ -410,8 +410,8 @@ func (service *TransactionService) UpdateTransactionStatusByChainID(chainTransac
 		dateCompleted := time.Now()
 		if err :=
 			tx.Update(&batch, model.BatchRequest{Status: status, DateCompleted: &dateCompleted}).
-				Update(&model.Transaction{BatchID: batch.ID}, model.Transaction{TransactionStatus: status}).
-				Update(&model.TransactionQueue{BatchID: batch.ID}, model.Transaction{TransactionStatus: status}).
+				UpdateWhere(&model.Transaction{}, model.Transaction{BatchID: batch.ID}, model.Transaction{TransactionStatus: status}).
+				UpdateWhere(&model.TransactionQueue{}, model.Transaction{BatchID: batch.ID}, model.Transaction{TransactionStatus: status}).
 				Commit(); err != nil {
 			return err
 		}
@@ -422,7 +422,7 @@ func (service *TransactionService) UpdateTransactionStatusByChainID(chainTransac
 		}
 		if err := tx.
 			Update(&transaction, model.Transaction{TransactionStatus: status}).
-			Update(&model.TransactionQueue{TransactionId: transaction.ID}, model.Transaction{TransactionStatus: status}).
+			UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{TransactionId: transaction.ID}, model.Transaction{TransactionStatus: status}).
 			Commit(); err != nil {
 			return err
 		}
@@ -435,7 +435,7 @@ func (service *TransactionService) UpdateTransactionByTxID(transactionId uuid.UU
 	tx := database.NewTx(service.Repository.Db())
 	if err := tx.
 		Update(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).
-		Update(&model.TransactionQueue{TransactionId: transactionId}, model.Transaction{TransactionStatus: status}).
+		UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{TransactionId: transactionId}, model.Transaction{TransactionStatus: status}).
 		Commit(); err != nil {
 		return err
 	}
