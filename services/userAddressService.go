@@ -55,18 +55,34 @@ func (service *UserAddressService) GetAddressesFor(assetID uuid.UUID) (dto.AllAs
 	if err != nil {
 		return dto.AllAssetAddresses{}, err
 	}
+	// Check if deposit is ACTIVE on this asset
+	if err := DenominationServices.CheckDepositIsActive(userAsset.AssetSymbol); err != nil {
+		logger.Error(fmt.Sprintf("UserAddressService logs : Deposit is not available for asset %s Error : %s", userAsset.AssetSymbol, err))
+		return dto.AllAssetAddresses{}, err
+	}
+
 	assetAddress := dto.AssetAddress{}
 	if userAsset.RequiresMemo {
 		assetAddress, err = service.GetV2Address(userAsset)
 		addresses = append(addresses, assetAddress)
 	} else {
 		if *denomination.IsBatchable {
-			KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
-			responseAddresses, err := KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, "")
+			userAddresses, err := service.GetAddresses(userAsset)
 			if err != nil {
 				return dto.AllAssetAddresses{}, err
 			}
-			addresses, err = service.GetAddresses(userAsset, responseAddresses)
+			addresses = service.TransformAddressesModel(userAddresses)
+			if len(addresses) == 0 {
+				KeyManagementService := NewKeyManagementService(service.Cache, service.Config, service.Repository)
+				responseAddresses, err := KeyManagementService.GenerateAllAddresses(userAsset.UserID, userAsset.AssetSymbol, userAsset.CoinType, "")
+				if err != nil {
+					return dto.AllAssetAddresses{}, err
+				}
+				addresses, err = service.CreateAddresses(userAsset, responseAddresses)
+				if err != nil {
+					return dto.AllAssetAddresses{}, err
+				}
+			}
 		} else {
 			assetAddress.Address, err = service.GetV1Address(userAsset)
 			if err != nil {
@@ -88,28 +104,13 @@ func (service *UserAddressService) GetAddressesFor(assetID uuid.UUID) (dto.AllAs
 		return dto.AllAssetAddresses{}, err
 	}
 
-	assetAddresses, err := service.AssetAddresses(userAsset.AssetSymbol, addresses)
-	if err != nil {
-		return dto.AllAssetAddresses{}, err
-	}
-
-	userAssetAddresses.Addresses = assetAddresses
+	userAssetAddresses.Addresses = addresses
 	if len(variables.AddressTypes[denomination.CoinType]) > 0 {
 		userAssetAddresses.DefaultAddressType = variables.AddressTypes[denomination.CoinType][0]
 	}
 
 	logger.Info(fmt.Sprintf("UserAddressService logs : Address fetched for asset %v", assetID))
 	return userAssetAddresses, nil
-}
-
-func (service *UserAddressService) AssetAddresses(assetSymbol string, addressAndMemo []dto.AssetAddress) ([]dto.AssetAddress, error) {
-	// Check if deposit is ACTIVE on this asset
-	DenominationServices := NewDenominationServices(service.Cache, service.Config, service.Repository)
-	if err := DenominationServices.CheckDepositIsActive(assetSymbol); err != nil {
-		logger.Error(fmt.Sprintf("UserAddressService logs : Deposit is not available for asset %s Error : %s", assetSymbol, err))
-		return []dto.AssetAddress{}, err
-	}
-	return addressAndMemo, nil
 }
 
 func (service *UserAddressService) GetV1Address(userAsset model.UserAsset) (string, error) {
@@ -245,7 +246,19 @@ func (service *UserAddressService) CheckV2Address(address string) (bool, error) 
 
 }
 
-func (service *UserAddressService) GetAddresses(userAsset model.UserAsset, responseAddresses []dto.AllAddressResponse) ([]dto.AssetAddress, error) {
+func (service *UserAddressService) GetAddresses(userAsset model.UserAsset) ([]model.UserAddress, error) {
+
+	var assetAddresses []model.UserAddress
+
+	if err := service.Repository.FetchByFieldName(model.UserAddress{AssetID: userAsset.ID}, &assetAddresses); err != nil {
+		logger.Error("Error response from userAddress service, could not get user addresses for %s : %s ", userAsset.AssetSymbol, err)
+		return assetAddresses, errors.New(appError.GetSQLErr(err))
+	}
+	return assetAddresses, nil
+}
+
+
+func (service *UserAddressService) CreateAddresses(userAsset model.UserAsset, responseAddresses []dto.AllAddressResponse) ([]dto.AssetAddress, error) {
 
 	var assetAddresses []dto.AssetAddress
 
@@ -268,6 +281,22 @@ func (service *UserAddressService) TransformAddressesResponse(responseAddresses 
 			Type:    item.Type,
 		}
 		assetAddresses = append(assetAddresses, address)
+	}
+	// Sort by addressType
+	sort.Slice(assetAddresses, func(i, j int) bool {
+		return assetAddresses[i].Type > assetAddresses[j].Type
+	})
+	return assetAddresses
+}
+
+func (service *UserAddressService) TransformAddressesModel(addresses []model.UserAddress) []dto.AssetAddress {
+	assetAddresses := []dto.AssetAddress{}
+	for _, address := range addresses {
+		assetAddress := dto.AssetAddress{
+			Address: address.Address,
+			Type:    address.AddressType,
+		}
+		assetAddresses = append(assetAddresses, assetAddress)
 	}
 	// Sort by addressType
 	sort.Slice(assetAddresses, func(i, j int) bool {
