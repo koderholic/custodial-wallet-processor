@@ -263,7 +263,7 @@ func (service *UserAddressService) CreateAddresses(userAsset model.UserAsset, re
 	var assetAddresses []dto.AssetAddress
 
 	for _, address := range responseAddresses {
-		if err := service.Repository.FindOrCreate(model.UserAddress{AddressType: address.Type, AssetID: userAsset.ID}, &model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: userAsset.ID}); err != nil {
+		if err := service.Repository.FindOrCreateWhere(model.UserAddress{AddressType: address.Type, AssetID: userAsset.ID}, &model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: userAsset.ID}); err != nil {
 			logger.Error("Error response from userAddress service, could not save user %s addresses : %s ", userAsset.AssetSymbol, err)
 			return []dto.AssetAddress{}, errors.New(appError.GetSQLErr(err))
 		}

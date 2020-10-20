@@ -25,7 +25,8 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	UpdateWhere(id, field, model interface{}) error
-	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
+	FindOrCreate(checkExistOrFetch interface{}, model interface{}) error
+	FindOrCreateWhere(checkExistOrCreate interface{}, model interface{}) error
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 	FetchTransactionsWhereIn(values []string, model interface{}) error
 	FetchBatchesWithStatus(statuses []string, batches interface{}) error
@@ -165,8 +166,17 @@ func (repo *BaseRepository) UpdateWhere(id, field, model interface{}) error {
 }
 
 // FindOrCreate ...
-func (repo *BaseRepository) FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error {
-	if err := repo.DB.FirstOrCreate(model, checkExistOrUpdate).Error; err != nil {
+func (repo *BaseRepository) FindOrCreate(checkExistOrCreate interface{}, model interface{}) error {
+	if err := repo.DB.FirstOrCreate(model, checkExistOrCreate).Error; err != nil {
+		logger.Error("Error with repository FindOrCreate UserAsset : %s", err)
+		return repoError(err)
+	}
+	return nil
+}
+
+// FindOrCreateWhere ...
+func (repo *BaseRepository) FindOrCreateWhere(checkExistOrCreate interface{}, model interface{}) error {
+	if err := repo.DB.Where(checkExistOrCreate).FirstOrCreate(model).Error; err != nil {
 		logger.Error("Error with repository FindOrCreateUserAsset : %s", err)
 		return repoError(err)
 	}
