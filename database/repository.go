@@ -25,7 +25,7 @@ type IRepository interface {
 	Create(model interface{}) error
 	Update(id interface{}, model interface{}) error
 	UpdateWhere(id, field, model interface{}) error
-	FindOrCreate(checkExistOrFetch interface{}, model interface{}) error
+	FindOrCreate(checkExistOrCreate interface{}, model interface{}) error
 	FindOrCreateWhere(checkExistOrCreate interface{}, model interface{}) error
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 	FetchTransactionsWhereIn(values []string, model interface{}) error
