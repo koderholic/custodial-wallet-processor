@@ -1,9 +1,8 @@
-package test
+package utility
 
 import (
 	"testing"
 	"time"
-	"wallet-adapter/utility"
 	"wallet-adapter/utility/cache"
 
 	"github.com/magiconair/properties/assert"
@@ -82,15 +81,15 @@ func TestCacheSetAndGetsProperly(t *testing.T) {
 }
 
 func TestDecimalsOperations(t *testing.T) {
-	assert.Equal(t, utility.Subtract(0.301123778899876, "3.1155667011223", 18), "2.814442922222424")
-	assert.Equal(t, utility.Subtract(0.004, "0.0100415", 8), "0.0060415")
+	assert.Equal(t, Subtract(0.301123778899876, "3.1155667011223", 18), "2.814442922222424")
+	assert.Equal(t, Subtract(0.004, "0.0100415", 8), "0.0060415")
 
-	assert.Equal(t, utility.Add(0.301123778899876, "3.1155667011223", 18), "3.416690480022176")
-	assert.Equal(t, utility.Add(0.004, "0.0100415", 18), "0.0140415")
+	assert.Equal(t, Add(0.301123778899876, "3.1155667011223", 18), "3.416690480022176")
+	assert.Equal(t, Add(0.004, "0.0100415", 18), "0.0140415")
 
 }
 
 func TestIsExceedWaitTime(t *testing.T) {
-	assert.Equal(t, utility.IsExceedWaitTime(time.Now().Add(24*time.Hour), time.Now()), true)
-	assert.Equal(t, utility.IsExceedWaitTime(time.Now(), time.Now().Add(24*time.Hour)), false)
+	assert.Equal(t, IsExceedWaitTime(time.Now().Add(24*time.Hour), time.Now()), true)
+	assert.Equal(t, IsExceedWaitTime(time.Now(), time.Now().Add(24*time.Hour)), false)
 }
