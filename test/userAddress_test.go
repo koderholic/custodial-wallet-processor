@@ -16,9 +16,6 @@ func (s *Suite) Test_GetAddresses_returns_all_addresses_for_asset_and_symbol() {
 
 	assert.Equal(s.T(), nil, err, "Expected GetAddresses to not return error")
 	assert.Equal(s.T(), 2, len(assetAddresses), "GetAddresses did not generate the complete addresses for asset")
-	//if len(assetAddresses) > 0 {
-	//	assert.Equal(s.T(), "bc1qug3tpy7ppj6um44sauq8vr6e55ygsynlwm02ve", assetAddresses[0].Address, "GetAddresses did not sort by default address")
-	//}
 }
 
 func (s *Suite) Test_GetV1Address_returns_empty_for_non_existing_address() {
