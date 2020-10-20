@@ -1,36 +1,24 @@
 package test
 
 import (
+	"github.com/stretchr/testify/assert"
 	"strconv"
 	"wallet-adapter/dto"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
-	"wallet-adapter/utility/appError"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func (s *Suite) Test_GetAddresses_returns_all_addresses_for_asset_and_symbol() {
 	userAsset := testUserAssets1[3]
-	keyManagementAddressResponseMock := []dto.AllAddressResponse{
-		{
-			Type: "Legacy",
-			Data: "32DeyC6iPWVwDDngAAGJoYRqWJK6aPPEfE",
-		},
-		{
-			Type: "Segwit",
-			Data: "bc1qug3tpy7ppj6um44sauq8vr6e55ygsynlwm02ve",
-		},
-	}
 
 	UserAddressService := services.NewUserAddressService(authCache, s.Config, &testUserAssetRepository)
-	assetAddresses, err := UserAddressService.GetAddresses(userAsset, keyManagementAddressResponseMock)
+	assetAddresses, err := UserAddressService.GetAddresses(userAsset)
 
 	assert.Equal(s.T(), nil, err, "Expected GetAddresses to not return error")
 	assert.Equal(s.T(), 2, len(assetAddresses), "GetAddresses did not generate the complete addresses for asset")
-	if len(assetAddresses) > 0 {
-		assert.Equal(s.T(), "bc1qug3tpy7ppj6um44sauq8vr6e55ygsynlwm02ve", assetAddresses[0].Address, "GetAddresses did not sort by default address")
-	}
+	//if len(assetAddresses) > 0 {
+	//	assert.Equal(s.T(), "bc1qug3tpy7ppj6um44sauq8vr6e55ygsynlwm02ve", assetAddresses[0].Address, "GetAddresses did not sort by default address")
+	//}
 }
 
 func (s *Suite) Test_GetV1Address_returns_empty_for_non_existing_address() {
@@ -70,17 +58,11 @@ func (s *Suite) Test_CreateV1Address_returns_newly_created_address() {
 }
 
 func (s *Suite) Test_AssetAddresses_returns_error_when_deposit_disabled() {
-	addressesResponse := []dto.AssetAddress{
-		{
-			Address: "0x4F499d193346E9cb602dA5B2A8ffd45f37AFD842",
-		},
-	}
-
 	UserAddressService := services.NewUserAddressService(authCache, s.Config, &testUserAssetRepository)
-	assetAddresses, err := UserAddressService.AssetAddresses("LINK", addressesResponse)
+	assetAddresses, err := UserAddressService.GetAddressesFor(testUserAssets1[4].ID)
 
-	assert.Equal(s.T(), "DEPOSIT_NOT_ACTIVE", err.(appError.Err).ErrType, "Expected AssetAddresses to return DEPOSIT_NOT_ACTIVE error")
-	assert.Equal(s.T(), 0, len(assetAddresses), "assetAddress should return empty")
+	assert.NotEqual(s.T(), nil, err, "Expected GetAddressesFor to return error if deposit is not supported")
+	assert.Equal(s.T(), 0, len(assetAddresses.Addresses), "assetAddress should return empty")
 }
 
 func (s *Suite) Test_GetV2Address_returns_v1address_for_existing_address() {
