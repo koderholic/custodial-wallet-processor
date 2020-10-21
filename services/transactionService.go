@@ -349,7 +349,7 @@ func (service TransactionService) ConfirmTransaction(transactionHash string) err
 
 	// Get the chain transaction for the request hash
 	chainTransaction := model.ChainTransaction{}
-	err := service.Repository.Get(&model.ChainTransaction{TransactionHash: transactionHash}, &chainTransaction)
+	err := service.Repository.GetByFieldName(&model.ChainTransaction{TransactionHash: transactionHash}, &chainTransaction)
 	if err != nil {
 		return err
 	}
@@ -411,7 +411,7 @@ func (service *TransactionService) UpdateTransactionStatusByChainID(chainTransac
 		if err :=
 			tx.Update(&batch, model.BatchRequest{Status: status, DateCompleted: &dateCompleted}).
 				UpdateWhere(&model.Transaction{}, model.Transaction{BatchID: batch.ID}, model.Transaction{TransactionStatus: status}).
-				UpdateWhere(&model.TransactionQueue{}, model.Transaction{BatchID: batch.ID}, model.Transaction{TransactionStatus: status}).
+				UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{BatchID: batch.ID}, model.TransactionQueue{TransactionStatus: status}).
 				Commit(); err != nil {
 			return err
 		}
@@ -422,7 +422,7 @@ func (service *TransactionService) UpdateTransactionStatusByChainID(chainTransac
 		}
 		if err := tx.
 			Update(&transaction, model.Transaction{TransactionStatus: status}).
-			UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{TransactionId: transaction.ID}, model.Transaction{TransactionStatus: status}).
+			UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{TransactionId: transaction.ID}, model.TransactionQueue{TransactionStatus: status}).
 			Commit(); err != nil {
 			return err
 		}
@@ -435,7 +435,7 @@ func (service *TransactionService) UpdateTransactionByTxID(transactionId uuid.UU
 	tx := database.NewTx(service.Repository.Db())
 	if err := tx.
 		Update(&model.Transaction{BaseModel: model.BaseModel{ID: transactionId}}, model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).
-		UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{TransactionId: transactionId}, model.Transaction{TransactionStatus: status}).
+		UpdateWhere(&model.TransactionQueue{}, model.TransactionQueue{TransactionId: transactionId}, model.TransactionQueue{TransactionStatus: status}).
 		Commit(); err != nil {
 		return err
 	}
@@ -468,7 +468,7 @@ func BuildTxnObject(assetDetails model.UserAsset, requestDetails dto.UserAssetTX
 func (service *TransactionService) GetFloatAddressFor(symbol string) (string, error) {
 	//Get the float address
 	var floatAccount model.HotWalletAsset
-	if err := service.Repository.Get(&model.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
+	if err := service.Repository.GetByFieldName(&model.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id and trying to get float detials", err)
 		return "", err
 	}
