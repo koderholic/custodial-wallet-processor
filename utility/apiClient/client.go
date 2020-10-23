@@ -41,7 +41,6 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	if strings.Contains(c.BaseURL.String(), "key-management/sign") {
 		c.HttpClient.Timeout = 120 * time.Second
 	}
-
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
 	var buf io.ReadWriter
@@ -61,6 +60,8 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", c.UserAgent)
+
+	logger.Info("Outgoing request to %s : +%v", c.BaseURL, req)
 	return req, nil
 }
 
