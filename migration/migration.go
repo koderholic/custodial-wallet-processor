@@ -4,14 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	Config "wallet-adapter/config"
-	"wallet-adapter/utility/logger"
-
 	"github.com/pressly/goose"
+	Config "wallet-adapter/config"
+	"wallet-adapter/utility"
 )
 
 // RunDbMigrations ... This creates corresponding tables for dtos on the db and watches the dto for field additions
-func RunDbMigrations(config Config.Data) error {
+func RunDbMigrations(logger *utility.Logger, config Config.Data) error {
 	DBConnectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true", config.DBUser, config.DBPassword, config.DBHost, config.DBName)
 
 	db, err := sql.Open("mysql", DBConnectionString)
