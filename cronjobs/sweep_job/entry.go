@@ -5,8 +5,8 @@ import (
 	"time"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
-	"wallet-adapter/tasks/sweep"
-	"wallet-adapter/utility/cache"
+	"wallet-adapter/tasks"
+	"wallet-adapter/utility"
 )
 
 func main() {
@@ -15,7 +15,10 @@ func main() {
 	config := Config.Data{}
 	config.Init("")
 
+	logger := utility.NewLogger()
+
 	Database := &database.Database{
+		Logger: logger,
 		Config: config,
 	}
 	Database.LoadDBInstance()
@@ -24,8 +27,8 @@ func main() {
 	purgeInterval := config.PurgeCacheInterval * time.Second
 	cacheDuration := config.ExpireCacheDuration * time.Second
 	//authCache, logger, config, baseRepository
-	authCache := cache.Initialize(cacheDuration, purgeInterval)
+	authCache := utility.InitializeCache(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: *Database}
-	sweep.SweepTransactions(authCache, config, &baseRepository)
+	tasks.SweepTransactions(authCache, logger, config, baseRepository)
 
 }

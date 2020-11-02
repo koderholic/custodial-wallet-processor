@@ -1,7 +1,76 @@
 package dto
 
+import (
+	"math/big"
+
+	uuid "github.com/satori/go.uuid"
+)
+
+// GenerateAddressRequest ... Request definition for generate address , key-management service
+type GenerateAddressRequest struct {
+	UserID      uuid.UUID `json:"userId"`
+	AssetSymbol string    `json:"symbol"`
+}
+
+// GenerateAddressResponse ... Model definition for generate address successful response, key-management service
+type GenerateAddressResponse struct {
+	Address string    `json:"address"`
+	UserID  uuid.UUID `json:"userId"`
+}
+
+type AllAddressResponse struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+// GenerateAllAddressesResponse ... Model definition for generate all asset addresses successful response, key-management service
+type GenerateAllAddressesResponse struct {
+	Addresses []AllAddressResponse `json:"addresses"`
+	UserID    uuid.UUID            `json:"userId"`
+}
+
+// SignTransaction ... Request definition for sign transaction , key-management service
+type SignTransactionRequest struct {
+	FromAddress string   `json:"fromAddress"`
+	ToAddress   string   `json:"toAddress"`
+	Memo        string   `json:"memo"`
+	Amount      *big.Int `json:"amount"`
+	AssetSymbol string   `json:"assetSymbol"`
+	IsSweep     bool     `json:"isSweep"`
+	ProcessType string   `json:"processType"`
+	Reference   string   `json:"reference"`
+}
+
+// SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
+type SignTransactionResponse struct {
+	SignedData string `json:"signedTransaction"`
+	Fee        int64  `json:"fee"`
+}
+
+// BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
+type BroadcastToChainRequest struct {
+	SignedData  string `json:"signedData"`
+	AssetSymbol string `json:"assetSymbol"`
+	Reference   string `json:"reference"`
+	ProcessType string `json:"processType"`
+}
+
+// BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
+type SignAndBroadcastResponse struct {
+	TransactionHash string `json:"transactionHash"`
+}
+
+type SubscriptionRequestV2 struct {
+	Subscriptions map[string][]string `json:"subscriptions"`
+}
+
+type SubscriptionResponse struct {
+	Message string `json:"message"`
+	Status  bool   `json:"status"`
+}
+
 // ServicesRequestErr ... Model definition for external services request made with error response
-type ExternalServicesRequestErr struct {
+type ServicesRequestErr struct {
 	Success    bool              `json:"success"`
 	Code       string            `json:"code"`
 	Message    string            `json:"message"`
@@ -14,6 +83,23 @@ type ServicesRequestSuccess struct {
 	Success bool              `json:"success"`
 	Message string            `json:"message"`
 	Data    map[string]string `json:"data"`
+}
+
+// TransactionStatusRequest ... Request definition for broadcast to chain , crypto-adapter service
+type TransactionStatusRequest struct {
+	TransactionHash string `json:"transactionHash"`
+	AssetSymbol     string `json:"assetSymbol"`
+	Reference       string `json:"reference"`
+}
+
+// TransactionStatusResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
+type TransactionStatusResponse struct {
+	TransactionHash       string `json:"transactionHash"`
+	Status                string `json:"status"`
+	AssetSymbol           string `json:"assetSymbol"`
+	TransactionFee        string `json:"fee"`
+	BlockHeight           string `json:"height"`
+	LastTimeStatusFetched string `json:"lastTimeStatusFetched"`
 }
 
 // LockerServiceRequest ... Request definition for  acquire or renew lock, locker service
@@ -144,4 +230,9 @@ type SendSmsRequest struct {
 
 type SendSmsResponse struct {
 	SendEmailResponse
+}
+
+type TransactionListInfo struct {
+	Decimal     int
+	AssetSymbol string
 }

@@ -7,8 +7,10 @@ import (
 	"sync"
 	"time"
 	"wallet-adapter/config"
-	"wallet-adapter/utility/logger"
+	"wallet-adapter/utility"
 
+	"github.com/go-redis/redis/v7"
+	// "github.com/gomodule/redigo/redis"
 	"github.com/jinzhu/gorm"
 
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -16,8 +18,10 @@ import (
 
 //Database : database struct
 type Database struct {
-	Config config.Data
-	DB     *gorm.DB
+	Logger      *utility.Logger
+	Config      config.Data
+	DB          *gorm.DB
+	RedisClient *redis.Client
 }
 
 var (
@@ -37,15 +41,16 @@ func (database *Database) LoadDBInstance() {
 
 		ctx := context.Background()
 		if err = db.DB().PingContext(ctx); err != nil {
-			logger.Error("Database connection closed. Error > %s", err.Error())
+			database.Logger.Error("Database connection closed. Error > %s", err.Error())
 		}
 
 		db.DB().SetMaxIdleConns(database.Config.MaxIdleConns)
 		db.DB().SetMaxOpenConns(database.Config.MaxOpenConns)
 		db.DB().SetConnMaxLifetime(time.Second * time.Duration(database.Config.ConnMaxLifetime))
+
 		database.DB = db
 	})
-	logger.Info("Database connection successful!")
+	database.Logger.Info("Database connection successful!")
 }
 
 // CloseDBInstance ...

@@ -2,49 +2,23 @@ package services
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 	Config "wallet-adapter/config"
-
-	"wallet-adapter/utility/apiClient"
-	"wallet-adapter/utility/appError"
-	"wallet-adapter/utility/cache"
-	"wallet-adapter/utility/constants"
-	"wallet-adapter/utility/logger"
-
-	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/utility"
 )
 
-//NotificationService object
-type NotificationService struct {
-	Cache      *cache.Memory
-	Config     Config.Data
-	Error      *dto.ExternalServicesRequestErr
-	Repository database.IRepository
-}
+func SendEmailNotification(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SendEmailRequest, responseData *dto.SendEmailResponse, serviceErr interface{}) error {
 
-func NewNotificationService(cache *cache.Memory, config Config.Data, repository database.IRepository) *NotificationService {
-	baseService := NotificationService{
-		Cache:      cache,
-		Config:     config,
-		Repository: repository,
-		Error:      &dto.ExternalServicesRequestErr{},
-	}
-	return &baseService
-}
-
-func (service *NotificationService) SendEmailNotification(requestData dto.SendEmailRequest, responseData *dto.SendEmailResponse) error {
-	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
-	authToken, err := AuthService.GetAuthToken()
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
-	metaData := GetRequestMetaData("sendEmail", service.Config)
+	metaData := utility.GetRequestMetaData("sendEmail", config)
 
-	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -52,25 +26,26 @@ func (service *NotificationService) SendEmailNotification(requestData dto.SendEm
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		appErr := err.(appError.Err)
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 			return err
 		}
-		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
+		logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
+		return err
 	}
 
 	return nil
 }
 
-func (service *NotificationService) SendSmsNotification(requestData dto.SendSmsRequest, responseData *dto.SendSmsResponse) error {
-	AuthService := NewAuthService(service.Cache, service.Config, service.Repository)
-	authToken, err := AuthService.GetAuthToken()
+func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SendSmsRequest, responseData *dto.SendSmsResponse, serviceErr interface{}) error {
+	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err
 	}
-	metaData := GetRequestMetaData("sendSms", service.Config)
-	APIClient := apiClient.New(nil, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
+	metaData := utility.GetRequestMetaData("sendSms", config)
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
 		return err
@@ -78,26 +53,28 @@ func (service *NotificationService) SendSmsNotification(requestData dto.SendSmsR
 	APIClient.AddHeader(APIRequest, map[string]string{
 		"x-auth-token": authToken,
 	})
-	if err := APIClient.Do(APIRequest, responseData); err != nil {
-		appErr := err.(appError.Err)
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%s", err.Error())), service.Error); errUnmarshal != nil {
+	_, err = APIClient.Do(APIRequest, responseData)
+	if err != nil {
+		if errUnmarshal := json.Unmarshal([]byte(err.Error()), serviceErr); errUnmarshal != nil {
+			logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
 			return err
 		}
-		return serviceError(appErr.ErrCode, service.Error.Code, errors.New(service.Error.Message))
+		logger.Error("An error occured while calling notifications service %+v %+v ", err, err.Error())
+		return err
 	}
 
 	return nil
 }
 
-func (service *NotificationService) BuildAndSendSms(assetSymbol string, amount *big.Float) {
+func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
 	logger.Info("Sending sms notification for asset ", assetSymbol)
-	formattedPhoneNumber := service.Config.ColdWalletSmsNumber
-	if !strings.HasPrefix(service.Config.ColdWalletSmsNumber, "+") {
-		formattedPhoneNumber = "+" + service.Config.ColdWalletSmsNumber
+	formattedPhoneNumber := config.ColdWalletSmsNumber
+	if !strings.HasPrefix(config.ColdWalletSmsNumber, "+") {
+		formattedPhoneNumber = "+" + config.ColdWalletSmsNumber
 	}
 
 	notificationEnv := ""
-	if service.Config.SENTRY_ENVIRONMENT == constants.ENV_PRODUCTION {
+	if config.SENTRY_ENVIRONMENT == utility.ENV_PRODUCTION {
 		notificationEnv = "LIVE"
 	} else {
 		notificationEnv = "TEST"
@@ -106,11 +83,11 @@ func (service *NotificationService) BuildAndSendSms(assetSymbol string, amount *
 	sendSmsRequest := dto.SendSmsRequest{
 		Message:     fmt.Sprintf("%s - Please fund Bundle hot wallet address for %s with at least %f %s", notificationEnv, assetSymbol, amount, assetSymbol),
 		PhoneNumber: formattedPhoneNumber,
-		SmsType:     constants.NOTIFICATION_SMS_TYPE,
-		Country:     constants.NOTIFICATION_SMS_COUNTRY,
+		SmsType:     utility.NOTIFICATION_SMS_TYPE,
+		Country:     utility.NOTIFICATION_SMS_COUNTRY,
 	}
 	sendSmsResponse := dto.SendSmsResponse{}
-	if err := service.SendSmsNotification(sendSmsRequest, &sendSmsResponse); err != nil {
+	if err := SendSmsNotification(cache, logger, config, sendSmsRequest, &sendSmsResponse, serviceErr); err != nil {
 		logger.Error(fmt.Sprintf("error with sending sms notification for asset %s : %s", assetSymbol, err))
 	}
 }

@@ -11,13 +11,11 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/go-chi/chi v4.0.3+incompatible // indirect
-	github.com/go-delve/delve v1.5.0
 	github.com/go-playground/assert v1.2.1 // indirect
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-redis/redis/v7 v7.0.0-beta.4
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
-	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/jeanphorn/log4go v0.0.0-20190526082429-7dbb8deb9468
