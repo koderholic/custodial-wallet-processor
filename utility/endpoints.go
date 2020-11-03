@@ -144,6 +144,13 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.TWServiceUrl,
 			Action:   "/wallet-core/master/coins.json",
 		}
+	case "getUserAddressBBS":
+		return MetaData{
+			Type:     http.MethodGet,
+			Endpoint: config.BinanceBrokerageServiceURL,
+			Action:   "/users",
+		}
+
 	default:
 		return MetaData{}
 	}

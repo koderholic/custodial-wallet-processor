@@ -21,6 +21,11 @@ var (
 		145: &batchable,
 		2:   &batchable,
 	}
+	addressProvider  = map[string]string{
+		"LINK":   model.AddressProvider.BINANCE,
+		"USDT":  model.AddressProvider.BINANCE,
+		"TRX":    model.AddressProvider.BINANCE,
+	}
 	sweepFee = map[int64]int64{
 		714: 37500,
 	}
@@ -59,6 +64,7 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 		if !strings.EqualFold(denom.TokenType, "NATIVE") {
 			isToken = true
 		}
+
 		normalizedAsset := model.Denomination{
 			Name:                denom.Name,
 			AssetSymbol:         denom.Symbol,
@@ -75,6 +81,7 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 			TransferActivity:    denom.TransferActivity,
 			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
 			IsBatchable:         isBatchable[denom.CoinType],
+			AddressProvider: addressProvider[denom.Symbol],
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
 	}
