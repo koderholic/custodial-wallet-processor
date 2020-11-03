@@ -17,6 +17,7 @@ type Denomination struct {
 	IsBatchable         *bool          `gorm:"default:0" json:"is_batchable"`
 	MinimumSweepable    float64        `json:"minimum_sweepable"`
 	MainCoinAssetSymbol string         `json:"main_coin_asset_symbol"`
+	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`
 	SweepFee            int64          `json:"sweep_fee"`
 	TradeActivity       string         `json:"tradeActivity"`
 	DepositActivity     string         `json:"depositActivity"`

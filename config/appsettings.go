@@ -49,6 +49,8 @@ type Data struct {
 	DBMigrationPath           string        `mapstructure:"dbMigrationPath"  yaml:"dbMigrationPath,omitempty"`
 	SentryDsn                 string        `mapstructure:"SENTRY_DSN"  yaml:"SENTRY_DSN,omitempty"`
 	SENTRY_ENVIRONMENT        string        `mapstructure:"SENTRY_ENVIRONMENT"  yaml:"SENTRY_ENVIRONMENT,omitempty"`
+	BinanceBrokerageServiceURL        string        `mapstructure:"binanceBrokerageServiceUrl"  yaml:"binanceBrokerageServiceUrl,omitempty"`
+
 }
 
 //Init : initialize data
