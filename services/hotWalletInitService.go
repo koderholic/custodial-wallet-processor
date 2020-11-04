@@ -21,7 +21,7 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 	address := ""
 	var err error
 
-	if err := DB.Order("created_at", true).Find(&supportedAssets).Error; err != nil {
+	if err := DB.Order("is_token", true).Find(&supportedAssets).Error; err != nil {
 		if err.Error() != errorcode.SQL_404 {
 			return err
 		}
