@@ -270,7 +270,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 		// Fetches all PENDING transactions from the transaction queue table for processing
 		var transactionQueue []model.TransactionQueue
-		var ETHTransactionCount int
 		if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING}, &transactionQueue); err != nil {
 			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
 			done <- true
@@ -312,11 +311,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				controller.Logger.Error("Error occured while updating transaction %+v to processing : %+v; %s", transaction.TransactionId, serviceErr, err)
 				_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 				continue
-			}
-
-			if transaction.AssetSymbol == utility.COIN_ETH {
-				time.Sleep(time.Duration(utility.GetSingleTXProcessingIntervalTime(ETHTransactionCount)) * time.Second)
-				ETHTransactionCount = ETHTransactionCount + 1
 			}
 
 			if err := processor.processSingleTxn(transaction); err != nil {

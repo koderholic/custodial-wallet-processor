@@ -50,4 +50,5 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "sweepCronInterval: 1/15 * * * *" >> config.yaml && \
     echo "floatCronInterval: 10 */3 * * *" >> config.yaml && \
     echo "coldWalletSmsNumber: +2348178500655" >> config.yaml && \
+    echo "binanceBrokerageServiceUrl: http://binance-brokerage" >> config.yaml && \
     echo "SENTRY_DSN: https://52fb6b65fcdf4fd89143d81611f7a12c@sentry.io/3640925" >> config.yaml

@@ -17,6 +17,7 @@ type UserAsset struct {
 	Decimal          int       `gorm:"-" json:"decimal,omitempty"`
 	CoinType         int64     `gorm:"-" json:"coinType,omitempty"`
 	RequiresMemo     bool      `gorm:"-" json:"requiresMemo,omitempty"`
+	AddressProvider string    `gorm:"-" json:"address_provider,omitempty"`
 }
 
 func (userAsset *UserAsset) AfterFind() {

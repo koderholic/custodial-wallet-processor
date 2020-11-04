@@ -8,6 +8,8 @@ import (
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/constants"
+	AddressProvider "wallet-adapter/utility/addressProvider"
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
@@ -40,7 +42,7 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 		logger.Fatal("Supported assets could not be seeded, err : %s", err)
 	}
 
-	assets := normalizeAsset(config, assetDenominations.Denominations, TWDenominations)
+	assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
 
 	for _, asset := range assets {
 		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
@@ -50,15 +52,12 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 	logger.Info("Supported assets seeded successfully")
 }
 
-func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
+func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
 	normalizedAssets := []model.Denomination{}
 
 	for _, denom := range denominations {
-		isToken := false
+		isToken, addressProvider := GetDynamicDenominationValues(denom)
 
-		if !strings.EqualFold(denom.TokenType, "NATIVE") {
-			isToken = true
-		}
 		normalizedAsset := model.Denomination{
 			Name:                denom.Name,
 			AssetSymbol:         denom.Symbol,
@@ -75,12 +74,28 @@ func normalizeAsset(config Config.Data, denominations []dto.AssetDenomination, T
 			TransferActivity:    denom.TransferActivity,
 			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
 			IsBatchable:         isBatchable[denom.CoinType],
+			AddressProvider:     addressProvider,
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
 	}
 
 	return normalizedAssets
 
+}
+
+func GetDynamicDenominationValues(denom dto.AssetDenomination) (bool, string) {
+	isToken := false
+	addressProvider := ""
+
+	if !strings.EqualFold(denom.TokenType, "NATIVE") {
+		isToken = true
+		if denom.CoinType == constants.ETH_COINTYPE {
+			addressProvider = model.AddressProvider.BINANCE
+		} else {
+			addressProvider = AddressProvider.Providers[denom.Symbol]
+		}
+	}
+	return isToken, addressProvider
 }
 
 func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination) string {
