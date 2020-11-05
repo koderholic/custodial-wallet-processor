@@ -109,3 +109,7 @@ func IsExceedWaitTime(startTime, endTime time.Time) bool {
 	}
 	return false
 }
+
+func FloatToString(input_num float64) string {
+	return strconv.FormatFloat(input_num, 'f', 8, 64)
+}

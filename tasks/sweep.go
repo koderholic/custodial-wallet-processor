@@ -3,7 +3,6 @@ package tasks
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"strconv"
 	"strings"
@@ -215,11 +214,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	if transactionListInfo.AddressProvider == model.AddressProvider.BINANCE {
 		//call Binance brokerage service
 		service := services.BaseService{Config: config, Cache: cache, Logger: logger}
-		denominationDecimal := float64(transactionListInfo.Decimal)
-		scaledTotalSum := big.NewFloat(float64(sum) * math.Pow(10, denominationDecimal))
-		scaledTotalSumAsInt := new(big.Int)
-		scaledTotalSum.Int(scaledTotalSumAsInt)
-		_, sweepErr := service.SweepUserAddress(transactionListInfo.UserId, transactionListInfo.AssetSymbol, scaledTotalSumAsInt.String())
+		_, sweepErr := service.SweepUserAddress(transactionListInfo.UserId, transactionListInfo.AssetSymbol, utility.FloatToString(sum))
 		if sweepErr != nil {
 			logger.Error("Error response from Binance Brokerage service : %+v while sweeping for address with id %+v", sweepErr, recipientAddress)
 			return sweepErr

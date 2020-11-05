@@ -41,6 +41,7 @@ resources:
       - svcs.notifications.send-sms
       - svcs.notifications.send-email
       - svcs.notifications.send-push
+      - svcs.binance-brokerage.perform-sweep
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
