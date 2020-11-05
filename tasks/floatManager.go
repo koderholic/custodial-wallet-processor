@@ -67,7 +67,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
 			logger.Info("error with float manager process, while trying to get the total deposit sum from last run : %+v", err)
-			continue
 		}
 		logger.Info("depositSumFromLastRun for this hot wallet (%s) is %+v", floatAccount.AssetSymbol, depositSumFromLastRun)
 
@@ -75,7 +74,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
 			logger.Info("error with float manager process, while trying to get the total withdrawal sum from last run : %+v", err)
-			continue
 		}
 		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
 
