@@ -211,6 +211,20 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
+	if transactionListInfo.AddressProvider == model.AddressProvider.BINANCE {
+		//call Binance brokerage service
+		service := services.BaseService{Config: config, Cache: cache, Logger: logger}
+		_, sweepErr := service.SweepUserAddress(transactionListInfo.UserId, transactionListInfo.AssetSymbol, utility.FloatToString(sum))
+		if sweepErr != nil {
+			logger.Error("Error response from Binance Brokerage service : %+v while sweeping for address with id %+v", sweepErr, recipientAddress)
+			return sweepErr
+		}
+		if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	denomination := model.Denomination{}
 	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: transactionListInfo.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
@@ -299,6 +313,8 @@ func getTransactionListInfo(repository database.BaseRepository, assetTransaction
 	}
 	transactionListInfo.AssetSymbol = recipientAsset.AssetSymbol
 	transactionListInfo.Decimal = recipientAsset.Decimal
+	transactionListInfo.UserId = recipientAsset.UserID
+	transactionListInfo.AddressProvider = recipientAsset.AddressProvider
 	return transactionListInfo, nil
 }
 
