@@ -16,11 +16,11 @@ func InitFloatParams(DB *gorm.DB, logger *utility.Logger) error {
 	for _, asset := range hotWalletAssets {
 		floatParam := model.FloatManagerParam{
 			AssetSymbol: asset.AssetSymbol,
-			MinPercentMaxUserBalance     : 0.6,
-			MaxPercentMaxUserBalance      : 0.8,
-			MinPercentTotalUserBalance    : 0.3,
-			AveragePercentTotalUserBalance :  0.4,
-			MaxPercentTotalUserBalance     : 0.6,
+			MinPercentMaxUserBalance     : 0.1,
+			MaxPercentMaxUserBalance      : 0.3,
+			MinPercentTotalUserBalance    : 0.075,
+			AveragePercentTotalUserBalance :  0.2,
+			MaxPercentTotalUserBalance     : 0.2,
 			PercentMinimumTriggerLevel  : 0.8,
 			PercentMaximumTriggerLevel     : 0.3,
 		}
