@@ -50,6 +50,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
 		if err := services.GetOnchainBalance(cache, logger, config, onchainBalanceRequest, &floatOnChainBalanceResponse, serviceErr); err != nil {
 			logger.Error(fmt.Sprintf("error with getting float on-chain balance for %+v is %+v", floatAccount.AssetSymbol, err))
+			continue
 		}
 		floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 		logger.Info("floatOnChainBalance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
@@ -66,7 +67,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
 			logger.Info("error with float manager process, while trying to get the total deposit sum from last run : %+v", err)
-			continue
 		}
 		logger.Info("depositSumFromLastRun for this hot wallet (%s) is %+v", floatAccount.AssetSymbol, depositSumFromLastRun)
 
@@ -74,7 +74,6 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
 		if err != nil {
 			logger.Info("error with float manager process, while trying to get the total withdrawal sum from last run : %+v", err)
-			continue
 		}
 		logger.Info("withdrawalSumFromLastRun for this hot wallet %+v is %+v", floatAccount.AssetSymbol, withdrawalSumFromLastRun)
 
@@ -90,6 +89,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 		floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
 		if err != nil {
 			logger.Info("Error getting float manager params : %s", err)
+			continue
 		}
 
 		// GetMinimum
@@ -117,7 +117,7 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			denomination := model.Denomination{}
 			if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
 				logger.Error("Error response from Float manager : %+v while trying to denomination of float asset", err)
-				break
+				continue
 			}
 			denominationDecimal := float64(denomination.Decimal)
 
@@ -171,10 +171,12 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 			if *denomination.IsToken {
 				if err := services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &depositAddressResponse, serviceErr); err != nil {
 					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)
+					continue
 				}
 			} else {
 				if err := services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &depositAddressResponse, serviceErr); err != nil {
 					logger.Error("Error response from Float manager : %+v while trying to get brokerage deposit ", err)
+					continue
 				}
 			}
 
