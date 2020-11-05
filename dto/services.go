@@ -233,6 +233,8 @@ type SendSmsResponse struct {
 }
 
 type TransactionListInfo struct {
-	Decimal     int
-	AssetSymbol string
+	Decimal         int
+	AssetSymbol     string
+	UserId          uuid.UUID
+	AddressProvider string
 }
