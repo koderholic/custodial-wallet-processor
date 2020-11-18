@@ -66,6 +66,7 @@ func GenerateV1Address(repository database.IUserAssetRepository, logger *utility
 		}
 		userAddress.Address = addressResponse[0].Data
 		userAddress.AddressType = addressResponse[0].Type
+		userAddress.AddressProvider = model.AddressProvider.BUNDLE
 		userAddress.AssetID = userAsset.ID
 	}
 
