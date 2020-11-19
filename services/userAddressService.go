@@ -216,7 +216,8 @@ func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUs
 	}
 
 	for _, address := range responseAddresses {
-		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID}); err != nil {
+		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID,
+			AddressProvider : model.AddressProvider.BUNDLE}); err != nil {
 			service.Logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
 			return []dto.AllAddressResponse{}, errors.New(utility.GetSQLErr(err))
 		}
