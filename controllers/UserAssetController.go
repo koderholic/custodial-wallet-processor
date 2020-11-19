@@ -27,7 +27,6 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	responseData := dto.UserAssetResponse{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
-	controller.Logger.Info("Incoming request details for CreateUserAssets : %+v", requestData)
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
@@ -62,7 +61,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
 
-	controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", responseData)
+	controller.Logger.Info("Outgoing response to CreateUserAssets request %v", http.StatusCreated)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
 	json.NewEncoder(responseWriter).Encode(responseData)

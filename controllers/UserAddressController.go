@@ -25,7 +25,6 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", errorcode.UUID_CAST_ERR), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Incoming request details for GetAllAssetAddresses : assetID : %+v", assetID)
 
 	if err := controller.Repository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: assetID}}, &userAsset); err != nil {
 		ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAsset with id = %s", utility.GetSQLErr(err), assetID)), controller.Logger)
@@ -76,7 +75,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 	}
 
 	responseData.DefaultAddressType = utility.DefaultAddressesTypes[userAsset.CoinType]
-	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", responseData)
+	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(responseWriter).Encode(responseData)
 

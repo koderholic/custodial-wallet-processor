@@ -96,6 +96,7 @@ cronJobs:
         MINIMUMSWEEP_BNB: 'config:crypto-wallet-adapter:BNB_minimumSweep'
         MINIMUMSWEEP_ETH: 'config:crypto-wallet-adapter:ETH_minimumSweep'
         MINIMUMSWEEP_BUSD: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
+        MINIMUMSWEEP_WRX: 'config:crypto-wallet-adapter:WRX_minimumSweep'
 
   - name: crypto-floatmanager-task
     schedule: '10 */4 * * *'
@@ -121,5 +122,6 @@ config:
   BTC_minimumSweep: '0.0001'
   BNB_minimumSweep: '0.005'
   ETH_minimumSweep: '0.001'
-  BUSD_minimumSweep: '0.5' 
+  BUSD_minimumSweep: '0.5'
+  WRX_minimumSweep: '10'
   coldWalletSmsNumber: '+2348178500655'
