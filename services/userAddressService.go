@@ -88,6 +88,7 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 		}
 		userAddress.AssetID = userAsset.ID
 		userAddress.V2Address = assetAddress.Address
+		userAddress.AddressProvider = model.AddressProvider.BUNDLE
 		userAddress.Memo = assetAddress.Memo
 
 		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo}); createErr != nil {
@@ -216,7 +217,8 @@ func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUs
 	}
 
 	for _, address := range responseAddresses {
-		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID}); err != nil {
+		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID,
+			AddressProvider : model.AddressProvider.BUNDLE}); err != nil {
 			service.Logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
 			return []dto.AllAddressResponse{}, errors.New(utility.GetSQLErr(err))
 		}
