@@ -5,4 +5,5 @@ config:
   BNB_minimumSweep: '5'
   ETH_minimumSweep: '0.05'
   BUSD_minimumSweep: '300'
+  WRX_minimumSweep: '500'
   coldWalletSmsNumber: '+2349084859418'
