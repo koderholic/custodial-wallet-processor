@@ -1,14 +1,31 @@
 package services
 
 import (
+	"fmt"
 	"strings"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/constants"
+	AddressProvider "wallet-adapter/utility/addressProvider"
 
 	"github.com/jinzhu/gorm"
+	"github.com/spf13/viper"
+)
+
+var (
+	batchable    = true
+	notBatchable = false
+	isBatchable  = map[int64]*bool{
+		0:   &batchable,
+		145: &batchable,
+		2:   &batchable,
+	}
+	sweepFee = map[int64]int64{
+		714: 37500,
+	}
 )
 
 func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
@@ -36,15 +53,10 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 }
 
 func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
-
 	normalizedAssets := []model.Denomination{}
 
 	for _, denom := range denominations {
-		isToken := false
-
-		if !strings.EqualFold(denom.TokenType, "NATIVE") {
-			isToken = true
-		}
+		isToken, addressProvider := GetDynamicDenominationValues(denom)
 
 		normalizedAsset := model.Denomination{
 			Name:                denom.Name,
@@ -55,17 +67,35 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			IsEnabled:           denom.Enabled,
 			IsToken:             &isToken,
 			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
-			SweepFee:            getAssetSweepFee(denom.CoinType),
+			SweepFee:            sweepFee[denom.CoinType],
 			TradeActivity:       denom.TradeActivity,
 			DepositActivity:     denom.DepositActivity,
 			WithdrawActivity:    denom.WithdrawActivity,
 			TransferActivity:    denom.TransferActivity,
+			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
+			IsBatchable:         isBatchable[denom.CoinType],
+			AddressProvider:     addressProvider,
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
 	}
 
 	return normalizedAssets
 
+}
+
+func GetDynamicDenominationValues(denom dto.AssetDenomination) (bool, string) {
+	isToken := false
+	addressProvider := ""
+
+	if !strings.EqualFold(denom.TokenType, "NATIVE") {
+		isToken = true
+		if denom.CoinType == constants.ETH_COINTYPE {
+			addressProvider = model.AddressProvider.BINANCE
+		} else {
+			addressProvider = AddressProvider.Providers[denom.Symbol]
+		}
+	}
+	return isToken, addressProvider
 }
 
 func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination) string {
@@ -76,15 +106,6 @@ func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination
 		}
 	}
 	return ""
-}
-
-func getAssetSweepFee(coinType int64) int64 {
-	switch coinType {
-	case 714:
-		return 37500
-	default:
-		return 0
-	}
 }
 
 func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
@@ -111,4 +132,13 @@ func (service BaseService) IsDepositActive(assetSymbol string, repository databa
 	}
 
 	return true, nil
+}
+
+func (service BaseService) IsBatchable(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	return *denomination.IsBatchable, nil
 }

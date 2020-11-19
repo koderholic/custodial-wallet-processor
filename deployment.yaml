@@ -14,10 +14,10 @@ serviceConfig:
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         COLDWALLETSMSNUMBER: 'config:crypto-wallet-adapter:coldWalletSmsNumber'
-        BTC_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BTC_minimumSweep'
-        BNB_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BNB_minimumSweep'
-        ETH_MINIMUMSWEEP: 'config:crypto-wallet-adapter:ETH_minimumSweep'
-        BUSD_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
+        MINIMUMSWEEP_BTC: 'config:crypto-wallet-adapter:BTC_minimumSweep'
+        MINIMUMSWEEP_BNB: 'config:crypto-wallet-adapter:BNB_minimumSweep'
+        MINIMUMSWEEP_ETH: 'config:crypto-wallet-adapter:ETH_minimumSweep'
+        MINIMUMSWEEP_BUSD: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
 
 resources:
   databases:
@@ -41,6 +41,9 @@ resources:
       - svcs.notifications.send-sms
       - svcs.notifications.send-email
       - svcs.notifications.send-push
+      - svcs.binance-brokerage.create-account
+      - svcs.binance-brokerage.get-address
+      - svcs.binance-brokerage.perform-sweep
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
@@ -89,10 +92,10 @@ cronJobs:
       env:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
-        BTC_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BTC_minimumSweep'
-        BNB_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BNB_minimumSweep'
-        ETH_MINIMUMSWEEP: 'config:crypto-wallet-adapter:ETH_minimumSweep'
-        BUSD_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
+        MINIMUMSWEEP_BTC: 'config:crypto-wallet-adapter:BTC_minimumSweep'
+        MINIMUMSWEEP_BNB: 'config:crypto-wallet-adapter:BNB_minimumSweep'
+        MINIMUMSWEEP_ETH: 'config:crypto-wallet-adapter:ETH_minimumSweep'
+        MINIMUMSWEEP_BUSD: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
 
   - name: crypto-floatmanager-task
     schedule: '10 */4 * * *'
@@ -107,10 +110,10 @@ cronJobs:
         SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
         ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
         COLDWALLETSMSNUMBER: 'config:crypto-wallet-adapter:coldWalletSmsNumber'
-        BTC_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BTC_minimumSweep'
-        BNB_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BNB_minimumSweep'
-        ETH_MINIMUMSWEEP: 'config:crypto-wallet-adapter:ETH_minimumSweep'
-        BUSD_MINIMUMSWEEP: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
+        MINIMUMSWEEP_BTC: 'config:crypto-wallet-adapter:BTC_minimumSweep'
+        MINIMUMSWEEP_BNB: 'config:crypto-wallet-adapter:BNB_minimumSweep'
+        MINIMUMSWEEP_ETH: 'config:crypto-wallet-adapter:ETH_minimumSweep'
+        MINIMUMSWEEP_BUSD: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
 
 
 config:
@@ -118,5 +121,5 @@ config:
   BTC_minimumSweep: '0.0001'
   BNB_minimumSweep: '0.005'
   ETH_minimumSweep: '0.001'
-  BUSD_minimumSweep: '0.5'
+  BUSD_minimumSweep: '0.5' 
   coldWalletSmsNumber: '+2348178500655'

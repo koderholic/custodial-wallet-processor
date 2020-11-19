@@ -12,7 +12,7 @@ type BatchService struct {
 	BaseService
 }
 
-func (service BatchService) GetWaitingBTCBatchId(repository database.IBatchRepository, assetSymbol string) (uuid.UUID, error) {
+func (service BatchService) GetWaitingBatchId(repository database.IBatchRepository, assetSymbol string) (uuid.UUID, error) {
 
 	var currentBatch model.BatchRequest
 	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE, AssetSymbol: assetSymbol}, &currentBatch); err != nil {

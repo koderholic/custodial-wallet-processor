@@ -96,17 +96,15 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 		return
 	}
 
-	// Ensure transaction value is above minimum send to chain
-	minimumSpendable := decimal.NewFromFloat(utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])
-	if value.Cmp(minimumSpendable) <= 0 {
-		ReturnError(responseWriter, "ExternalTransfer", http.StatusBadRequest, errorcode.MINIMUM_SPENDABLE_ERR, apiResponse.PlainError("MINIMUM_SPENDABLE_ERR", fmt.Sprintf("%s : %v", errorcode.MINIMUM_SPENDABLE_ERR, utility.MINIMUM_SPENDABLE[debitReferenceAsset.AssetSymbol])), controller.Logger)
+	// Batch transaction, if asset is batchable
+	isBatchable, err := userAssetService.IsBatchable(debitReferenceTransaction.AssetSymbol, controller.Repository)
+	if err != nil {
+		ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
 		return
 	}
-
-	// Batch transaction, if asset is BTC
 	var activeBatchId uuid.UUID
-	if debitReferenceAsset.AssetSymbol == utility.COIN_BTC {
-		activeBatchId, err = batchService.GetWaitingBTCBatchId(controller.Repository, utility.COIN_BTC)
+	if isBatchable {
+		activeBatchId, err = batchService.GetWaitingBatchId(controller.Repository, debitReferenceTransaction.AssetSymbol)
 		if err != nil {
 			ReturnError(responseWriter, "ExternalTransfer", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
 			return
@@ -272,7 +270,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 
 		// Fetches all PENDING transactions from the transaction queue table for processing
 		var transactionQueue []model.TransactionQueue
-		var ETHTransactionCount int
 		if err := controller.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING}, &transactionQueue); err != nil {
 			controller.Logger.Error("Error response from ProcessTransactions job : %+v", err)
 			done <- true
@@ -314,11 +311,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				controller.Logger.Error("Error occured while updating transaction %+v to processing : %+v; %s", transaction.TransactionId, serviceErr, err)
 				_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 				continue
-			}
-
-			if transaction.AssetSymbol == utility.COIN_ETH {
-				time.Sleep(time.Duration(utility.GetSingleTXProcessingIntervalTime(ETHTransactionCount)) * time.Second)
-				ETHTransactionCount = ETHTransactionCount + 1
 			}
 
 			if err := processor.processSingleTxn(transaction); err != nil {

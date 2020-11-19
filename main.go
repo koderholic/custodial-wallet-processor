@@ -46,6 +46,9 @@ func main() {
 	if err := services.InitHotWallet(authCache, Database.DB, logger, config); err != nil {
 		logger.Error("Error with InitHotWallet %s", err)
 	}
+	if err := services.InitFloatParams(Database.DB, logger); err != nil {
+		logger.Error("Error with InitFloatParams %s", err)
+	}
 	if err := services.InitSharedAddress(authCache, Database.DB, logger, config); err != nil {
 		logger.Error("Error with InitSharedAddress %s", err)
 	}

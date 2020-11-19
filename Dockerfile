@@ -39,11 +39,8 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "rateServiceUrl: http://rates" >> config.yaml && \
     echo "TWServiceURL: https://raw.githubusercontent.com/trustwallet" >> config.yaml && \
     echo "coldWalletEmailTemplateId: d-c2c966c47fc3405598733a6a7178b28f" >> config.yaml && \
-    echo "BTC_SLIP_VALUE: 0" >> config.yaml && \
-    echo "BNB_SLIP_VALUE: 714" >> config.yaml && \
     echo "expireCacheDuration: 400" >> config.yaml && \
     echo "requestTimeout: 60" >> config.yaml && \
-    echo "ETH_SLIP_VALUE: 60" >> config.yaml && \
     echo "maxIdleConns : 25" >> config.yaml && \
     echo "maxOpenConns : 50" >> config.yaml && \
     echo "connMaxLifetime: 300" >> config.yaml && \
@@ -53,4 +50,5 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "sweepCronInterval: 1/15 * * * *" >> config.yaml && \
     echo "floatCronInterval: 10 */3 * * *" >> config.yaml && \
     echo "coldWalletSmsNumber: +2348178500655" >> config.yaml && \
+    echo "binanceBrokerageServiceUrl: http://binance-brokerage" >> config.yaml && \
     echo "SENTRY_DSN: https://52fb6b65fcdf4fd89143d81611f7a12c@sentry.io/3640925" >> config.yaml
