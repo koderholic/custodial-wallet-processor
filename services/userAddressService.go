@@ -88,6 +88,7 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 		}
 		userAddress.AssetID = userAsset.ID
 		userAddress.V2Address = assetAddress.Address
+		userAddress.AddressProvider = model.AddressProvider.BUNDLE
 		userAddress.Memo = assetAddress.Memo
 
 		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo}); createErr != nil {
