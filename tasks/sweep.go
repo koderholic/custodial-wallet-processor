@@ -349,6 +349,16 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 		if chainTransaction.RecipientAddress != "" {
 			key := chainTransaction.RecipientAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol
 			transactionsPerRecipientAddress[key] = append(transactionsPerRecipientAddress[key], tx)
+		} else {
+			userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+			binanceAddress, err := services.GetBinanceProvidedAddressforAsset(&userAssetRepository, tx.RecipientID)
+			if err != nil || binanceAddress == "" {
+				//skip this asset
+				logger.Info("GroupByTx - getting binance address FAILED for  %+v skipping this transaction", tx.ID)
+				continue
+			}
+			key := binanceAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol
+			transactionsPerRecipientAddress[key] = append(transactionsPerRecipientAddress[key], tx)
 		}
 
 	}
