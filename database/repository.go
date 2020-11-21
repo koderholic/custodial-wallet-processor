@@ -128,6 +128,19 @@ func (repo *BaseRepository) FetchSweepCandidates(model interface{}) error {
 	return nil
 }
 
+func (repo *BaseRepository) FetchBinanceOnchainSweepCandidates(model interface{}) error {
+	sweepCandidatesQuery := "SELECT * FROM transactions where " +
+		"(transaction_tag='CREDIT' AND memo='CREDIT' and transaction_status='COMPLETED' and swept_status=0) ORDER BY asset_symbol, created_at"
+	if err := repo.DB.Raw(sweepCandidatesQuery).Scan(model).Error; err != nil {
+		repo.Logger.Error("Error when fetching sweep status : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
 // FetchByFieldName ... Retrieves all records for the specified model from the database for a given field name from a specified date
 func (repo *BaseRepository) FetchByFieldNameFromDate(field interface{}, model interface{}, date *time.Time) error {
 	if date == nil {
