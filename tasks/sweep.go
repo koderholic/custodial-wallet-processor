@@ -48,6 +48,21 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		return
 	}
 
+	var binanceDepositTransactions []model.Transaction
+	if err := repository.FetchBinanceOnchainSweepCandidates(&binanceDepositTransactions); err != nil {
+		logger.Error("Error response from Sweep job : could not fetch binance internal deposit sweep candidates %+v", err)
+		if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+			logger.Error("Could not release lock", err)
+			return
+		}
+		return
+	}
+	for _, transaction := range binanceDepositTransactions {
+		if utility.IsValidUUID(transaction.TransactionReference) {
+			transactions = append(transactions, transaction)
+		}
+	}
+
 	logger.Info("Fetched %d sweep candidates", len(transactions))
 
 	var batchAddresses []string
