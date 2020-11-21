@@ -2,6 +2,7 @@ package utility
 
 import (
 	"encoding/json"
+	uuid "github.com/satori/go.uuid"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -112,4 +113,9 @@ func IsExceedWaitTime(startTime, endTime time.Time) bool {
 
 func FloatToString(input_num float64) string {
 	return strconv.FormatFloat(input_num, 'f', 8, 64)
+}
+
+func IsValidUUID(u string) bool {
+	_, err := uuid.FromString(u)
+	return err == nil
 }

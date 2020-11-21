@@ -27,7 +27,6 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 	responseData := dto.UserAssetResponse{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
-	controller.Logger.Info("Incoming request details for CreateUserAssets : %+v", requestData)
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
@@ -62,7 +61,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
 
-	controller.Logger.Info("Outgoing response to CreateUserAssets request %+v", responseData)
+	controller.Logger.Info("Outgoing response to CreateUserAssets request %v", http.StatusCreated)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
 	json.NewEncoder(responseWriter).Encode(responseData)
@@ -88,7 +87,7 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 		ReturnError(responseWriter, "GetUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get userAssets with userId = %s", utility.GetSQLErr(err.(utility.AppError)), userID)), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", userAssets)
+	controller.Logger.Info("Outgoing response to GetUserAssets request %+v", http.StatusOK)
 
 	for i := 0; i < len(userAssets); i++ {
 		userAsset := dto.Asset{}
@@ -129,7 +128,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 		ReturnError(responseWriter, "GetUserAssetById", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
 		return
 	}
-	controller.Logger.Info("Outgoing response to GetUserAssetById request %+v", userAssets)
+	controller.Logger.Info("Outgoing response to GetUserAssetById request %+v", http.StatusOK)
 
 	responseData.ID = userAssets.ID
 	responseData.UserID = userAssets.UserID
@@ -184,7 +183,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
-	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, userAssetMemo, assetSymbol, userAsset)
+	controller.Logger.Info("GetUserAssetByAddress logs : Response from GetAssetForV2Address / GetAssetForV1Address for address : %v, memo : %v, assetSymbol : %s, asset : %+v", address, userAssetMemo, assetSymbol, http.StatusOK)
 
 	responseData.ID = userAsset.ID
 	responseData.UserID = userAsset.UserID
@@ -658,7 +657,7 @@ func (controller UserAssetController) GetTransaction(responseWriter http.Respons
 
 	transaction.Map(&responseData)
 	controller.populateChainData(transaction, &responseData, apiResponse, responseWriter)
-	controller.Logger.Info("Outgoing response to GetTransaction request %+v", responseData)
+	controller.Logger.Info("Outgoing response to GetTransaction request %+v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
 
@@ -707,7 +706,7 @@ func (controller UserAssetController) GetTransactionsByAssetId(responseWriter ht
 		responseData.Transactions = []dto.TransactionResponse{}
 	}
 
-	controller.Logger.Info("Outgoing response to GetTransactionsByAssetId request %+v", responseData)
+	controller.Logger.Info("Outgoing response to GetTransactionsByAssetId request %+v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
 

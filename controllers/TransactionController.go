@@ -40,7 +40,6 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	paymentRef := utility.RandomString(16)
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
-	controller.Logger.Info("Incoming request details for ExternalTransfer : %+v", requestData)
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
@@ -182,7 +181,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	responseData.DebitReference = requestData.DebitReference
 	responseData.TransactionStatus = transaction.TransactionStatus
 
-	controller.Logger.Info("Outgoing response to ExternalTransfer request %+v", responseData)
+	controller.Logger.Info("Outgoing response to ExternalTransfer request %v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(responseData)
@@ -197,7 +196,6 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 	serviceErr := dto.ServicesRequestErr{}
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
-	controller.Logger.Info("Incoming request details for ConfirmTransaction : %+v", requestData)
 
 	// Validate request
 	if validationErr := ValidateRequest(controller.Validator, requestData, controller.Logger); len(validationErr) > 0 {
@@ -251,7 +249,7 @@ func (controller UserAssetController) ConfirmTransaction(responseWriter http.Res
 		break
 	}
 
-	controller.Logger.Info("Outgoing response to ConfirmTransaction request %+v", apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
+	controller.Logger.Info("Outgoing response to ConfirmTransaction request %v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
@@ -288,7 +286,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 			batchExist, _, err := batchService.CheckBatchExistAndReturn(controller.Repository, transaction.BatchID)
 			if err != nil {
-				controller.Logger.Error("Error occured while checking if transaction is batched : %s", err)
 				continue
 			}
 			if batchExist {
@@ -302,23 +299,20 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 			}
 			lockerServiceResponse := dto.LockerServiceResponse{}
 			if err := services.AcquireLock(controller.Cache, controller.Logger, controller.Config, lockerServiceRequest, &lockerServiceResponse, &serviceErr); err != nil {
-				controller.Logger.Error("Error occured while obtaining lock : %+v; %s", serviceErr, err)
 				continue
 			}
 
 			// update transaction to processing
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, model.ChainTransaction{}); err != nil {
-				controller.Logger.Error("Error occured while updating transaction %+v to processing : %+v; %s", transaction.TransactionId, serviceErr, err)
 				_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 				continue
 			}
 
 			if err := processor.processSingleTxn(transaction); err != nil {
-				controller.Logger.Error("The transaction '%+v' could not be processed : %s", transaction, err)
+				controller.Logger.Error("Transaction with id'%v' could not be processed, confirming broadcast state : %s", transaction.ID, err)
 				// Checks status of the TXN broadcast to chain
 				txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(transaction.DebitReference, transaction.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
 				if err != nil {
-					processor.Logger.Error("Error checking if queued transaction (%+v) has been broadcasted already, leaving status as ONGOING : %s", transaction.ID, err)
 					_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 					continue
 				}
@@ -326,7 +320,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 				if !txnExist {
 					// Revert the transaction status back to pending, as transaction has not been broadcasted
 					if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
-						controller.Logger.Error("Error occured while updating transaction %+v to PENDING : %+v; %s", transaction.TransactionId, serviceErr, err)
 						_ = processor.releaseLock(transaction.ID.String(), lockerServiceResponse.Token)
 						continue
 					}
@@ -383,7 +376,6 @@ func (controller UserAssetController) ProcessTransactions(responseWriter http.Re
 		done <- true
 	}()
 
-	controller.Logger.Info("Outgoing response to ProcessTransactions request %+v", utility.SUCCESS)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	json.NewEncoder(responseWriter).Encode(apiResponse.PlainSuccess(utility.SUCCESSFUL, utility.SUCCESS))
@@ -398,7 +390,6 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	var floatAccount model.HotWalletAsset
 	if err := processor.Repository.GetByFieldName(&model.HotWalletAsset{AssetSymbol: transaction.AssetSymbol}, &floatAccount); err != nil {
 		if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
-			processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
 			return err
 		}
 		return nil
@@ -415,19 +406,17 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		Reference:   transaction.DebitReference,
 	}
 	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config, signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
-		processor.Logger.Error("Error occured while signing and broadcast queued transaction %+v : %+v", transaction.ID, serviceErr)
+	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config,
+		signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
 		switch serviceErr.Code {
 		case errorcode.INSUFFICIENT_FUNDS:
 			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
-				processor.Logger.Error("Error occured while updating queued transaction %+v to PENDING : %+v; %s", transaction.ID, serviceErr, err)
 				return err
 			}
 			return nil
 		case errorcode.BROADCAST_FAILED_ERR, errorcode.BROADCAST_REJECTED_ERR:
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
-				processor.Logger.Error("Error occured while updating queued transaction %+v to TERMINATED : %+v; %s", transaction.ID, serviceErr, err)
 				return err
 			}
 			return nil
@@ -446,7 +435,6 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 	}
 	// Update transaction with onChainTransactionId
 	if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PROCESSING, chainTransaction); err != nil {
-		processor.Logger.Error("Error occured while updating queued transaction %+v to PROCESSING : %+v; %s", transaction.ID, serviceErr, err)
 		return err
 	}
 
@@ -496,19 +484,16 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 		}
 	}()
 	if err := tx.Error; err != nil {
-		controller.Logger.Error("Error response from confirmTransactions : %+v while creating db transaction", err)
 		return err
 	}
 
 	if err := tx.Model(&model.Transaction{}).Where("id IN (?)", transactionsIds).Updates(model.Transaction{TransactionStatus: status}).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction records tied to chain transaction : %+v", err, chainTransaction.ID)
 		return err
 	}
 
 	if err := tx.Model(&model.TransactionQueue{}).Where("transaction_id IN (?)", transactionsIds).Updates(model.TransactionQueue{TransactionStatus: status}).Error; err != nil {
 		tx.Rollback()
-		controller.Logger.Error("Error response from confirmTransactions : %+v while updating transaction queued records for chain transaction : %+v", err, chainTransaction.ID)
 		return err
 	}
 
@@ -520,7 +505,6 @@ func (controller UserAssetController) confirmTransactions(chainTransaction model
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		controller.Logger.Error("Error response from confirmTransactions : %+v while commiting db transaction", err)
 		return err
 	}
 	return nil
@@ -566,7 +550,6 @@ func (processor TransactionProccessor) releaseLock(identifier string, lockerserv
 	}
 	lockReleaseResponse := dto.ServicesRequestSuccess{}
 	if err := services.ReleaseLock(processor.Cache, processor.Logger, processor.Config, lockReleaseRequest, &lockReleaseResponse, &serviceErr); err != nil || !lockReleaseResponse.Success {
-		processor.Logger.Error("verifyTransactionStatus logs :Error occured while releasing lock for (%+v) : %+v; %s", identifier, serviceErr, err)
 		return err
 	}
 	return nil

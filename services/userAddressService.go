@@ -43,11 +43,20 @@ func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logg
 	return userAddress.Address, nil
 }
 
+func GetBinanceProvidedAddressforAsset(repository database.IUserAssetRepository, userAssetId uuid.UUID) (string, error) {
+	var userAddress model.UserAddress
+	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAssetId, AddressProvider: model.AddressProvider.BINANCE}, &userAddress)
+	if err != nil {
+		return "", err
+	}
+	return userAddress.Address, nil
+}
+
 func GenerateV1Address(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset, userAddress model.UserAddress) (string, error) {
 	service := BaseService{Config: config, Cache: cache, Logger: logger}
 
 	if userAsset.AddressProvider == model.AddressProvider.BINANCE {
-		addressResponse, err := service.GenerateUserAddressOnBBS(userAsset.UserID, userAsset.AssetSymbol,"")
+		addressResponse, err := service.GenerateUserAddressOnBBS(userAsset.UserID, userAsset.AssetSymbol, "")
 		if err != nil {
 			return "", err
 		}
@@ -218,7 +227,7 @@ func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUs
 
 	for _, address := range responseAddresses {
 		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID,
-			AddressProvider : model.AddressProvider.BUNDLE}); err != nil {
+			AddressProvider: model.AddressProvider.BUNDLE}); err != nil {
 			service.Logger.Error("Error response from userAddress service, could not save user BTC addresses : %s ", err)
 			return []dto.AllAddressResponse{}, errors.New(utility.GetSQLErr(err))
 		}
