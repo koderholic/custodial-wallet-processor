@@ -648,7 +648,9 @@ func (controller UserAssetController) GetTransaction(responseWriter http.Respons
 		return
 	}
 	isExceedWaitTime := utility.IsExceedWaitTime(time.Now(), transaction.UpdatedAt.Add(time.Duration(utility.MIN_WAIT_TIME_AFTER_BROADCAST)*time.Second))
-	if transaction.TransactionStatus == model.TransactionStatus.PROCESSING && transaction.TransactionType == model.TransactionType.ONCHAIN && isExceedWaitTime {
+	//PROCESSING is hardcoded here because it's temporary, once all transactions with transaction_status = PROCESSING has been updated, this will be removed
+	if (transaction.TransactionStatus == model.TransactionStatus.PROCESSING || transaction.TransactionStatus == "PROCESSING") &&
+		transaction.TransactionType == model.TransactionType.ONCHAIN && isExceedWaitTime {
 		status, _ := controller.verifyTransactionStatus(transaction)
 		if status != "" {
 			transaction.TransactionStatus = status
