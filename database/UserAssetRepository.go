@@ -17,6 +17,7 @@ type IUserAssetRepository interface {
 	IRepository
 	GetAssetsByID(id, model interface{}) error
 	UpdateAssetBalByID(amount, model interface{}) error
+	GetAssetAddressDetails(address, model interface{}) error
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
 	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
@@ -134,6 +135,29 @@ func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (floa
 	availableBalance, _ := strconv.ParseFloat(maxUserBalance.AvailableBalance, 64)
 	return availableBalance, nil
 }
+
+// GetAssetByAddress... Get user asset matching the given address
+func (repo *UserAssetRepository) GetAssetAddressDetails(address, model interface{}) error {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.address, user_addresses.address_provider, user_assets.*").
+		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
+		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
+		Where("address = ?", address).
+		First(model).Error; err != nil {
+		repo.Logger.Info("GetAssetByAddressAndSymbol logs : error with fetching asset for address : %s, error : %+v", address, err)
+		if gorm.IsRecordNotFoundError(err) {
+			return utility.AppError{
+				ErrType: errorcode.RECORD_NOT_FOUND,
+				Err:     err,
+			}
+		}
+		return utility.AppError{
+			ErrType: errorcode.SERVER_ERR,
+			Err:     err,
+		}
+	}
+	return nil
+}
+
 
 // GetAssetByAddressAndSymbol... Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error {

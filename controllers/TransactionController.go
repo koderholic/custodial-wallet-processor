@@ -543,7 +543,6 @@ func (processor TransactionProccessor) updateTransactions(transactionId uuid.UUI
 
 func (processor TransactionProccessor) releaseLock(identifier string, lockerserviceToken string) error {
 	serviceErr := dto.ServicesRequestErr{}
-
 	lockReleaseRequest := dto.LockReleaseRequest{
 		Identifier: fmt.Sprintf("%s%s", processor.Config.LockerPrefix, identifier),
 		Token:      lockerserviceToken,
