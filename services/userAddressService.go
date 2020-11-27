@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
@@ -9,6 +11,7 @@ import (
 	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/constants"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -145,10 +148,49 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, logger *util
 	var userAsset model.UserAsset
 
 	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
-		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
+
+		if err.Error() != errorcode.SQL_404 {
+			logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
+			return model.UserAsset{}, err
+		}
+		asset, err2 := GetUserAssetForSupportedERC20TokeOrETH(repository, address, assetSymbol, userAsset)
+		if err2 == nil {
+			return asset, nil
+		}
+
+		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err2)
 		return model.UserAsset{}, err
 	}
 	logger.Info("GetAssetForV1Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
+
+	return userAsset, nil
+}
+
+func GetUserAssetForSupportedERC20TokeOrETH(repository database.IUserAssetRepository, address string, assetSymbol string, userAsset model.UserAsset) (model.UserAsset, error) {
+
+	isETHAddr, err := regexp.MatchString("^(0x)[0-9A-Fa-f]{40}$", address)
+	if err != nil || !isETHAddr {
+		return model.UserAsset{}, errors.New(fmt.Sprintf("Asset not found, more context : %s", err))
+	}
+
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination);
+		err != nil || denomination.CoinType != constants.ETH_COINTYPE {
+		return model.UserAsset{}, errors.New(fmt.Sprintf("Asset not found, more context : %s", err))
+	}
+
+	var assetAddressDetails model.UserAsset
+	if err := repository.GetAssetAddressDetails(address, &assetAddressDetails); err != nil {
+		return model.UserAsset{}, err
+	}
+
+	if assetAddressDetails.AddressProvider != model.AddressProvider.BINANCE {
+		return model.UserAsset{}, errors.New("Address is not a binance provided address, cannot recover token or ETH sent")
+	}
+
+	if err := repository.GetAssetsByID(&model.UserAsset{UserID: assetAddressDetails.UserID, DenominationID: denomination.ID}, &userAsset); err != nil {
+		return model.UserAsset{}, err
+	}
 
 	return userAsset, nil
 }
