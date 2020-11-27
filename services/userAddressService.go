@@ -167,14 +167,15 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, logger *util
 }
 
 func GetUserAssetForSupportedERC20TokeOrETH(repository database.IUserAssetRepository, address string, assetSymbol string, userAsset model.UserAsset) (model.UserAsset, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination);
-		err != nil || denomination.CoinType != constants.ETH_COINTYPE {
-		return model.UserAsset{}, errors.New(fmt.Sprintf("Asset not found, more context : %s", err))
-	}
 
 	isETHAddr, err := regexp.MatchString("^(0x)[0-9A-Fa-f]{40}$", address)
 	if err != nil || !isETHAddr {
+		return model.UserAsset{}, errors.New(fmt.Sprintf("Asset not found, more context : %s", err))
+	}
+
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination);
+		err != nil || denomination.CoinType != constants.ETH_COINTYPE {
 		return model.UserAsset{}, errors.New(fmt.Sprintf("Asset not found, more context : %s", err))
 	}
 
