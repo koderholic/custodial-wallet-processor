@@ -254,9 +254,11 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
-	if checkDailySweepExceeded(repository, recipientAddress, denomination.CoinType) {
-		logger.Error("Daily sweep limit exceeded for %s, postponing sweep to reset counter", transactionListInfo.AssetSymbol)
-		return nil
+	if denomination.CoinType == constants.TRX_COINTYPE {
+		isExceededLimit := CheckTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
+		if isExceededLimit {
+			return nil
+		}
 	}
 
 	//Check that sweep amount is not below the minimum sweep amount
@@ -311,26 +313,47 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 			return err
 		}
 	}
+
+	if denomination.CoinType == constants.TRX_COINTYPE {
+		_ = incrementTRXSweepCount(repository, userAddress)
+		return nil
+	}
+
 	if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
 		return err
 	}
 	return nil
 }
 
-func checkDailySweepExceeded(repository database.BaseRepository, address string, coinType int64) bool {
-
-	var userAddress model.UserAddress
-
-	err := repository.GetByFieldName(&model.UserAddress{Address: address}, &userAddress)
-	if err != nil {
-		return false
-	}
-
-	if coinType == constants.TRX_COINTYPE && userAddress.SweepCount < constants.DAILY_TRX_SWEEP_COUNT{
+func CheckTrxSweepLimit(userAddress model.UserAddress, logger *utility.Logger, assetSymbol string, repository database.BaseRepository) bool {
+	if userAddress.SweepCount >= constants.DAILY_TRX_SWEEP_COUNT {
+		logger.Error("Daily sweep limit exceeded for %s, postponing sweep to reset counter", assetSymbol)
+		_ = ResetTRXSweepCount(repository, &userAddress)
+		return true
+	} else if userAddress.SweepCount == 0 && userAddress.NextSweepTime.UnixNano() > time.Now().UnixNano() {
 		return true
 	}
-	
 	return false
+}
+
+func ResetTRXSweepCount(repository database.BaseRepository, userAddress *model.UserAddress) error {
+
+	userAddress.SweepCount = 0
+	userAddress.NextSweepTime = time.Now().AddDate(0, 0, 1)
+
+	if err := repository.Update(userAddress, model.UserAddress{SweepCount: userAddress.SweepCount, NextSweepTime: userAddress.NextSweepTime}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func incrementTRXSweepCount(repository database.BaseRepository, userAddress model.UserAddress) error {
+	userAddress.SweepCount = userAddress.SweepCount + 1
+	if err := repository.Update(&userAddress, userAddress); err != nil {
+		return err
+	}
+	return nil
 }
 
 func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) (bool, error) {

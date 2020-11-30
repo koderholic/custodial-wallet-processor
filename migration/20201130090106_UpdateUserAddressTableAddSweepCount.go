@@ -15,6 +15,10 @@ func Up20201130090106(tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
+	_, err2 := tx.Exec("ALTER TABLE user_addresses ADD column next_sweep_time timestamp NULL AFTER `sweep_count`")
+	if err2 != nil {
+		return err2
+	}
 	return nil
 }
 
@@ -23,6 +27,10 @@ func Down20201130090106(tx *sql.Tx) error {
 	_, err := tx.Exec("ALTER TABLE user_addresses DROP column sweep_count")
 	if err != nil {
 		return err
+	}
+	_, err2 := tx.Exec("ALTER TABLE user_addresses DROP column next_sweep_time")
+	if err2 != nil {
+		return err2
 	}
 	return nil
 }

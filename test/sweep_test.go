@@ -233,3 +233,59 @@ func (s *Suite) TestCheckSweepMinimum() {
 
 	assert.Equal(s.T(), isAmountSufficient, false, "Sum should not be sufficient")
 }
+
+func (s *Suite) TestCheckTrxSweepLimitDoesNotExceed() {
+	userAddress := model.UserAddress{
+		SweepCount: 10,
+		NextSweepTime: time.Now(),
+	}
+	repository := database.BaseRepository{database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+
+	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
+}
+
+func (s *Suite) TestCheckTrxSweepLimitExceeds() {
+	userAddress := model.UserAddress{
+		SweepCount: 25,
+		NextSweepTime: time.Now(),
+	}
+	repository := database.BaseRepository{database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+
+	assert.Equal(s.T(), isExceededSweepLimit, true, "Sweep limit should be exceeded")
+}
+
+func (s *Suite) TestCheckTrxSweepLimitDoesNotExceedAfterReset() {
+	userAddress := model.UserAddress{
+		SweepCount: 0,
+		NextSweepTime: time.Now(),
+	}
+	repository := database.BaseRepository{database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+
+	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
+}
+
+func (s *Suite) TestCheckTrxSweepLimitDoesExceedAfterReset() {
+	userAddress := model.UserAddress{
+		SweepCount: 0,
+		NextSweepTime: time.Now().AddDate(0,0,1),
+	}
+	repository := database.BaseRepository{database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+
+	assert.Equal(s.T(), isExceededSweepLimit, true, "Sweep limit should be exceeded")
+}
+
+
+func (s *Suite) TestResetTRXSweepCount() {
+	userAddress := model.UserAddress{
+		SweepCount: 20,
+		NextSweepTime: time.Now(),
+	}
+	repository := database.BaseRepository{database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	_ = tasks.ResetTRXSweepCount(repository, &userAddress)
+
+	assert.Equal(s.T(), userAddress.SweepCount, 0, "Sweep count should reset to zero")
+}
