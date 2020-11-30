@@ -227,7 +227,14 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
-	if transactionListInfo.AddressProvider == model.AddressProvider.BINANCE {
+	var userAddress model.UserAddress
+	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
+	if err != nil {
+		logger.Error("Error getting address provider : %+v while sweeping for address %s", err, recipientAddress)
+		return err
+	}
+
+	if userAddress.AddressProvider == model.AddressProvider.BINANCE {
 		//call Binance brokerage service
 		service := services.BaseService{Config: config, Cache: cache, Logger: logger}
 		_, sweepErr := service.SweepUserAddress(transactionListInfo.UserId, transactionListInfo.AssetSymbol, utility.FloatToString(sum))
