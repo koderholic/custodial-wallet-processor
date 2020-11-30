@@ -316,7 +316,6 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 
 	if denomination.CoinType == constants.TRX_COINTYPE {
 		_ = incrementTRXSweepCount(repository, userAddress)
-		return nil
 	}
 
 	if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
