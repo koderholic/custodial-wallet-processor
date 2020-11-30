@@ -40,4 +40,6 @@ const (
 	ACTIVE                        = "ACTIVE"
 	MIN_WAIT_TIME_IN_PROCESSING   = 120
 	MIN_WAIT_TIME_AFTER_BROADCAST = 60
+	DAILY_TRX_SWEEP_COUNT = 22
+	TRX_COINTYPE                  = 195
 )

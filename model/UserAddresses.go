@@ -23,5 +23,6 @@ type UserAddress struct {
 	V2Address   string    `gorm:"VARCHAR(255);" json:"v2Address"`
 	Memo        string    `gorm:"VARCHAR(15);" json:"memo"`
 	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`
+	SweepCount int `json:"address_provider"`
 	IsValid     bool      `gorm:"default:1" json:"is_valid"`
 }

@@ -14,6 +14,7 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/constants"
 
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
@@ -246,6 +247,11 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
+	if checkDailySweepExceeded(repository, recipientAddress, denomination.CoinType) {
+		logger.Error("Daily sweep limit exceeded for %s, postponing sweep to reset counter", transactionListInfo.AssetSymbol)
+		return nil
+	}
+
 	//Check that sweep amount is not below the minimum sweep amount
 	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
 	if !isAmountSufficient {
@@ -302,6 +308,22 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 	return nil
+}
+
+func checkDailySweepExceeded(repository database.BaseRepository, address string, coinType int64) bool {
+
+	var userAddress model.UserAddress
+
+	err := repository.GetByFieldName(&model.UserAddress{Address: address}, &userAddress)
+	if err != nil {
+		return false
+	}
+
+	if coinType == constants.TRX_COINTYPE && userAddress.SweepCount < constants.DAILY_TRX_SWEEP_COUNT{
+		return true
+	}
+	
+	return false
 }
 
 func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) (bool, error) {
