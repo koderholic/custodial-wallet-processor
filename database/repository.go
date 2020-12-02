@@ -25,6 +25,7 @@ type IRepository interface {
 	FetchTransactionsWhereIn(values []string, model interface{}) error
 	FetchBatchesWithStatus(statuses []string, batches interface{}) error
 	FetchByLastRunDate(assettype, lastRund string, model interface{}) error
+	FetchAddressByV2OrV1Address(address string, model interface{}) error
 }
 
 // BaseRepository ... Model definition for database base repository
@@ -108,6 +109,19 @@ func (repo *BaseRepository) GetChainTransactionByHash(transactionHash string, mo
 func (repo *BaseRepository) FetchByFieldName(field interface{}, model interface{}) error {
 	if err := repo.DB.Where(field).Find(model).Error; err != nil {
 		repo.Logger.Error("Error with repository FetchByFieldName : %s", err)
+		return utility.AppError{
+			ErrType: "INPUT_ERR",
+			Err:     err,
+		}
+	}
+	return nil
+}
+
+
+func (repo *BaseRepository) FetchAddressByV2OrV1Address(address string, model interface{}) error {
+	addressQuery := "SELECT * FROM user_addresses where (address=? or v2_address=?) ORDER BY created_at, limit 1"
+	if err := repo.DB.Raw(addressQuery, address).Scan(model).Error; err != nil {
+		repo.Logger.Error("Error when fetching address : %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,

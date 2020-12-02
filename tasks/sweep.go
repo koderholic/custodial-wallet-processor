@@ -227,7 +227,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 
 	var userAddress model.UserAddress
-	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
+	err := repository.FetchAddressByV2OrV1Address(recipientAddress, &userAddress)
 	if err != nil {
 		logger.Error("Error getting address provider : %+v while sweeping for address %s", err, recipientAddress)
 		return err
