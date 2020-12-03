@@ -2,6 +2,7 @@ package model
 
 import (
 	uuid "github.com/satori/go.uuid"
+	"time"
 )
 
 // AddrProvider ...
@@ -23,5 +24,7 @@ type UserAddress struct {
 	V2Address   string    `gorm:"VARCHAR(255);" json:"v2Address"`
 	Memo        string    `gorm:"VARCHAR(15);" json:"memo"`
 	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`
+	SweepCount int `json:"sweep_count"`
+	NextSweepTime time.Time `json:"next_sweep_count"`
 	IsValid     bool      `gorm:"default:1" json:"is_valid"`
 }
