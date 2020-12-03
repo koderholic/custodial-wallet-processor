@@ -240,7 +240,7 @@ func (s *Suite) TestCheckTrxSweepLimitDoesNotExceed() {
 		NextSweepTime: time.Now(),
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
-	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
 
 	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
 }
@@ -251,7 +251,7 @@ func (s *Suite) TestCheckTrxSweepLimitExceeds() {
 		NextSweepTime: time.Now(),
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
-	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
 
 	assert.Equal(s.T(), isExceededSweepLimit, true, "Sweep limit should be exceeded")
 }
@@ -262,7 +262,7 @@ func (s *Suite) TestCheckTrxSweepLimitDoesNotExceedAfterReset() {
 		NextSweepTime: time.Now(),
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
-	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
 
 	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
 }
@@ -273,7 +273,7 @@ func (s *Suite) TestCheckTrxSweepLimitDoesExceedAfterReset() {
 		NextSweepTime: time.Now().AddDate(0,0,1),
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
-	isExceededSweepLimit := tasks.CheckTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
 
 	assert.Equal(s.T(), isExceededSweepLimit, true, "Sweep limit should be exceeded")
 }

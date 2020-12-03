@@ -254,8 +254,8 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
-	if denomination.CoinType == constants.TRX_COINTYPE {
-		isExceededLimit := CheckTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
+	if denomination.CoinType != constants.TRX_COINTYPE {
+		isExceededLimit := HasExceededTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
 		if isExceededLimit {
 			return nil
 		}
@@ -324,7 +324,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	return nil
 }
 
-func CheckTrxSweepLimit(userAddress model.UserAddress, logger *utility.Logger, assetSymbol string, repository database.BaseRepository) bool {
+func HasExceededTrxSweepLimit(userAddress model.UserAddress, logger *utility.Logger, assetSymbol string, repository database.BaseRepository) bool {
 	if userAddress.SweepCount >= constants.DAILY_TRX_SWEEP_COUNT {
 		logger.Error("Daily sweep limit exceeded for %s, postponing sweep to reset counter", assetSymbol)
 		_ = ResetTRXSweepCount(repository, &userAddress)
