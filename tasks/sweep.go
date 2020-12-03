@@ -338,7 +338,7 @@ func CheckTrxSweepLimit(userAddress model.UserAddress, logger *utility.Logger, a
 func ResetTRXSweepCount(repository database.BaseRepository, userAddress *model.UserAddress) error {
 
 	userAddress.SweepCount = 0
-	userAddress.NextSweepTime = time.Now().AddDate(0, 0, 1)
+	userAddress.NextSweepTime = utility.GetNextDayFromNow()
 
 	if err := repository.Update(userAddress, model.UserAddress{SweepCount: userAddress.SweepCount, NextSweepTime: userAddress.NextSweepTime}); err != nil {
 		return err

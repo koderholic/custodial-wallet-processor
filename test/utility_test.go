@@ -93,3 +93,8 @@ func TestIsExceedWaitTime(t *testing.T) {
 	assert.Equal(t, utility.IsExceedWaitTime(time.Now().Add(24*time.Hour), time.Now()), true)
 	assert.Equal(t, utility.IsExceedWaitTime(time.Now(), time.Now().Add(24*time.Hour)), false)
 }
+
+
+func TestGetNextDayFromNow(t *testing.T) {
+	assert.Equal(t, utility.GetNextDayFromNow().Day(), time.Now().AddDate(0,0,1).Day())
+}

@@ -119,3 +119,7 @@ func IsValidUUID(u string) bool {
 	_, err := uuid.FromString(u)
 	return err == nil
 }
+
+func GetNextDayFromNow() time.Time {
+ return time.Now().Add(time.Duration(24 - time.Now().Hour())* time.Hour)
+}
