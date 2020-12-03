@@ -23,8 +23,8 @@ type UserAddress struct {
 	AddressType string    `gorm:"VARCHAR(50);" json:"addressType"`
 	V2Address   string    `gorm:"VARCHAR(255);" json:"v2Address"`
 	Memo        string    `gorm:"VARCHAR(15);" json:"memo"`
-	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"sweep_count"`
-	SweepCount int `json:"address_provider"`
+	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`
+	SweepCount int `json:"sweep_count"`
 	NextSweepTime time.Time `json:"next_sweep_count"`
 	IsValid     bool      `gorm:"default:1" json:"is_valid"`
 }
