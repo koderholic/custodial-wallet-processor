@@ -14,6 +14,7 @@ import (
 	"wallet-adapter/model"
 	"wallet-adapter/services"
 	"wallet-adapter/utility"
+	"wallet-adapter/utility/constants"
 
 	"github.com/robfig/cron/v3"
 	uuid "github.com/satori/go.uuid"
@@ -253,6 +254,13 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
+	if denomination.CoinType != constants.TRX_COINTYPE {
+		isExceededLimit := HasExceededTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
+		if isExceededLimit {
+			return nil
+		}
+	}
+
 	//Check that sweep amount is not below the minimum sweep amount
 	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
 	if !isAmountSufficient {
@@ -305,7 +313,43 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 			return err
 		}
 	}
+
+	if denomination.CoinType == constants.TRX_COINTYPE {
+		_ = incrementTRXSweepCount(repository, userAddress)
+	}
+
 	if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
+		return err
+	}
+	return nil
+}
+
+func HasExceededTrxSweepLimit(userAddress model.UserAddress, logger *utility.Logger, assetSymbol string, repository database.BaseRepository) bool {
+	if userAddress.SweepCount >= constants.DAILY_TRX_SWEEP_COUNT {
+		logger.Error("Daily sweep limit exceeded for %s, postponing sweep to reset counter", assetSymbol)
+		_ = ResetTRXSweepCount(repository, &userAddress)
+		return true
+	} else if userAddress.SweepCount == 0 && userAddress.NextSweepTime.UnixNano() > time.Now().UnixNano() {
+		return true
+	}
+	return false
+}
+
+func ResetTRXSweepCount(repository database.BaseRepository, userAddress *model.UserAddress) error {
+
+	userAddress.SweepCount = 0
+	userAddress.NextSweepTime = utility.GetNextDayFromNow()
+
+	if err := repository.Update(userAddress, model.UserAddress{SweepCount: userAddress.SweepCount, NextSweepTime: userAddress.NextSweepTime}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func incrementTRXSweepCount(repository database.BaseRepository, userAddress model.UserAddress) error {
+	userAddress.SweepCount = userAddress.SweepCount + 1
+	if err := repository.Update(&userAddress, userAddress); err != nil {
 		return err
 	}
 	return nil
