@@ -149,7 +149,7 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, logger *util
 
 	if err := repository.GetAssetByAddressAndSymbol(address, assetSymbol, &userAsset); err != nil {
 
-		if err.Error() != errorcode.SQL_404 {
+		/*if err.Error() != errorcode.SQL_404 {
 			logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
 			return model.UserAsset{}, err
 		}
@@ -158,7 +158,8 @@ func GetAssetForV1Address(repository database.IUserAssetRepository, logger *util
 			return asset, nil
 		}
 
-		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err2)
+		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err2)*/
+		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
 		return model.UserAsset{}, err
 	}
 	logger.Info("GetAssetForV1Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
