@@ -175,7 +175,8 @@ func GetUserAssetForSupportedERC20TokeOrETH(repository database.IUserAssetReposi
 	}
 
 	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil || denomination.CoinType != constants.ETH_COINTYPE {
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination);
+		err != nil || denomination.CoinType != constants.ETH_COINTYPE {
 		return model.UserAsset{}, errors.New(fmt.Sprintf("Asset not found, more context : %s", err))
 	}
 
