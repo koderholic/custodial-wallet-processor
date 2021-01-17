@@ -391,12 +391,17 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 	for _, tx := range transactions {
 		logger.Info("GroupByTx - getting chain transaction for  %+v", tx.ID)
 		chainTransaction := model.ChainTransaction{}
-		e := getChainTransaction(repository, tx, &chainTransaction, logger)
-		logger.Info("GroupByTx - chaintx is  %+v", chainTransaction)
-		if e != nil {
-			logger.Info("GroupByTx - getting chain transaction FAILED for  %+v", tx.ID)
-			return nil, e
+		if uuid.Nil != tx.OnChainTxId && tx.TransactionTag != "CREDIT"  {
+			e := getChainTransaction(repository, tx, &chainTransaction, logger)
+			logger.Info("GroupByTx - chaintx is  %+v - %+v", chainTransaction.ID, chainTransaction.RecipientAddress)
+			if e != nil {
+				logger.Info("GroupByTx - getting chain transaction FAILED for  %+v", tx.ID)
+				return nil, e
+			}
+		} else {
+			logger.Info("GroupByTx - skipping getChainTransaction for Internal Deposit %s", tx.TransactionReference);
 		}
+
 		if chainTransaction.RecipientAddress != "" {
 			key := chainTransaction.RecipientAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol
 			transactionsPerRecipientAddress[key] = append(transactionsPerRecipientAddress[key], tx)
@@ -413,7 +418,6 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 		}
 
 	}
-	logger.Info("GroupByTx -  transactionsPerRecipientAddress is ", transactionsPerRecipientAddress)
 
 	return transactionsPerRecipientAddress, nil
 }
