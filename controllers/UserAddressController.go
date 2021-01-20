@@ -33,8 +33,9 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		return
 	}
 
+	userAssetService := services.NewService(controller.Cache, controller.Logger, controller.Config)
 	if userAsset.RequiresMemo {
-		v2Address, err := services.GetV2AddressWithMemo(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
+		v2Address, err := userAssetService.GetV2AddressWithMemo(controller.Repository, userAsset)
 		if err != nil {
 			controller.Logger.Info("Error from GetV2AddressWithMemo service : %s", err)
 			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)

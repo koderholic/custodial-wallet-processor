@@ -26,6 +26,6 @@ type UserAddress struct {
 	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`
 	IsPrimaryAddress bool `json:"is_primary_address"`
 	SweepCount int `json:"sweep_count"`
-	NextSweepTime time.Time `json:"next_sweep_count"`
+	NextSweepTime *time.Time `json:"next_sweep_count"`
 	IsValid     bool      `gorm:"default:1" json:"is_valid"`
 }

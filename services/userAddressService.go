@@ -17,14 +17,15 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func GenerateV2AddressWithMemo(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset, addressWithMemo *dto.AssetAddress) error {
-	v2Address, err := GetSharedAddressFor(cache, repository.Db(), logger, config, userAsset.AssetSymbol)
+func (service BaseService) GenerateV2AddressWithMemo(repository database.IUserAssetRepository, userAsset model.UserAsset,
+	addressWithMemo *dto.AssetAddress, isPrimaryAddress bool) error {
+	v2Address, err := GetSharedAddressFor(service.Cache, repository.Db(), service.Logger, service.Config, userAsset.AssetSymbol)
 	if err != nil || v2Address == "" {
 		logger.Error("Error response from shared address service : %s ", err)
 		return errors.New(errorcode.SYSTEM_ERR)
 	}
 	addressWithMemo.Address = v2Address
-	addressWithMemo.Memo, err = GenerateMemo(repository, userAsset.UserID)
+	addressWithMemo.Memo, err = GenerateMemo(repository, userAsset.UserID, isPrimaryAddress)
 	if err != nil {
 		return err
 	}
@@ -93,13 +94,13 @@ func GenerateV1Address(repository database.IUserAssetRepository, logger *utility
 	return userAddress.Address, nil
 }
 
-func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, userAsset model.UserAsset) (dto.AssetAddress, error) {
+func (service BaseService) GetV2AddressWithMemo(repository database.IUserAssetRepository, userAsset model.UserAsset) (dto.AssetAddress, error) {
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: userAsset.ID, IsPrimaryAddress: true}, &userAddress)
 	if (err != nil && err.Error() == errorcode.SQL_404) || (err == nil && userAddress.V2Address == "") {
-		if err := GenerateV2AddressWithMemo(repository, logger, cache, config, userAsset, &assetAddress); err != nil {
+		if err := service.GenerateV2AddressWithMemo(repository, userAsset, &assetAddress, true); err != nil {
 			return dto.AssetAddress{}, err
 		}
 		userAddress.AssetID = userAsset.ID
@@ -108,12 +109,10 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 		userAddress.Memo = assetAddress.Memo
 		userAddress.IsPrimaryAddress = true
 
-		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo}); createErr != nil {
+		if createErr := repository.UpdateOrCreate(model.UserAddress{AssetID: userAsset.ID}, &userAddress, model.UserAddress{V2Address: userAddress.V2Address, Memo: userAddress.Memo, IsPrimaryAddress: true}); createErr != nil {
 			logger.Error("Error response from userAddress service, could not generate user address : %s ", err)
 			return dto.AssetAddress{}, errors.New(utility.GetSQLErr(err))
 		}
-		userAddress.V2Address = assetAddress.Address
-		userAddress.Memo = assetAddress.Memo
 	} else if err != nil {
 		return dto.AssetAddress{}, err
 	}
@@ -121,15 +120,22 @@ func GetV2AddressWithMemo(repository database.IUserAssetRepository, logger *util
 	return dto.AssetAddress{Address: userAddress.V2Address, Memo: userAddress.Memo}, nil
 }
 
-func GenerateMemo(repository database.IUserAssetRepository, userId uuid.UUID) (string, error) {
+func GenerateMemo(repository database.IUserAssetRepository, userId uuid.UUID, isPrimaryAddress bool) (string, error) {
 	// Memo lookup on the db
 	memo := strconv.Itoa(utility.RandNo(100000000, 999999999))
 	userMemo := model.UserMemo{
 		UserID: userId,
 		Memo:   memo,
-		IsPrimaryAddress: true,
+		IsPrimaryAddress: isPrimaryAddress,
 	}
-	if err := repository.FindOrCreate(&model.UserMemo{UserID: userId, IsPrimaryAddress: true}, &userMemo); err != nil {
+
+	if !isPrimaryAddress {
+		if err := repository.Create(&userMemo); err != nil {
+			return "", err
+		}
+		return userMemo.Memo, nil
+	}
+	if err := repository.FindOrCreate(&model.UserMemo{UserID: userId, IsPrimaryAddress: isPrimaryAddress}, &userMemo); err != nil {
 		return "", err
 	}
 	// Generates a 9 digit memo
@@ -289,7 +295,7 @@ func (service BaseService) CreateAuxiliaryAddressWithMemo(repository database.IU
 	var userAddress model.UserAddress
 	var assetAddress dto.AssetAddress
 
-	if err := GenerateV2AddressWithMemo(repository, service.Logger, service.Cache, service.Config, userAsset, &assetAddress); err != nil {
+	if err := service.GenerateV2AddressWithMemo(repository, userAsset, &assetAddress, false); err != nil {
 		return dto.AssetAddress{}, err
 	}
 	userAddress.AssetID = userAsset.ID
