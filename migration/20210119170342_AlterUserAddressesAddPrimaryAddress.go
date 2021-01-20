@@ -15,7 +15,6 @@ func Up20210119170342(tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	return nil
 	_, err2 := tx.Exec("UPDATE user_addresses SET is_primary_address=true;")
 	if err2 != nil {
 		return err2
