@@ -8,8 +8,8 @@ import (
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
-	"wallet-adapter/utility/constants"
 	AddressProvider "wallet-adapter/utility/addressProvider"
+	"wallet-adapter/utility/constants"
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
@@ -50,6 +50,7 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 		}
 	}
 	logger.Info("Supported assets seeded successfully")
+
 }
 
 func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {

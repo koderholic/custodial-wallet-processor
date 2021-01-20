@@ -1,5 +1,6 @@
 package errorcode
 
+
 const (
 	INPUT_ERR                           = "Invalid Input Supplied. See documentation"
 	SYSTEM_ERR                          = "Request Could Not Be Proccessed. Server encountered an error"
