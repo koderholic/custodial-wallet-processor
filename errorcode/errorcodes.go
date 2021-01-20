@@ -30,4 +30,5 @@ const (
 	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
 	RECORD_NOT_FOUND                    = "RECORD_NOT_FOUND"
 	SERVER_ERR                          = "SERVER_ERR"
+	MULTIPLE_ADDRESS_ERROR = "Multiple addresses per user not supported on Binance provided addresses"
 )

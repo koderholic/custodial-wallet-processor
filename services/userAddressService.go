@@ -62,6 +62,9 @@ func GenerateV1Address(repository database.IUserAssetRepository, logger *utility
 	service := BaseService{Config: config, Cache: cache, Logger: logger}
 
 	if userAsset.AddressProvider == model.AddressProvider.BINANCE {
+		if !isPrimaryAddress {
+			return "", errors.New(errorcode.MULTIPLE_ADDRESS_ERROR)
+		}
 		addressResponse, err := service.GenerateUserAddressOnBBS(userAsset.UserID, userAsset.AssetSymbol, "")
 		if err != nil {
 			return "", err

@@ -94,7 +94,7 @@ func (controller UserAssetController) CreateAuxiliaryAddress(responseWriter http
 	responseData, err = controller.createAuxiliaryAddress(userAsset, addressType)
 	if err != nil {
 		controller.Logger.Info("Error from CreateAuxiliaryAddress service : %s", err)
-		ReturnError(responseWriter, "CreateAuxiliaryAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
+		ReturnError(responseWriter, "CreateAuxiliaryAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", err.Error()), controller.Logger)
 		return
 	}
 
