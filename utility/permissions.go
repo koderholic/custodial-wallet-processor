@@ -13,6 +13,5 @@ var (
 		"ConfirmTransaction": "confirm-transaction",
 		"ExternalTransfer":   "do-external-transfer",
 		"TriggerFloat":       "trigger-float-management",
-		"createAuxiliaryAddress" : "create_auxiliary_address",
 	}
 )

@@ -33,9 +33,9 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		return
 	}
 
-	userAssetService := services.NewService(controller.Cache, controller.Logger, controller.Config)
+	userAddressService := services.NewService(controller.Cache, controller.Logger, controller.Config)
 	if userAsset.RequiresMemo {
-		v2Address, err := userAssetService.GetV2AddressWithMemo(controller.Repository, userAsset)
+		v2Address, err := userAddressService.GetV2AddressWithMemo(controller.Repository, userAsset)
 		if err != nil {
 			controller.Logger.Info("Error from GetV2AddressWithMemo service : %s", err)
 			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
@@ -94,11 +94,15 @@ func (controller UserAssetController) CreateAuxiliaryAddress(responseWriter http
 	responseData, err = controller.createAuxiliaryAddress(userAsset, addressType)
 	if err != nil {
 		controller.Logger.Info("Error from CreateAuxiliaryAddress service : %s", err)
-		ReturnError(responseWriter, "CreateAuxiliaryAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", err.Error()), controller.Logger)
+		if err.Error() == errorcode.MULTIPLE_ADDRESS_ERROR {
+			ReturnError(responseWriter, "CreateAuxiliaryAddress", http.StatusInternalServerError, err,
+				apiResponse.PlainError(errorcode.MULTIPLE_ADDRESS_ERROR_CODE, err.Error()), controller.Logger)
+			return
+		}
+		ReturnError(responseWriter, "CreateAuxiliaryAddress", http.StatusInternalServerError, err,
+			apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
 		return
 	}
-
-	controller.Logger.Info("Outgoing response to CreateAuxiliaryAddress request %+v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(responseWriter).Encode(responseData)
 
