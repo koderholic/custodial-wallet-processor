@@ -120,6 +120,7 @@ func IsValidUUID(u string) bool {
 	return err == nil
 }
 
-func GetNextDayFromNow() time.Time {
- return time.Now().Add(time.Duration(24 - time.Now().Hour())* time.Hour)
+func GetNextDayFromNow() *time.Time {
+	nextDayFromNow := time.Now().Add(time.Duration(24 - time.Now().Hour())* time.Hour)
+ return &nextDayFromNow
 }
