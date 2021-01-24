@@ -44,6 +44,8 @@ resources:
       - svcs.binance-brokerage.create-account
       - svcs.binance-brokerage.get-address
       - svcs.binance-brokerage.perform-sweep
+      - svcs.transaction-signers.send-single
+      - svcs.transaction-signers.send-batch
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID

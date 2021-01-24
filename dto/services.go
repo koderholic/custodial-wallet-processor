@@ -39,6 +39,7 @@ type SignTransactionRequest struct {
 	IsSweep     bool     `json:"isSweep"`
 	ProcessType string   `json:"processType"`
 	Reference   string   `json:"reference"`
+	Priority string `json:"priority"`
 }
 
 // SignTransactionResponse ... Model definition for sign transaction successful response, key-management service

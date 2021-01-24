@@ -156,6 +156,18 @@ func GetRequestMetaData(request string, config Config.Data) MetaData {
 			Endpoint: config.BinanceBrokerageServiceURL,
 			Action:   "/users",
 		}
+	case "sendSingleTransaction":
+		return MetaData{
+		Type:     http.MethodPost,
+		Endpoint: config.TransactionSignersURL,
+		Action:   "/transactions/send-single",
+		}
+	case "sendBatchTransaction":
+		return MetaData{
+			Type:     http.MethodPost,
+			Endpoint: config.TransactionSignersURL,
+			Action:   "/transactions/send-batch",
+		}
 
 	default:
 		return MetaData{}
