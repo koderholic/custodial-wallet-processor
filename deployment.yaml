@@ -32,7 +32,6 @@ resources:
   authentication:
     description: Wallet-adapter-service
     permissions:
-      - svcs.key-management.sign-transaction
       - svcs.key-management.create-address
       - svcs.crypto-adapter.broadcast
       - svcs.order-book.deposit
