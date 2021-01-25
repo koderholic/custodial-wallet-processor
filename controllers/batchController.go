@@ -116,7 +116,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		queuedBatchedTransactionsIds = append(queuedBatchedTransactionsIds, transaction.ID)
 	}
 
-	signTransactionRequest := dto.BatchRequest{
+	sendBatchTransactionRequest := dto.BatchRequest{
 		AssetSymbol:   batch.AssetSymbol,
 		ChangeAddress: floatAccount,
 		Origins:       []string{floatAccount},
@@ -126,13 +126,13 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	}
 
 	// Calls key-management to sign batched transactions
-	SignBatchTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
+	sendBatchTransactionResponse := dto.SignAndBroadcastResponse{}
 	serviceErr := dto.ServicesRequestErr{}
-	if err := services.SignBatchTransactionAndBroadcast(nil, processor.Cache, processor.Logger, processor.Config, signTransactionRequest, &SignBatchTransactionAndBroadcastResponse, &serviceErr); err != nil {
+	if err := services.SendBatchTransaction(nil, processor.Cache, processor.Logger, processor.Config, sendBatchTransactionRequest, &sendBatchTransactionResponse, &serviceErr); err != nil {
 		if serviceErr.StatusCode == http.StatusBadRequest {
 			if serviceErr.Code == errorcode.INSUFFICIENT_FUNDS {
 				total := int64(0)
-				for _, value := range signTransactionRequest.Recipients {
+				for _, value := range sendBatchTransactionRequest.Recipients {
 					total += value.Value
 				}
 				if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total)); err != nil {
@@ -152,7 +152,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 	// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash: SignBatchTransactionAndBroadcastResponse.TransactionHash,
+		TransactionHash: sendBatchTransactionResponse.TransactionHash,
 		BatchID:         batch.ID,
 		AssetSymbol:     batch.AssetSymbol,
 	}

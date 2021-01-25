@@ -32,7 +32,6 @@ resources:
   authentication:
     description: Wallet-adapter-service
     permissions:
-      - svcs.key-management.sign-transaction
       - svcs.key-management.create-address
       - svcs.crypto-adapter.broadcast
       - svcs.order-book.deposit
@@ -44,6 +43,8 @@ resources:
       - svcs.binance-brokerage.create-account
       - svcs.binance-brokerage.get-address
       - svcs.binance-brokerage.perform-sweep
+      - svcs.transaction-signers.send-single
+      - svcs.transaction-signers.send-batch
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID

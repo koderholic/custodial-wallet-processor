@@ -420,7 +420,7 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 
 func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) error {
 	// Calls key-management to sign transaction
-	signTransactionRequest := dto.SignTransactionRequest{
+	sendSingleTransactionRequest := dto.SignTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   depositAccount.Address,
 		Memo:        depositAccount.Tag,
@@ -430,8 +430,8 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		ProcessType: utility.FLOATPROCESS,
 		Reference:   uuid.NewV1().String(),
 	}
-	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
+	sendSingleTransactionResponse := dto.SignAndBroadcastResponse{}
+	if err := services.SendSingleTransaction(cache, logger, config, sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return err
 	}
