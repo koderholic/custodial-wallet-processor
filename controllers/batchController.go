@@ -125,8 +125,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		Reference:     batch.ID.String(),
 	}
 
-	// Calls key-management to sign batched transactions
-	sendBatchTransactionResponse := dto.SignAndBroadcastResponse{}
+	sendBatchTransactionResponse := dto.SendTransactionResponse{}
 	serviceErr := dto.ServicesRequestErr{}
 	if err := services.SendBatchTransaction(nil, processor.Cache, processor.Logger, processor.Config, sendBatchTransactionRequest, &sendBatchTransactionResponse, &serviceErr); err != nil {
 		if serviceErr.StatusCode == http.StatusBadRequest {

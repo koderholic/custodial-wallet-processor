@@ -10,8 +10,8 @@ import (
 )
 
 // SendSingleTransaction ... Calls transaction-signers service with a transaction object to sign and send to chain
-func SendSingleTransaction(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SignTransactionRequest,
-	responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+func SendSingleTransaction(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SendSingleTransactionRequest,
+	responseData *dto.SendTransactionResponse, serviceErr interface{}) error {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -43,7 +43,7 @@ func SendSingleTransaction(cache *utility.MemoryCache, logger *utility.Logger, c
 
 // SendBatchTransaction ... Calls transaction-signers service with a batch transaction object to sign and send to chain
 func SendBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data,
-	requestData dto.BatchRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
+	requestData dto.BatchRequest, responseData *dto.SendTransactionResponse, serviceErr interface{}) error {
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
 		return err

@@ -395,8 +395,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		return nil
 	}
 
-	// Get the transaction fee estimate by calling key-management to sign transaction
-	sendSingleTransactionRequest := dto.SignTransactionRequest{
+	sendSingleTransactionRequest := dto.SendSingleTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value.BigInt(),
@@ -405,7 +404,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		ProcessType: utility.WITHDRAWALPROCESS,
 		Reference:   transaction.DebitReference,
 	}
-	sendSingleTransactionResponse := dto.SignAndBroadcastResponse{}
+	sendSingleTransactionResponse := dto.SendTransactionResponse{}
 	if err := services.SendSingleTransaction(processor.Cache, processor.Logger, processor.Config,
 		sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
 		switch serviceErr.Code {
