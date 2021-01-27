@@ -30,7 +30,7 @@ RUN echo "appPort: 8200" >> config.yaml && \
     echo "authenticationServiceURL: http://authentication" >> config.yaml && \
     echo "cryptoAdapterServiceURL: http://crypto-adapter" >> config.yaml && \
     echo "keyManagementServiceURL: http://key-management" >> config.yaml && \
-    echo "keyManagementServiceURL: http://transaction-signers" >> config.yaml && \
+    echo "transactionSignersURL: http://transaction-signers" >> config.yaml && \
     echo "lockerServiceURL: http://locker" >> config.yaml && \
     echo "lockerServicePrefix : Wallet-Adapter-Lock-" >> config.yaml && \
     echo "depositWebhookURL: http://crypto-adapter/incoming-deposit" >> config.yaml && \
