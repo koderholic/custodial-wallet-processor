@@ -166,7 +166,6 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		return err
 	}
 
-	// Calls key-management to batch sign transaction
 	recipientData := []dto.BatchRecipients{}
 	//get float
 	floatAccount, err := getFloatDetails(repository, denomination.AssetSymbol, logger)
@@ -209,9 +208,9 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		Recipients:    recipientData,
 		ProcessType:   utility.SWEEPPROCESS,
 	}
-	sendBatchTransactionResponse := dto.SignAndBroadcastResponse{}
+	sendBatchTransactionResponse := dto.SendTransactionResponse{}
 	if err := services.SendBatchTransaction(nil, cache, logger, config, sendBatchTransactionRequest, &sendBatchTransactionResponse, serviceErr); err != nil {
-		logger.Error("Error response from SignBatchTransactionAndBroadcast : %+v while sweeping batch transactions", err)
+		logger.Error("Error response from SendBatchTransaction : %+v while sweeping batch transactions", err)
 		return err
 	}
 	if err := updateSweptStatus(batchAssetTransactionsToSweep, repository, logger); err != nil {
@@ -288,8 +287,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		time.Sleep(time.Second * utility.FUND_SWEEP_FEE_WAIT_TIME)
 	}
 
-	// Calls key-management to sign transaction
-	sendSingleTransactionRequest := dto.SignTransactionRequest{
+	sendSingleTransactionRequest := dto.SendSingleTransactionRequest{
 		FromAddress: recipientAddress,
 		ToAddress:   toAddress,
 		Memo:        addressMemo,
@@ -300,9 +298,9 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		Reference:   fmt.Sprintf("%s-%d", recipientAddress, time.Now().Unix()),
 	}
 
-	sendSingleTransactionResponse := dto.SignAndBroadcastResponse{}
+	sendSingleTransactionResponse := dto.SendTransactionResponse{}
 	if err := services.SendSingleTransaction(cache, logger, config, sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
-		logger.Error("Error response from SignTransactionAndBroadcast : %+v while sweeping for address with id %+v", err, recipientAddress)
+		logger.Error("Error response from SendSingleTransaction : %+v while sweeping for address with id %+v", err, recipientAddress)
 		switch serviceErr.Code {
 		case errorcode.INSUFFICIENT_FUNDS:
 			if err := updateSweptStatus(addressTransactions, repository, logger); err != nil {
@@ -474,8 +472,8 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	mainCoinOnChainBalance, _ := strconv.ParseUint(mainCoinOnChainBalanceResponse.Balance, 10, 64)
 	//check if onchain balance in main coin asset is less than floatAccount.SweepFee
 	if int64(mainCoinOnChainBalance) < denomination.SweepFee {
-		// Calls key-management to sign sweep fee transaction
-		sendSingleTransactionRequest := dto.SignTransactionRequest{
+
+		sendSingleTransactionRequest := dto.SendSingleTransactionRequest{
 			FromAddress: floatAccount.Address,
 			ToAddress:   recipientAddress,
 			Amount:      big.NewInt(denomination.SweepFee),
@@ -485,7 +483,7 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 			ProcessType: utility.FLOATPROCESS,
 			Reference:   fmt.Sprintf("%s-%s", denomination.MainCoinAssetSymbol, assetTransactions[0].TransactionReference),
 		}
-		sendSingleTransactionResponse := dto.SignAndBroadcastResponse{}
+		sendSingleTransactionResponse := dto.SendTransactionResponse{}
 		if err := services.SendSingleTransaction(cache, logger, config, sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
 			logger.Error("Error response from Sweep job : %+v while funding sweep fee for  %+v", err, recipientAddress)
 			return err, true

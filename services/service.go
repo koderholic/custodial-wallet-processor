@@ -59,12 +59,10 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	if c.BaseURL.String() != fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action) {
 		c.Logger.Info("Outgoing request to %s : %+v", c.BaseURL, body)
 	}
-
-	if strings.Contains(c.BaseURL.String(), "key-management/sign") {
+	if strings.Contains(c.BaseURL.String(), "transactions/send") {
 		//We need to increase timeout in Key Management also
 		c.httpClient.Timeout = 120 * time.Second
 	}
-
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
 	var buf io.ReadWriter
