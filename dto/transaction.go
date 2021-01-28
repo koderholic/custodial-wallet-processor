@@ -51,7 +51,7 @@ type BatchRequest struct {
 	Recipients    []BatchRecipients `json:"recipients"`
 	ProcessType   string            `json:"processType"`
 	Reference     string            `json:"reference"`
-	Priority     string            `json:"priority"`
+	Priority     string            `json:"priority,omitempty"`
 }
 
 type BatchRecipients struct {
