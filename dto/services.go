@@ -38,7 +38,7 @@ type SendSingleTransactionRequest struct {
 	IsSweep     bool     `json:"isSweep"`
 	ProcessType string   `json:"processType"`
 	Reference   string   `json:"reference"`
-	Priority string `json:"priority"`
+	Priority string `json:"priority,omitempty"`
 }
 
 // BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
