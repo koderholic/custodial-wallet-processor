@@ -31,6 +31,7 @@ type BatchTransactionProcessor struct {
 func (controller BatchController) ProcessBatchBTCTransactions(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
 	apiResponse := utility.NewResponse()
+	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
 	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 	done := make(chan bool)
 
@@ -43,6 +44,10 @@ func (controller BatchController) ProcessBatchBTCTransactions(responseWriter htt
 		}
 
 		for _, batch := range activeBatches {
+			// Process only batches relating to the assetSymbol sent
+			if batch.AssetSymbol != assetSymbol {
+				continue
+			}
 
 			// It calls the lock service to obtain a lock for the batch
 			lockerServiceToken, err := controller.obtainLock(batch.ID.String())

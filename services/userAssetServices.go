@@ -16,12 +16,16 @@ import (
 )
 
 var (
-	batchable    = true
-	notBatchable = false
+	yes    = true
+	no = false
 	isBatchable  = map[int64]*bool{
-		0:   &batchable,
-		145: &batchable,
-		2:   &batchable,
+		0:   &yes,
+		145: &yes,
+		2:   &yes,
+	}
+	isMultiAddresses  = map[int64]*bool{
+		0:   &yes,
+		145: &yes,
 	}
 	sweepFee = map[int64]int64{
 		714: 37500,
@@ -75,6 +79,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			TransferActivity:    denom.TransferActivity,
 			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
 			IsBatchable:         isBatchable[denom.CoinType],
+			IsMultiAddresses : isMultiAddresses[denom.CoinType],
 			AddressProvider:     addressProvider,
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
