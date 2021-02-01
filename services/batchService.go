@@ -31,10 +31,10 @@ func (service BatchService) GetWaitingBatchId(repository database.IBatchReposito
 	return currentBatch.ID, nil
 }
 
-func (service BatchService) GetAllActiveBatches(repository database.IBatchRepository) ([]model.BatchRequest, error) {
+func (service BatchService) GetAllActiveBatches(repository database.IBatchRepository, assetSymbol string) ([]model.BatchRequest, error) {
 
 	var activeBatches []model.BatchRequest
-	if err := repository.FetchBatchesWithStatus([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE, model.BatchStatus.START_MODE}, &activeBatches); err != nil {
+	if err := repository.FetchBatchesByStatusAndSymbol([]string{model.BatchStatus.WAIT_MODE, model.BatchStatus.RETRY_MODE, model.BatchStatus.START_MODE}, assetSymbol, &activeBatches); err != nil {
 		return []model.BatchRequest{}, err
 	}
 	return activeBatches, nil
