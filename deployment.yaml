@@ -80,7 +80,7 @@ cronJobs:
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment
-  - name: wallet-adapter-trigger-BCH-batch-job-process
+  - name: wallet-adapter-trigger-bch-batch-process
     schedule: '*/15 * * * *' #Run every 15 minutes
     allowConcurrentRun: false
     grantAwsAccess: false
