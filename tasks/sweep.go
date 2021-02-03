@@ -226,13 +226,11 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
-	userAddress := model.UserAddress{}
+	var userAddress model.UserAddress
 	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
 	if err != nil {
 		logger.Error("Error getting address provider, defaulting to BUNDLE")
-		currentTime := time.Now()
 		userAddress.AddressProvider = model.AddressProvider.BUNDLE
-		userAddress.NextSweepTime = &currentTime
 	}
 
 	if userAddress.AddressProvider == model.AddressProvider.BINANCE {
@@ -255,7 +253,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
-	if denomination.CoinType != constants.TRX_COINTYPE {
+	if denomination.CoinType == constants.TRX_COINTYPE {
 		isExceededLimit := HasExceededTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
 		if isExceededLimit {
 			return nil
