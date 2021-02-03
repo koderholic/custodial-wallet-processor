@@ -226,11 +226,13 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
-	var userAddress model.UserAddress
+	userAddress := model.UserAddress{}
 	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
 	if err != nil {
 		logger.Error("Error getting address provider, defaulting to BUNDLE")
+		currentTime := time.Now()
 		userAddress.AddressProvider = model.AddressProvider.BUNDLE
+		userAddress.NextSweepTime = &currentTime
 	}
 
 	if userAddress.AddressProvider == model.AddressProvider.BINANCE {
