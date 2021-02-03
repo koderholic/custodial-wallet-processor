@@ -33,7 +33,7 @@ type (
 func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository) {
 	logger.Info("Sweep operation begins")
 	serviceErr := dto.ServicesRequestErr{}
-	token, err := AcquireLock("qa-sweep", utility.SIX_HUNDRED_MILLISECONDS, cache, logger, config, serviceErr)
+	token, err := AcquireLock("sweep", utility.SIX_HUNDRED_MILLISECONDS, cache, logger, config, serviceErr)
 	if err != nil {
 		logger.Error("Could not acquire lock", err)
 		return
@@ -226,11 +226,13 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
-	var userAddress model.UserAddress
+	userAddress := model.UserAddress{}
 	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
 	if err != nil {
 		logger.Error("Error getting address provider, defaulting to BUNDLE")
+		currentTime := time.Now()
 		userAddress.AddressProvider = model.AddressProvider.BUNDLE
+		userAddress.NextSweepTime = &currentTime
 	}
 
 	if userAddress.AddressProvider == model.AddressProvider.BINANCE {
@@ -732,7 +734,7 @@ func updateSweptStatus(assetTransactions []model.Transaction, repository databas
 func AcquireLock(identifier string, ttl int64, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr) (string, error) {
 	// It calls the lock service to obtain a lock for the transaction
 	lockerServiceRequest := dto.LockerServiceRequest{
-		Identifier:   fmt.Sprintf("%s%sff", config.LockerPrefix, identifier),
+		Identifier:   fmt.Sprintf("%s%s", config.LockerPrefix, identifier),
 		ExpiresAfter: ttl,
 	}
 	lockerServiceResponse := dto.LockerServiceResponse{}
