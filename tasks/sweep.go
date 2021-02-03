@@ -253,7 +253,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return err
 	}
 
-	if denomination.CoinType != constants.TRX_COINTYPE {
+	if denomination.CoinType == constants.TRX_COINTYPE {
 		isExceededLimit := HasExceededTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
 		if isExceededLimit {
 			return nil
