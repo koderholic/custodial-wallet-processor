@@ -226,7 +226,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
-	userAddress := model.UserAddress{}
+	var userAddress model.UserAddress
 	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
 	if err != nil {
 		logger.Error("Error getting address provider, defaulting to BUNDLE")
