@@ -23,7 +23,7 @@ var (
 		145: &yes,
 		2:   &yes,
 	}
-	isMultiAddresses  = map[int64]*bool{
+	IsMultiAddresses  = map[int64]*bool{
 		0:   &yes,
 		145: &yes,
 	}
@@ -79,7 +79,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			TransferActivity:    denom.TransferActivity,
 			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
 			IsBatchable:         isBatchable[denom.CoinType],
-			IsMultiAddresses : isMultiAddresses[denom.CoinType],
+			IsMultiAddresses : IsMultiAddresses[denom.CoinType],
 			AddressProvider:     addressProvider,
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)

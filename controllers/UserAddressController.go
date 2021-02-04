@@ -50,8 +50,8 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 		var address string
 		AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}
 
-		if userAsset.AssetSymbol == utility.COIN_BTC {
-			responseData.Addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
+		if *services.IsMultiAddresses[userAsset.CoinType] {
+			responseData.Addresses, err = AddressService.GetMultipleAddresses(controller.Repository, userAsset)
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 			responseData.Addresses = append(responseData.Addresses, dto.AssetAddress{
