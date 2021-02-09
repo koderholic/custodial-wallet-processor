@@ -148,3 +148,12 @@ func (service BaseService) IsBatchable(assetSymbol string, repository database.I
 
 	return *denomination.IsBatchable, nil
 }
+
+func (service BaseService) IsMultipleAddresses(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	return *denomination.IsMultiAddresses, nil
+}

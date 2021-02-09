@@ -233,7 +233,6 @@ func (service BaseService) GetMultipleAddresses(repository database.IUserAssetRe
 		service.Logger.Error("Error response from userAddress service, could not generate user BTC addresses : %s ", err)
 		return []dto.AssetAddress{}, err
 	}
-
 	if len(userAddresses) == 0 {
 		responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, "", true)
 		if err != nil {
@@ -278,11 +277,11 @@ func (service BaseService) GetMultipleAddresses(repository database.IUserAssetRe
 }
 
 func (service BaseService) GenerateAndCreateAssetMultipleAddresses(repository database.IUserAssetRepository, asset model.UserAsset, addressType string, isPrimaryAddress bool) ([]dto.AllAddressResponse, error) {
+
 	responseAddresses, err := service.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
 	if err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
-
 	for _, address := range responseAddresses {
 		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID,
 			AddressProvider: model.AddressProvider.BUNDLE, IsPrimaryAddress : isPrimaryAddress}); err != nil {
