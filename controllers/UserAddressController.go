@@ -48,10 +48,16 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 	} else {
 		var err error
 		var address string
-		AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}
+		AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}	// Batch transaction, if asset is batchable
+		IsMultiAddresses, err := AddressService.IsMultipleAddresses(userAsset.AssetSymbol, controller.Repository)
+		if err != nil {
+			controller.Logger.Info("Error from GetV2AddressWithMemo service : %s", err)
+			ReturnError(responseWriter, "GetAllAssetAddresses", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERROR", errorcode.SYSTEM_ERR), controller.Logger)
+			return
+		}
 
-		if userAsset.AssetSymbol == utility.COIN_BTC {
-			responseData.Addresses, err = AddressService.GetBTCAddresses(controller.Repository, userAsset)
+		if IsMultiAddresses {
+			responseData.Addresses, err = AddressService.GetMultipleAddresses(controller.Repository, userAsset)
 		} else {
 			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, userAsset)
 			responseData.Addresses = append(responseData.Addresses, dto.AssetAddress{

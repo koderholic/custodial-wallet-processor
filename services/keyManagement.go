@@ -72,7 +72,6 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	requestData := dto.GenerateAddressRequest{}
 	responseData := dto.GenerateAllAddressesResponse{}
 	metaData := utility.GetRequestMetaData("createAllAddresses", service.Config)
-
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
 	if addressType == "" {
