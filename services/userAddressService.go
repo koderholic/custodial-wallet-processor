@@ -223,7 +223,7 @@ func GetAssetForV2Address(repository database.IUserAssetRepository, logger *util
 	return userAsset, nil
 }
 
-func (service BaseService) GetBTCAddresses(repository database.IUserAssetRepository, userAsset model.UserAsset) ([]dto.AssetAddress, error) {
+func (service BaseService) GetMultipleAddresses(repository database.IUserAssetRepository, userAsset model.UserAsset) ([]dto.AssetAddress, error) {
 	var userAddresses []model.UserAddress
 	var assetAddresses []dto.AssetAddress
 	var responseAddresses []dto.AllAddressResponse
@@ -233,9 +233,8 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 		service.Logger.Error("Error response from userAddress service, could not generate user BTC addresses : %s ", err)
 		return []dto.AssetAddress{}, err
 	}
-
 	if len(userAddresses) == 0 {
-		responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, "", true)
+		responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, "", true)
 		if err != nil {
 			return []dto.AssetAddress{}, err
 		}
@@ -254,7 +253,7 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 
 		if !availbleAddress[utility.ADDRESS_TYPE_SEGWIT] {
 			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_SEGWIT, true)
+			responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, utility.ADDRESS_TYPE_SEGWIT, true)
 			if err != nil {
 				return []dto.AssetAddress{}, err
 			}
@@ -264,7 +263,7 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 
 		if !availbleAddress[utility.ADDRESS_TYPE_LEGACY] {
 			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateBTCAddresses(repository, userAsset, utility.ADDRESS_TYPE_LEGACY, true)
+			responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, utility.ADDRESS_TYPE_LEGACY, true)
 			if err != nil {
 				return []dto.AssetAddress{}, err
 			}
@@ -277,12 +276,12 @@ func (service BaseService) GetBTCAddresses(repository database.IUserAssetReposit
 	return assetAddresses, nil
 }
 
-func (service BaseService) GenerateAndCreateBTCAddresses(repository database.IUserAssetRepository, asset model.UserAsset, addressType string, isPrimaryAddress bool) ([]dto.AllAddressResponse, error) {
+func (service BaseService) GenerateAndCreateAssetMultipleAddresses(repository database.IUserAssetRepository, asset model.UserAsset, addressType string, isPrimaryAddress bool) ([]dto.AllAddressResponse, error) {
+
 	responseAddresses, err := service.GenerateAllAddresses(asset.UserID, asset.AssetSymbol, asset.CoinType, addressType)
 	if err != nil {
 		return []dto.AllAddressResponse{}, err
 	}
-
 	for _, address := range responseAddresses {
 		if err := repository.Create(&model.UserAddress{Address: address.Data, AddressType: address.Type, AssetID: asset.ID,
 			AddressProvider: model.AddressProvider.BUNDLE, IsPrimaryAddress : isPrimaryAddress}); err != nil {
@@ -317,7 +316,7 @@ func (service BaseService) CreateAuxiliaryAddressWithMemo(repository database.IU
 func (service BaseService) CreateAuxiliaryBTCAddress(repository database.IUserAssetRepository, userAsset model.UserAsset, addressType string) (dto.AssetAddress, error) {
 	var responseAddresses []dto.AllAddressResponse
 
-	responseAddresses, err := service.GenerateAndCreateBTCAddresses(repository, userAsset, addressType, false)
+	responseAddresses, err := service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, addressType, false)
 	if err != nil {
 		return dto.AssetAddress{}, err
 	}
