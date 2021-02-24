@@ -21,6 +21,7 @@ const (
 	SUCCESSFUL                      = "SUCCESS"
 	ADDRESS_TYPE_LEGACY             = "Legacy"
 	ADDRESS_TYPE_SEGWIT             = "Segwit"
+	ADDRESS_TYPE_QADDRESS = "QAddress"
 	ENV_PRODUCTION                  = "production"
 	ENV_STAGING                     = "staging"
 	NOTIFICATION_SMS_TYPE           = "OTHERS"

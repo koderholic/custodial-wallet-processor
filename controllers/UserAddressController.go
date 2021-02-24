@@ -69,7 +69,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 			return
 		}
 	}
-	responseData.DefaultAddressType = utility.DefaultAddressesTypes[userAsset.CoinType]
+	responseData.DefaultAddressType = utility.AddressTypesPerAsset[userAsset.CoinType][0]
 	controller.Logger.Info("Outgoing response to GetAllAssetAddresses request %+v", http.StatusOK)
 	responseWriter.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(responseWriter).Encode(responseData)
