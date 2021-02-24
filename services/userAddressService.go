@@ -240,37 +240,28 @@ func (service BaseService) GetMultipleAddresses(repository database.IUserAssetRe
 		}
 		assetAddresses = TransformAddressesResponse(responseAddresses)
 	} else {
-		// Create for the missing address
-		availbleAddress := map[string]bool{}
+		availableAddress := map[string]bool{}
 		for _, address := range userAddresses {
-			availbleAddress[address.AddressType] = true
+			availableAddress[address.AddressType] = true
 			assetAddress := dto.AssetAddress{
 				Address: address.Address,
 				Type:    address.AddressType,
 			}
 			assetAddresses = append(assetAddresses, assetAddress)
 		}
-
-		if !availbleAddress[utility.ADDRESS_TYPE_SEGWIT] {
-			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, utility.ADDRESS_TYPE_SEGWIT, true)
-			if err != nil {
-				return []dto.AssetAddress{}, err
+		if len(assetAddresses) != len(utility.AddressTypesPerAsset[userAsset.CoinType]) {
+			for _, addressType := range utility.AddressTypesPerAsset[userAsset.CoinType] {
+				if !availableAddress[addressType] {
+					// Create missing addressType
+					responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, addressType, true)
+					if err != nil {
+						return []dto.AssetAddress{}, err
+					}
+					transformedResponse := TransformAddressesResponse(responseAddresses)
+					assetAddresses = append(assetAddresses, transformedResponse...)
+				}
 			}
-			transformedResponse := TransformAddressesResponse(responseAddresses)
-			assetAddresses = append(assetAddresses, transformedResponse...)
 		}
-
-		if !availbleAddress[utility.ADDRESS_TYPE_LEGACY] {
-			// Create Segwit Address
-			responseAddresses, err = service.GenerateAndCreateAssetMultipleAddresses(repository, userAsset, utility.ADDRESS_TYPE_LEGACY, true)
-			if err != nil {
-				return []dto.AssetAddress{}, err
-			}
-			transformedResponse := TransformAddressesResponse(responseAddresses)
-			assetAddresses = append(assetAddresses, transformedResponse...)
-		}
-
 	}
 
 	return assetAddresses, nil
