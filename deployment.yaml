@@ -95,7 +95,7 @@ cronJobs:
        ENVIRONMENT: config:default:environment
 
   - name: crypto-sweep-task
-    schedule: '0/15 * * * *'
+    schedule: '2/15 * * * *'
     allowConcurrentRun: false
     grantAwsAccess: false
     container:

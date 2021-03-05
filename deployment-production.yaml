@@ -7,3 +7,82 @@ config:
   BUSD_minimumSweep: '300'
   WRX_minimumSweep: '2000'
   coldWalletSmsNumber: '+2349084859418'
+
+
+cronJobs:
+  - name: wallet-adapter-trigger-job-process
+    schedule: '*/5 * * * *' #Run every 5 minutes
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: request-initiator
+      image: curlimages/curl:latest
+      args:
+        - '-Ssfv'
+        - 'http://crypto-wallet-adapter/assets/process-transaction'
+        - '-XPOST'
+      env:
+        ENVIRONMENT: 'config:default:environment'
+
+  - name: wallet-adapter-trigger-batch-job-process
+    schedule: '*/30 * * * *' #Run every 30 minutes
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: request-initiator
+      image: curlimages/curl:latest
+      args:
+        - '-Ssfv'
+        - 'http://crypto-wallet-adapter/assets/process-batched-transactions?assetSymbol=BTC'
+        - '-XPOST'
+      env:
+        ENVIRONMENT: config:default:environment
+  - name: wallet-adapter-trigger-bch-batch-process
+    schedule: '*/15 * * * *' #Run every 15 minutes
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: request-initiator
+      image: curlimages/curl:latest
+      args:
+        - '-Ssfv'
+        - 'http://crypto-wallet-adapter/assets/process-batched-transactions?assetSymbol=BCH'
+        - '-XPOST'
+      env:
+        ENVIRONMENT: config:default:environment
+
+  - name: crypto-sweep-task
+    schedule: '0/15 * * * *'
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: sweep-task
+      image: bundle/wallet-adapter-service
+      fromDockerFile: ./Dockerfile
+      command: /app/bin/sweep_job
+      env:
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+        MINIMUMSWEEP_BTC: 'config:crypto-wallet-adapter:BTC_minimumSweep'
+        MINIMUMSWEEP_BNB: 'config:crypto-wallet-adapter:BNB_minimumSweep'
+        MINIMUMSWEEP_ETH: 'config:crypto-wallet-adapter:ETH_minimumSweep'
+        MINIMUMSWEEP_BUSD: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
+        MINIMUMSWEEP_WRX: 'config:crypto-wallet-adapter:WRX_minimumSweep'
+
+  - name: crypto-floatmanager-task
+    schedule: '10 */4 * * *'
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+      name: floatmanager-task
+      image: bundle/wallet-adapter-service
+      fromDockerFile: ./Dockerfile
+      command: /app/bin/float_manager
+      env:
+        SECURITY_BUNDLE_PUBLICKEY: 'config:default:authPublicKey'
+        ENABLEFLOATMANAGER: 'config:crypto-wallet-adapter:enableFloatManager'
+        COLDWALLETSMSNUMBER: 'config:crypto-wallet-adapter:coldWalletSmsNumber'
+        MINIMUMSWEEP_BTC: 'config:crypto-wallet-adapter:BTC_minimumSweep'
+        MINIMUMSWEEP_BNB: 'config:crypto-wallet-adapter:BNB_minimumSweep'
+        MINIMUMSWEEP_ETH: 'config:crypto-wallet-adapter:ETH_minimumSweep'
+        MINIMUMSWEEP_BUSD: 'config:crypto-wallet-adapter:BUSD_minimumSweep'
