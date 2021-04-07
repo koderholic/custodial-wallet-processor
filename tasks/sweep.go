@@ -323,6 +323,10 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 }
 
 func HasExceededTrxSweepLimit(userAddress model.UserAddress, logger *utility.Logger, assetSymbol string, repository database.BaseRepository) bool {
+	if userAddress.NextSweepTime == nil {
+		nextSweepTime := time.Now()
+		userAddress.NextSweepTime = &nextSweepTime
+	}
 	if userAddress.SweepCount >= constants.DAILY_TRX_SWEEP_COUNT {
 		logger.Error("Daily sweep limit exceeded for %s, postponing sweep to reset counter", assetSymbol)
 		_ = ResetTRXSweepCount(repository, &userAddress)
@@ -389,7 +393,7 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 	for _, tx := range transactions {
 		logger.Info("GroupByTx - getting chain transaction for  %+v", tx.ID)
 		chainTransaction := model.ChainTransaction{}
-		if uuid.Nil != tx.OnChainTxId && tx.TransactionTag != "CREDIT"  {
+		if uuid.Nil != tx.OnChainTxId && tx.TransactionTag != "CREDIT" {
 			e := getChainTransaction(repository, tx, &chainTransaction, logger)
 			logger.Info("GroupByTx - chaintx is  %+v - %+v", chainTransaction.ID, chainTransaction.RecipientAddress)
 			if e != nil {
@@ -397,7 +401,7 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 				return nil, e
 			}
 		} else {
-			logger.Info("GroupByTx - skipping getChainTransaction for Internal Deposit %s", tx.TransactionReference);
+			logger.Info("GroupByTx - skipping getChainTransaction for Internal Deposit %s", tx.TransactionReference)
 		}
 
 		if chainTransaction.RecipientAddress != "" {
