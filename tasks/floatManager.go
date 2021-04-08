@@ -236,9 +236,11 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	}
 	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
 	//send sms
-	if _, err := AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
-		//lock was successfully acquired
-		services.BuildAndSendSms(assetSymbol, decimalBalance, cache, logger, config, serviceErr)
+	if config.EnableFloatManager {
+		if _, err := AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
+			//lock was successfully acquired
+			services.BuildAndSendSms(assetSymbol, decimalBalance, cache, logger, config, serviceErr)
+		}
 	}
 }
 
