@@ -32,7 +32,6 @@ resources:
   authentication:
     description: Wallet-adapter-service
     permissions:
-      - svcs.key-management.sign-transaction
       - svcs.key-management.create-address
       - svcs.crypto-adapter.broadcast
       - svcs.order-book.deposit
@@ -44,6 +43,8 @@ resources:
       - svcs.binance-brokerage.create-account
       - svcs.binance-brokerage.get-address
       - svcs.binance-brokerage.perform-sweep
+      - svcs.transaction-signers.send-single
+      - svcs.transaction-signers.send-batch
 
     environmentMap:
       serviceId: AUTHENTICATION_SERVICE_SERVICE_ID
@@ -75,13 +76,26 @@ cronJobs:
       image: curlimages/curl:latest
       args:
         - '-Ssfv'
-        - 'http://crypto-wallet-adapter/assets/process-batched-transactions'
+        - 'http://crypto-wallet-adapter/assets/process-batched-transactions?assetSymbol=BTC'
         - '-XPOST'
       env:
         ENVIRONMENT: config:default:environment
+  - name: wallet-adapter-trigger-bch-batch-process
+    schedule: '*/15 * * * *' #Run every 15 minutes
+    allowConcurrentRun: false
+    grantAwsAccess: false
+    container:
+     name: request-initiator
+     image: curlimages/curl:latest
+     args:
+       - '-Ssfv'
+       - 'http://crypto-wallet-adapter/assets/process-batched-transactions?assetSymbol=BCH'
+       - '-XPOST'
+     env:
+       ENVIRONMENT: config:default:environment
 
   - name: crypto-sweep-task
-    schedule: '0/15 * * * *'
+    schedule: '2/15 * * * *'
     allowConcurrentRun: false
     grantAwsAccess: false
     container:

@@ -60,6 +60,7 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		apiRouter.HandleFunc("/assets/process-transaction", middlewares.NewMiddleware(logger, config, userAssetController.ProcessTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/assets/process-batched-transactions", middlewares.NewMiddleware(logger, config, BatchController.ProcessBatchBTCTransactions).LogAPIRequests().Build()).Methods(http.MethodPost)
 		apiRouter.HandleFunc("/trigger-float-manager", middlewares.NewMiddleware(logger, config, userAssetController.TriggerFloat).ValidateAuthToken(utility.Permissions["TriggerFloat"]).LogAPIRequests().Build()).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/assets/{assetId}/create-auxiliary-address", middlewares.NewMiddleware(logger, config, userAssetController.CreateAuxiliaryAddress).ValidateAuthToken(utility.Permissions["GetAssetAddress"]).LogAPIRequests().Build()).Methods(http.MethodPost)
 
 	})
 

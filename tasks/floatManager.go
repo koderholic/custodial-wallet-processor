@@ -180,8 +180,8 @@ func ManageFloat(cache *utility.MemoryCache, logger *utility.Logger, config Conf
 				}
 			}
 
-			// Sign and broadcast transaction
-			if err := signTxAndBroadcastToChain(cache, repository, floatSurplusInBigInt, depositAddressResponse, logger, config, floatAccount, serviceErr); err != nil {
+			// Sign and send transaction to chain
+			if err := sendSingleTransactionToChain(cache, repository, floatSurplusInBigInt, depositAddressResponse, logger, config, floatAccount, serviceErr); err != nil {
 				continue
 			}
 
@@ -236,9 +236,11 @@ func NotifyColdWalletUsersViaSMS(amount big.Int, assetSymbol string, config Conf
 	}
 	decimalBalance := ConvertBigIntToDecimalUnit(amount, denomination)
 	//send sms
-	if _, err := AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
-		//lock was successfully acquired
-		services.BuildAndSendSms(assetSymbol, decimalBalance, cache, logger, config, serviceErr)
+	if config.EnableFloatManager {
+		if _, err := AcquireLock(errorcode.INSUFFICIENT_BALANCE_FLOAT_SEND_SMS+utility.SEPERATOR+assetSymbol, utility.ONE_HOUR_MILLISECONDS, cache, logger, config, serviceErr); err == nil {
+			//lock was successfully acquired
+			services.BuildAndSendSms(assetSymbol, decimalBalance, cache, logger, config, serviceErr)
+		}
 	}
 }
 
@@ -418,9 +420,9 @@ func getWithdrawalsSumForAssetFromDate(repository database.BaseRepository, asset
 	return sum, nil
 }
 
-func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) error {
-	// Calls key-management to sign transaction
-	signTransactionRequest := dto.SignTransactionRequest{
+func sendSingleTransactionToChain(cache *utility.MemoryCache, repository database.BaseRepository, amount *big.Int, depositAccount dto.DepositAddressResponse, logger *utility.Logger, config Config.Data, floatAccount model.HotWalletAsset, serviceErr dto.ServicesRequestErr) error {
+
+	sendSingleTransactionRequest := dto.SendSingleTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   depositAccount.Address,
 		Memo:        depositAccount.Tag,
@@ -430,8 +432,8 @@ func signTxAndBroadcastToChain(cache *utility.MemoryCache, repository database.B
 		ProcessType: utility.FLOATPROCESS,
 		Reference:   uuid.NewV1().String(),
 	}
-	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignTransactionAndBroadcast(cache, logger, config, signTransactionRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
+	sendSingleTransactionResponse := dto.SendTransactionResponse{}
+	if err := services.SendSingleTransaction(cache, logger, config, sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
 		logger.Error("Error response from float manager : %+v. While signing transaction to debit float for %+v", err, floatAccount.AssetSymbol)
 		return err
 	}

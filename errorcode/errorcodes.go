@@ -1,5 +1,6 @@
 package errorcode
 
+
 const (
 	INPUT_ERR                           = "Invalid Input Supplied. See documentation"
 	SYSTEM_ERR                          = "Request Could Not Be Proccessed. Server encountered an error"
@@ -29,4 +30,6 @@ const (
 	DEPOSIT_NOT_ACTIVE                  = "deposit operation is currently not available for this asset"
 	RECORD_NOT_FOUND                    = "RECORD_NOT_FOUND"
 	SERVER_ERR                          = "SERVER_ERR"
+	MULTIPLE_ADDRESS_ERROR = "Multiple addresses is not supported for specified asset"
+	MULTIPLE_ADDRESS_ERROR_CODE = "MULTIPLE_ADDRESS_NOT_SUPPORTED"
 )

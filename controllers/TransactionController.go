@@ -395,8 +395,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		return nil
 	}
 
-	// Get the transaction fee estimate by calling key-management to sign transaction
-	signTransactionAndBroadcastRequest := dto.SignTransactionRequest{
+	sendSingleTransactionRequest := dto.SendSingleTransactionRequest{
 		FromAddress: floatAccount.Address,
 		ToAddress:   transaction.Recipient,
 		Amount:      transaction.Value.BigInt(),
@@ -405,12 +404,12 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 		ProcessType: utility.WITHDRAWALPROCESS,
 		Reference:   transaction.DebitReference,
 	}
-	signTransactionAndBroadcastResponse := dto.SignAndBroadcastResponse{}
-	if err := services.SignTransactionAndBroadcast(processor.Cache, processor.Logger, processor.Config,
-		signTransactionAndBroadcastRequest, &signTransactionAndBroadcastResponse, &serviceErr); err != nil {
+	sendSingleTransactionResponse := dto.SendTransactionResponse{}
+	if err := services.SendSingleTransaction(processor.Cache, processor.Logger, processor.Config,
+		sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
 		switch serviceErr.Code {
 		case errorcode.INSUFFICIENT_FUNDS:
-			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *signTransactionAndBroadcastRequest.Amount)
+			_ = processor.ProcessTxnWithInsufficientFloat(transaction.AssetSymbol, *sendSingleTransactionRequest.Amount)
 			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.PENDING, model.ChainTransaction{}); err != nil {
 				return err
 			}
@@ -427,7 +426,7 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 
 	// It creates a chain transaction for the transaction with the transaction hash returned by crypto adapter
 	chainTransaction := model.ChainTransaction{
-		TransactionHash:  signTransactionAndBroadcastResponse.TransactionHash,
+		TransactionHash:  sendSingleTransactionResponse.TransactionHash,
 		RecipientAddress: transaction.Recipient,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {

@@ -29,8 +29,7 @@ type GenerateAllAddressesResponse struct {
 	UserID    uuid.UUID            `json:"userId"`
 }
 
-// SignTransaction ... Request definition for sign transaction , key-management service
-type SignTransactionRequest struct {
+type SendSingleTransactionRequest struct {
 	FromAddress string   `json:"fromAddress"`
 	ToAddress   string   `json:"toAddress"`
 	Memo        string   `json:"memo"`
@@ -39,24 +38,11 @@ type SignTransactionRequest struct {
 	IsSweep     bool     `json:"isSweep"`
 	ProcessType string   `json:"processType"`
 	Reference   string   `json:"reference"`
-}
-
-// SignTransactionResponse ... Model definition for sign transaction successful response, key-management service
-type SignTransactionResponse struct {
-	SignedData string `json:"signedTransaction"`
-	Fee        int64  `json:"fee"`
-}
-
-// BroadcastToChainRequest ... Request definition for broadcast to chain , crypto-adapter service
-type BroadcastToChainRequest struct {
-	SignedData  string `json:"signedData"`
-	AssetSymbol string `json:"assetSymbol"`
-	Reference   string `json:"reference"`
-	ProcessType string `json:"processType"`
+	Priority string `json:"priority,omitempty"`
 }
 
 // BroadcastToChainResponse ... Model definition for broadcast to chain successful response, crypto-adapter service
-type SignAndBroadcastResponse struct {
+type SendTransactionResponse struct {
 	TransactionHash string `json:"transactionHash"`
 }
 

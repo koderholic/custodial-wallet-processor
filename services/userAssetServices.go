@@ -8,20 +8,24 @@ import (
 	"wallet-adapter/dto"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
-	"wallet-adapter/utility/constants"
 	AddressProvider "wallet-adapter/utility/addressProvider"
+	"wallet-adapter/utility/constants"
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/viper"
 )
 
 var (
-	batchable    = true
-	notBatchable = false
+	yes    = true
+	no = false
 	isBatchable  = map[int64]*bool{
-		0:   &batchable,
-		145: &batchable,
-		2:   &batchable,
+		0:   &yes,
+		145: &yes,
+		2:   &yes,
+	}
+	IsMultiAddresses  = map[int64]*bool{
+		0:   &yes,
+		145: &yes,
 	}
 	sweepFee = map[int64]int64{
 		714: 37500,
@@ -50,6 +54,7 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 		}
 	}
 	logger.Info("Supported assets seeded successfully")
+
 }
 
 func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
@@ -74,6 +79,7 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			TransferActivity:    denom.TransferActivity,
 			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
 			IsBatchable:         isBatchable[denom.CoinType],
+			IsMultiAddresses : IsMultiAddresses[denom.CoinType],
 			AddressProvider:     addressProvider,
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
@@ -141,4 +147,13 @@ func (service BaseService) IsBatchable(assetSymbol string, repository database.I
 	}
 
 	return *denomination.IsBatchable, nil
+}
+
+func (service BaseService) IsMultipleAddresses(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+		return false, err
+	}
+
+	return *denomination.IsMultiAddresses, nil
 }

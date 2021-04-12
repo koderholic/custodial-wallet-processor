@@ -235,9 +235,21 @@ func (s *Suite) TestCheckSweepMinimum() {
 }
 
 func (s *Suite) TestCheckTrxSweepLimitDoesNotExceed() {
+	nextSweepTime := time.Now()
 	userAddress := model.UserAddress{
 		SweepCount: 10,
-		NextSweepTime: time.Now(),
+		NextSweepTime: &nextSweepTime,
+	}
+	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+
+	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
+}
+
+func (s *Suite) TestCheckTrxSweepNextSweepTimeIsNull() {
+	userAddress := model.UserAddress{
+		SweepCount: 10,
+		NextSweepTime: nil,
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
 	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
@@ -246,9 +258,10 @@ func (s *Suite) TestCheckTrxSweepLimitDoesNotExceed() {
 }
 
 func (s *Suite) TestCheckTrxSweepLimitExceeds() {
+	nextSweepTime := time.Now()
 	userAddress := model.UserAddress{
 		SweepCount: 25,
-		NextSweepTime: time.Now(),
+		NextSweepTime: &nextSweepTime,
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
 	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
@@ -257,9 +270,10 @@ func (s *Suite) TestCheckTrxSweepLimitExceeds() {
 }
 
 func (s *Suite) TestCheckTrxSweepLimitDoesNotExceedAfterReset() {
+	nextSweepTime := time.Now()
 	userAddress := model.UserAddress{
 		SweepCount: 0,
-		NextSweepTime: time.Now(),
+		NextSweepTime: &nextSweepTime,
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
 	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
@@ -268,9 +282,10 @@ func (s *Suite) TestCheckTrxSweepLimitDoesNotExceedAfterReset() {
 }
 
 func (s *Suite) TestCheckTrxSweepLimitDoesExceedAfterReset() {
+	nextSweepTime := time.Now().AddDate(0,0,1)
 	userAddress := model.UserAddress{
 		SweepCount: 0,
-		NextSweepTime: time.Now().AddDate(0,0,1),
+		NextSweepTime: &nextSweepTime,
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
 	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
@@ -280,9 +295,10 @@ func (s *Suite) TestCheckTrxSweepLimitDoesExceedAfterReset() {
 
 
 func (s *Suite) TestResetTRXSweepCount() {
+	nextSweepTime := time.Now()
 	userAddress := model.UserAddress{
 		SweepCount: 20,
-		NextSweepTime: time.Now(),
+		NextSweepTime: &nextSweepTime,
 	}
 	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
 	_ = tasks.ResetTRXSweepCount(repository, &userAddress)

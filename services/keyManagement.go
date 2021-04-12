@@ -2,9 +2,8 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"errors"
-	"net/http"
+	"fmt"
 	"strconv"
 	Config "wallet-adapter/config"
 	"wallet-adapter/dto"
@@ -73,7 +72,6 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	requestData := dto.GenerateAddressRequest{}
 	responseData := dto.GenerateAllAddressesResponse{}
 	metaData := utility.GetRequestMetaData("createAllAddresses", service.Config)
-
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
 	if addressType == "" {
@@ -106,134 +104,6 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	}
 
 	return responseData.Addresses, nil
-}
-
-// SignTransaction ... Calls key-management service with a transaction object to sign
-func SignTransaction(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SignTransactionRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
-
-	authToken, err := GetAuthToken(cache, logger, config)
-	if err != nil {
-		return err
-	}
-	metaData := utility.GetRequestMetaData("signTransaction", config)
-
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
-	if err != nil {
-		return err
-	}
-	APIClient.AddHeader(APIRequest, map[string]string{
-		"x-auth-token": authToken,
-	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
-			return err
-		}
-		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
-	}
-
-	return nil
-}
-
-// SignTransaction ... Calls key-management service with a transaction object to sign
-func SignTransactionAndBroadcast(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.SignTransactionRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
-
-	authToken, err := GetAuthToken(cache, logger, config)
-	if err != nil {
-		return err
-	}
-	metaData := utility.GetRequestMetaData("signAndBroadcastTransaction", config)
-
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
-	if err != nil {
-		return err
-	}
-	APIClient.AddHeader(APIRequest, map[string]string{
-		"x-auth-token": authToken,
-	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
-			return err
-		}
-		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
-	}
-
-	return nil
-}
-
-func SignBatchTransaction(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchRequest, responseData *dto.SignTransactionResponse, serviceErr interface{}) error {
-	authToken, err := GetAuthToken(cache, logger, config)
-	if err != nil {
-		return err
-	}
-	metaData := utility.GetRequestMetaData("signBatchTransaction", config)
-
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	if httpClient != nil {
-		APIClient.httpClient = httpClient
-	}
-	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
-	if err != nil {
-		return err
-	}
-	APIClient.AddHeader(APIRequest, map[string]string{
-		"x-auth-token": authToken,
-	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
-			return err
-		}
-		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
-	}
-
-	return nil
-
-}
-
-func SignBatchTransactionAndBroadcast(httpClient *http.Client, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, requestData dto.BatchRequest, responseData *dto.SignAndBroadcastResponse, serviceErr interface{}) error {
-	authToken, err := GetAuthToken(cache, logger, config)
-	if err != nil {
-		return err
-	}
-	metaData := utility.GetRequestMetaData("signBatchTransactionAndbroadcast", config)
-
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	if httpClient != nil {
-		APIClient.httpClient = httpClient
-	}
-	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
-	if err != nil {
-		return err
-	}
-	APIClient.AddHeader(APIRequest, map[string]string{
-		"x-auth-token": authToken,
-	})
-	APIResponse, err := APIClient.Do(APIRequest, responseData)
-	if err != nil {
-		if errUnmarshal := json.Unmarshal([]byte(fmt.Sprintf("%+v", err)), serviceErr); errUnmarshal != nil {
-			return err
-		}
-		errWithStatus := serviceErr.(*dto.ServicesRequestErr)
-		errWithStatus.StatusCode = APIResponse.StatusCode
-		serviceErr = errWithStatus
-		return err
-	}
-
-	return nil
-
 }
 
 //does v1 and v2 address subscriptions

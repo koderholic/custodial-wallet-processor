@@ -15,6 +15,7 @@ type Denomination struct {
 	UserAssets          []UserAsset    `gorm:"foreignkey:asset_id" json:"user_balances,omitempty"`
 	IsToken             *bool          `gorm:"default:0" json:"is_token"`
 	IsBatchable         *bool          `gorm:"default:0" json:"is_batchable"`
+	IsMultiAddresses    *bool          `gorm:"default:0" json:"is_multi_addresses"`
 	MinimumSweepable    float64        `json:"minimum_sweepable"`
 	MainCoinAssetSymbol string         `json:"main_coin_asset_symbol"`
 	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`

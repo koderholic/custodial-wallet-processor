@@ -23,7 +23,7 @@ type IRepository interface {
 	FindOrCreate(checkExistOrUpdate interface{}, model interface{}) error
 	UpdateOrCreate(checkExistOrUpdate interface{}, model interface{}, update interface{}) error
 	FetchTransactionsWhereIn(values []string, model interface{}) error
-	FetchBatchesWithStatus(statuses []string, batches interface{}) error
+	FetchBatchesByStatusAndSymbol(statuses []string, assetSymbol string, batches interface{}) error
 	FetchByLastRunDate(assettype, lastRund string, model interface{}) error
 }
 
@@ -44,9 +44,9 @@ func (repo *BaseRepository) GetCount(model, count interface{}) error {
 	return nil
 }
 
-func (repo *BaseRepository) FetchBatchesWithStatus(statuses []string, batches interface{}) error {
-	if err := repo.DB.Where("status IN (?)", statuses).Find(batches).Error; err != nil {
-		repo.Logger.Error("Error with repository FetchBatchesWithStatus %s", err)
+func (repo *BaseRepository) FetchBatchesByStatusAndSymbol(statuses []string, assetSymbol string, batches interface{}) error {
+	if err := repo.DB.Where("status IN (?) AND asset_symbol=?", statuses, assetSymbol).Find(batches).Error; err != nil {
+		repo.Logger.Error("Error with repository FetchBatchesByStatusAndSymbol %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
 			Err:     err,

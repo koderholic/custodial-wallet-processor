@@ -25,6 +25,7 @@ type Data struct {
 	AuthenticatorKey          string        `mapstructure:"SECURITY_BUNDLE_PUBLICKEY"  yaml:"SECURITY_BUNDLE_PUBLICKEY,omitempty"`
 	AuthenticationService     string        `mapstructure:"authenticationServiceURL"  yaml:"authenticationServiceURL,omitempty"`
 	KeyManagementService      string        `mapstructure:"keyManagementServiceURL"  yaml:"keyManagementServiceURL,omitempty"`
+	TransactionSignersURL string        `mapstructure:"transactionSignersURL"  yaml:"transactionSignersURL,omitempty"`
 	CryptoAdapterService      string        `mapstructure:"cryptoAdapterServiceURL"  yaml:"cryptoAdapterServiceURL,omitempty"`
 	LockerService             string        `mapstructure:"lockerServiceURL"  yaml:"lockerServiceURL,omitempty"`
 	LockerPrefix              string        `mapstructure:"lockerServicePrefix"  yaml:"lockerServicePrefix,omitempty"`
