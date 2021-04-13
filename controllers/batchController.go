@@ -178,18 +178,10 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 	}
 
 	if !txnExist {
-		// Fetches all PENDING transactions from the transaction queue table for the given BatchID
-		var queuedBatchedTransactions []model.TransactionQueue
-		if err := processor.Repository.FetchByFieldName(&model.TransactionQueue{TransactionStatus: model.TransactionStatus.PENDING, BatchID: batch.ID,
-			AssetSymbol: batch.AssetSymbol}, &queuedBatchedTransactions); err != nil {
+		if err := processor.UpdateBatchedTransactionsStatus(batch, model.ChainTransaction{}, model.BatchStatus.TERMINATED); err != nil {
 			return err
 		}
-
-		if err := processor.processBatch(batch, queuedBatchedTransactions); err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	}
 
 	chainTransaction := model.ChainTransaction{
