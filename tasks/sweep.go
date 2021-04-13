@@ -124,14 +124,18 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 	//batch process btc
 	if len(batchAddresses) > 0 {
-		if err := sweepBatchTx(cache, logger, config, repository, serviceErr, batchAddresses, batchAssetTransactionsToSweep); err != nil {
-			logger.Error("Error response from Sweep job : %+v while sweeping batch transactions", err)
-			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
-				logger.Error("Could not release lock", err)
+		transactionsPerAssetSymbol, batchAddressesPerAssetSymbol, _ := GroupTxByAssetSymbol(batchAssetTransactionsToSweep, repository, logger)
+		for assetSymbol, addressTransactions := range transactionsPerAssetSymbol{
+			if err := sweepBatchTx(cache, logger, config, repository, serviceErr, batchAddressesPerAssetSymbol[assetSymbol], addressTransactions); err != nil {
+				logger.Error("Error response from Sweep job : %+v while sweeping batch transactions", err)
+				if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+					logger.Error("Could not release lock", err)
+					return
+				}
 				return
 			}
-			return
 		}
+
 	}
 	if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 		logger.Error("Could not release lock", err)
@@ -422,6 +426,34 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 	}
 
 	return transactionsPerRecipientAddress, nil
+}
+
+func GroupTxByAssetSymbol(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, map[string][]string, error) {
+	//loop over assetTransactions, get the chainTx and group by symbol
+	//group transactions by symbol
+	transactionsPerSymbol := make(map[string][]model.Transaction)
+	batchAddressesPerSymbol := make(map[string][]string)
+	for _, tx := range transactions {
+		logger.Info("GroupByTx - getting chain transaction for  %+v", tx.ID)
+		chainTransaction := model.ChainTransaction{}
+		if uuid.Nil != tx.OnChainTxId && tx.TransactionTag != "CREDIT" {
+			e := getChainTransaction(repository, tx, &chainTransaction, logger)
+			logger.Info("GroupByTx - chaintx is  %+v - %+v", chainTransaction.ID, chainTransaction.RecipientAddress)
+			if e != nil {
+				logger.Info("GroupByTx - getting chain transaction FAILED for  %+v", tx.ID)
+				return nil, nil, e
+			}
+
+			key := tx.AssetSymbol
+			transactionsPerSymbol[key] = append(transactionsPerSymbol[key], tx)
+			batchAddressesPerSymbol[key] = append(batchAddressesPerSymbol[key], chainTransaction.RecipientAddress)
+
+		} else {
+			logger.Info("GroupByTx - skipping getChainTransaction for Internal Deposit %s", tx.TransactionReference)
+		}
+	}
+
+	return transactionsPerSymbol, batchAddressesPerSymbol, nil
 }
 
 func getChainTransaction(repository database.BaseRepository, tx model.Transaction, chainTransaction *model.ChainTransaction, logger *utility.Logger) error {
