@@ -211,6 +211,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		Origins:       batchAddresses,
 		Recipients:    recipientData,
 		ProcessType:   utility.SWEEPPROCESS,
+		Reference:     fmt.Sprintf("SWEEP-%s-%d", denomination.AssetSymbol, time.Now().Unix()),,
 	}
 	sendBatchTransactionResponse := dto.SendTransactionResponse{}
 	if err := services.SendBatchTransaction(nil, cache, logger, config, sendBatchTransactionRequest, &sendBatchTransactionResponse, serviceErr); err != nil {
