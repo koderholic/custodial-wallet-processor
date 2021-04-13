@@ -124,7 +124,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 	//batch process btc
 	if len(batchAddresses) > 0 {
-		transactionsPerAssetSymbol, batchAddressesPerAssetSymbol, _ := GroupTxByAssetSymbol(transactions, repository, logger)
+		transactionsPerAssetSymbol, batchAddressesPerAssetSymbol, _ := GroupTxByAssetSymbol(batchAssetTransactionsToSweep, repository, logger)
 		for assetSymbol, addressTransactions := range transactionsPerAssetSymbol{
 			if err := sweepBatchTx(cache, logger, config, repository, serviceErr, batchAddressesPerAssetSymbol[assetSymbol], addressTransactions); err != nil {
 				logger.Error("Error response from Sweep job : %+v while sweeping batch transactions", err)
