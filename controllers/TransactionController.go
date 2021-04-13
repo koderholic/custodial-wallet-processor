@@ -420,7 +420,10 @@ func (processor *TransactionProccessor) processSingleTxn(transaction model.Trans
 			}
 			return nil
 		default:
-			return err
+			if err := processor.updateTransactions(transaction.TransactionId, model.TransactionStatus.TERMINATED, model.ChainTransaction{}); err != nil {
+				return err
+			}
+			return nil
 		}
 	}
 
