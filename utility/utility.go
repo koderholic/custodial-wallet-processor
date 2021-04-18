@@ -2,6 +2,7 @@ package utility
 
 import (
 	"encoding/json"
+	"fmt"
 	uuid "github.com/satori/go.uuid"
 	"io/ioutil"
 	"math"
@@ -34,6 +35,10 @@ func RandomString(strlen int) string {
 		result[i] = chars[rand.Intn(len(chars))]
 	}
 	return string(result)
+}
+
+func GeneratePaymentRef() string {
+	return fmt.Sprintf("%d-%s", time.Now().UnixNano(), RandomString(10))
 }
 
 // UnmarshalJsonFile ... This handles reading from file and writing into a receiver object
@@ -121,6 +126,6 @@ func IsValidUUID(u string) bool {
 }
 
 func GetNextDayFromNow() *time.Time {
-	nextDayFromNow := time.Now().Add(time.Duration(24 - time.Now().Hour())* time.Hour)
- return &nextDayFromNow
+	nextDayFromNow := time.Now().Add(time.Duration(24-time.Now().Hour()) * time.Hour)
+	return &nextDayFromNow
 }
