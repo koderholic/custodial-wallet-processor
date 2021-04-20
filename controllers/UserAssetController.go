@@ -202,7 +202,7 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 	apiResponse := utility.NewResponse()
 	requestData := dto.CreditUserAssetRequest{}
 	responseData := dto.TransactionReceipt{}
-	paymentRef := utility.RandomString(16)
+	paymentRef := utility.GeneratePaymentRef()
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for CreditUserAssets : %+v", requestData)
@@ -294,7 +294,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 	apiResponse := utility.NewResponse()
 	requestData := dto.OnChainCreditUserAssetRequest{}
 	responseData := dto.TransactionReceipt{}
-	paymentRef := utility.RandomString(16)
+	paymentRef := utility.GeneratePaymentRef()
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for OnChainCreditUserAssets : %+v", requestData)
@@ -413,7 +413,7 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 	apiResponse := utility.NewResponse()
 	requestData := dto.InternalTransferRequest{}
 	responseData := dto.TransactionReceipt{}
-	paymentRef := utility.RandomString(16)
+	paymentRef := utility.GeneratePaymentRef()
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for InternalTransfer : %+v", requestData)
@@ -537,7 +537,7 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 	apiResponse := utility.NewResponse()
 	requestData := dto.CreditUserAssetRequest{}
 	responseData := dto.TransactionReceipt{}
-	paymentRef := utility.RandomString(16)
+	paymentRef := utility.GeneratePaymentRef()
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 	controller.Logger.Info("Incoming request details for DebitUserAsset : %+v", requestData)

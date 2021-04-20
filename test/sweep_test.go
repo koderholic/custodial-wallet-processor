@@ -246,6 +246,17 @@ func (s *Suite) TestCheckTrxSweepLimitDoesNotExceed() {
 	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
 }
 
+func (s *Suite) TestCheckTrxSweepNextSweepTimeIsNull() {
+	userAddress := model.UserAddress{
+		SweepCount: 10,
+		NextSweepTime: nil,
+	}
+	repository := database.BaseRepository{Database: database.Database{Logger: s.Logger, DB: s.DB, Config: s.Config}}
+	isExceededSweepLimit := tasks.HasExceededTrxSweepLimit(userAddress, s.Logger, "TRX", repository)
+
+	assert.Equal(s.T(), isExceededSweepLimit, false, "Sweep limit should not be exceeded")
+}
+
 func (s *Suite) TestCheckTrxSweepLimitExceeds() {
 	nextSweepTime := time.Now()
 	userAddress := model.UserAddress{

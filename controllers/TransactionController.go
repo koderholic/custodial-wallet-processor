@@ -37,7 +37,7 @@ func (controller UserAssetController) ExternalTransfer(responseWriter http.Respo
 	batchService := services.BatchService{BaseService: services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}}
 	requestData := dto.ExternalTransferRequest{}
 	responseData := dto.ExternalTransferResponse{}
-	paymentRef := utility.RandomString(16)
+	paymentRef := utility.GeneratePaymentRef()
 
 	json.NewDecoder(requestReader.Body).Decode(&requestData)
 
