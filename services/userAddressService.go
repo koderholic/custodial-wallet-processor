@@ -65,7 +65,7 @@ func GenerateV1Address(repository database.IUserAssetRepository, logger *utility
 		if !isPrimaryAddress {
 			return "", errors.New(errorcode.MULTIPLE_ADDRESS_ERROR)
 		}
-		addressResponse, err := service.GenerateUserAddressOnBBS(userAsset.UserID, userAsset.AssetSymbol, "")
+		addressResponse, err := service.GenerateUserAddressOnBBS(userAsset.UserID, userAsset.AssetSymbol, userAsset.MainCoinAssetSymbol)
 		if err != nil {
 			return "", err
 		}
