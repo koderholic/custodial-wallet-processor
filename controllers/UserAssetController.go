@@ -49,7 +49,10 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		}
 		balance, _ := decimal.NewFromString("0.00")
 		userAssetmodel := model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID, AvailableBalance: balance.String()}
-		_ = controller.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetmodel)
+		if err := controller.Repository.FindOrCreateAssets(model.UserAsset{DenominationID: denomination.ID, UserID: requestData.UserID}, &userAssetmodel); err != nil {
+			ReturnError(responseWriter, "CreateUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err.(utility.AppError))), controller.Logger)
+			return
+		}
 
 		userAsset := dto.Asset{}
 		userAsset.ID = userAssetmodel.ID
