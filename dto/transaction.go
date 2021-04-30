@@ -34,6 +34,7 @@ type ExternalTransferRequest struct {
 	RecipientAddress     string  `json:"recipientAddress,omitempty" validate:"required"`
 	Value                float64 `json:"value,omitempty" validate:"required"`
 	DebitReference       string  `json:"debitReference,omitempty" validate:"required"`
+	Network       string  `json:"network,omitempty"`
 	TransactionReference string  `json:"transactionReference,omitempty" validate:"required"`
 }
 
@@ -45,6 +46,7 @@ type ExternalTransferResponse struct {
 
 type BatchRequest struct {
 	AssetSymbol   string            `json:"assetSymbol"`
+	Network string   `json:"network"`
 	ChangeAddress string            `json:"changeAddress"`
 	IsSweep       bool              `json:"isSweep"`
 	Origins       []string          `json:"origins"`

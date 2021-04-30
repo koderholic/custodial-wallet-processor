@@ -83,11 +83,14 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			return
 		}
 
-		denomination := model.Denomination{}
-		if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: tx.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+		userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
+		txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, tx.Network, tx.AssetSymbol)
+		if err != nil {
 			continue
 		}
-		if *denomination.IsBatchable {
+
+
+		if *txNetworkAsset.IsBatchable {
 			//get recipient address for transaction
 			chainTransaction := model.ChainTransaction{}
 			err = getChainTransaction(repository, tx, &chainTransaction, logger)
@@ -117,7 +120,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 		var address = stringSlice[0]
 		sum := CalculateSum(addressTransactions)
 		logger.Info("Sweeping %s with total of %d", address, sum)
-		if err := sweepPerAddress(cache, logger, config, repository, serviceErr, addressTransactions, sum, address); err != nil {
+		if err := sweepPerAddress(cache, logger, config, repository, userAssetRepository, serviceErr, addressTransactions, sum, address); err != nil {
 			logger.Error("Error response from Sweep job : %+v while sweepPerAddress for address %s", err, address)
 			continue
 		}
@@ -126,7 +129,7 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	if len(batchAddresses) > 0 {
 		transactionsPerAssetSymbol, batchAddressesPerAssetSymbol, _ := GroupTxByAssetSymbol(batchAssetTransactionsToSweep, repository, logger)
 		for assetSymbol, addressTransactions := range transactionsPerAssetSymbol{
-			if err := sweepBatchTx(cache, logger, config, repository, serviceErr, batchAddressesPerAssetSymbol[assetSymbol], addressTransactions); err != nil {
+			if err := sweepBatchTx(cache, logger, config, repository, userAssetRepository, serviceErr, batchAddressesPerAssetSymbol[assetSymbol], addressTransactions); err != nil {
 				logger.Error("Error response from Sweep job : %+v while sweeping batch transactions", err)
 				if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 					logger.Error("Could not release lock", err)
@@ -164,27 +167,28 @@ func CalculateSumOfBatch(addressTransactions []model.Transaction) float64 {
 	return sum
 }
 
-func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, batchAddresses []string, batchAssetTransactionsToSweep []model.Transaction) error {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: batchAssetTransactionsToSweep[0].AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository, serviceErr dto.ServicesRequestErr, batchAddresses []string, batchAssetTransactionsToSweep []model.Transaction) error {
+
+	txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, batchAssetTransactionsToSweep[0].Network, batchAssetTransactionsToSweep[0].AssetSymbol)
+	if err != nil {
 		return err
 	}
 
 	recipientData := []dto.BatchRecipients{}
 	//get float
-	floatAccount, err := getFloatDetails(repository, denomination.AssetSymbol, logger)
+	floatAccount, err := getFloatDetails(repository, txNetworkAsset.AssetSymbol, txNetworkAsset.Network, logger)
 	if err != nil {
 		return err
 	}
 
 	//check total sum threshold for this batch
 	totalSweepSum := CalculateSumOfBatch(batchAssetTransactionsToSweep)
-	if totalSweepSum < denomination.MinimumSweepable {
-		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, denomination.AssetSymbol, denomination.MinimumSweepable, err)
+	if totalSweepSum < txNetworkAsset.MinimumSweepable {
+		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", totalSweepSum, txNetworkAsset.AssetSymbol, txNetworkAsset.MinimumSweepable, err)
 		return err
 	}
 
-	sweepParam, err := GetSweepParams(cache, logger, config, repository, floatAccount, totalSweepSum)
+	sweepParam, err := GetSweepParams(cache, logger, config, repository, floatAccount, txNetworkAsset, totalSweepSum)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while getting sweep params for %s", err, floatAccount.AssetSymbol)
 		return err
@@ -205,13 +209,14 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 		recipientData = append(recipientData, brokerageRecipient)
 	}
 	sendBatchTransactionRequest := dto.BatchRequest{
-		AssetSymbol:   denomination.AssetSymbol,
+		AssetSymbol:   txNetworkAsset.AssetSymbol,
 		ChangeAddress: sweepParam.BrokerageAddress,
 		IsSweep:       true,
 		Origins:       batchAddresses,
 		Recipients:    recipientData,
 		ProcessType:   utility.SWEEPPROCESS,
-		Reference:     fmt.Sprintf("SWEEP-%s-%d", denomination.AssetSymbol, time.Now().Unix()),
+		Network: txNetworkAsset.Network,
+		Reference:     fmt.Sprintf("SWEEP-%s-%d", txNetworkAsset.AssetSymbol, time.Now().Unix()),
 	}
 	sendBatchTransactionResponse := dto.SendTransactionResponse{}
 	if err := services.SendBatchTransaction(nil, cache, logger, config, sendBatchTransactionRequest, &sendBatchTransactionResponse, serviceErr); err != nil {
@@ -225,7 +230,7 @@ func sweepBatchTx(cache *utility.MemoryCache, logger *utility.Logger, config Con
 
 }
 
-func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum float64, recipientAddress string) error {
+func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, userAssetRepository database.UserAssetRepository, serviceErr dto.ServicesRequestErr, addressTransactions []model.Transaction, sum float64, recipientAddress string) error {
 	transactionListInfo, e := getTransactionListInfo(repository, addressTransactions, logger)
 	if e != nil {
 		return e
@@ -252,13 +257,13 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return nil
 	}
 
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: transactionListInfo.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
+	txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
+	if  err != nil {
 		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
 		return err
 	}
 
-	if denomination.CoinType == constants.TRX_COINTYPE {
+	if txNetworkAsset.CoinType == constants.TRX_COINTYPE {
 		isExceededLimit := HasExceededTrxSweepLimit(userAddress, logger, transactionListInfo.AssetSymbol, repository)
 		if isExceededLimit {
 			return nil
@@ -266,26 +271,26 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 	}
 
 	//Check that sweep amount is not below the minimum sweep amount
-	isAmountSufficient, err := CheckSweepMinimum(denomination, config, sum, logger)
+	isAmountSufficient, err := CheckSweepMinimum(txNetworkAsset, config, sum, logger)
 	if !isAmountSufficient {
 		return err
 	}
 
-	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, logger)
+	floatAccount, err := getFloatDetails(repository, transactionListInfo.AssetSymbol, transactionListInfo.Network, logger)
 	if err != nil {
 		return err
 	}
 
-	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount)
+	toAddress, addressMemo, err := GetSweepAddressAndMemo(cache, logger, config, repository, floatAccount, txNetworkAsset)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while getting sweep toAddress and memo for %s", err, floatAccount.AssetSymbol)
 		return err
 	}
 
 	//Do this only for BEp-2 tokens and not for BNB itself
-	if denomination.RequiresMemo && *denomination.IsToken {
+	if txNetworkAsset.RequiresMemo && *txNetworkAsset.IsToken {
 		//send sweep fee to main address
-		err, _ := fundSweepFee(floatAccount, denomination, recipientAddress, cache, logger, config, serviceErr, addressTransactions, repository)
+		err, _ := fundSweepFee(floatAccount, txNetworkAsset, recipientAddress, userAddress.Network, cache, logger, config, serviceErr, addressTransactions, repository)
 		if err != nil {
 			return err
 		}
@@ -317,7 +322,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		}
 	}
 
-	if denomination.CoinType == constants.TRX_COINTYPE {
+	if txNetworkAsset.CoinType == constants.TRX_COINTYPE {
 		_ = incrementTRXSweepCount(repository, userAddress)
 	}
 
@@ -362,7 +367,7 @@ func incrementTRXSweepCount(repository database.BaseRepository, userAddress mode
 	return nil
 }
 
-func CheckSweepMinimum(denomination model.Denomination, config Config.Data, sum float64, logger *utility.Logger) (bool, error) {
+func CheckSweepMinimum(denomination model.Network, config Config.Data, sum float64, logger *utility.Logger) (bool, error) {
 	if sum < denomination.MinimumSweepable {
 		logger.Error("Error response from sweep job : Total sweep sum %v for asset (%s) is below the minimum sweep %v, so terminating sweep process", sum, denomination.AssetSymbol, denomination.MinimumSweepable)
 		return false, utility.AppError{
@@ -384,10 +389,16 @@ func getTransactionListInfo(repository database.BaseRepository, assetTransaction
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return dto.TransactionListInfo{}, err
 	}
+	recipientNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
+	if err != nil {
+		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+		return dto.TransactionListInfo{}, err
+	}
 	transactionListInfo.AssetSymbol = recipientAsset.AssetSymbol
-	transactionListInfo.Decimal = recipientAsset.Decimal
+	transactionListInfo.Decimal = recipientNetworkAsset.NativeDecimals
 	transactionListInfo.UserId = recipientAsset.UserID
-	transactionListInfo.AddressProvider = recipientAsset.AddressProvider
+	transactionListInfo.AddressProvider = recipientNetworkAsset.AddressProvider
+	transactionListInfo.Network = recipientNetworkAsset.Network
 	return transactionListInfo, nil
 }
 
@@ -495,10 +506,11 @@ func ToUniqueAddresses(addresses []string) []string {
 	return list
 }
 
-func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomination, recipientAddress string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
+func fundSweepFee(floatAccount model.HotWalletAsset, txNetworkAsset model.Network, recipientAddress, network string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
 
 	request := dto.OnchainBalanceRequest{
-		AssetSymbol: denomination.MainCoinAssetSymbol,
+		AssetSymbol: txNetworkAsset.AssetSymbol,
+		Network: network,
 		Address:     recipientAddress,
 	}
 	mainCoinOnChainBalanceResponse := dto.OnchainBalanceResponse{}
@@ -508,17 +520,17 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	}
 	mainCoinOnChainBalance, _ := strconv.ParseUint(mainCoinOnChainBalanceResponse.Balance, 10, 64)
 	//check if onchain balance in main coin asset is less than floatAccount.SweepFee
-	if int64(mainCoinOnChainBalance) < denomination.SweepFee {
+	if int64(mainCoinOnChainBalance) < txNetworkAsset.SweepFee {
 
 		sendSingleTransactionRequest := dto.SendSingleTransactionRequest{
 			FromAddress: floatAccount.Address,
 			ToAddress:   recipientAddress,
-			Amount:      big.NewInt(denomination.SweepFee),
-			AssetSymbol: denomination.MainCoinAssetSymbol,
+			Amount:      big.NewInt(txNetworkAsset.SweepFee),
+			AssetSymbol: txNetworkAsset.AssetSymbol,
 			//this currently only supports coins that supports Memo,  other coins will be ignored
 			Memo:        utility.SWEEPMEMOBNB,
 			ProcessType: utility.FLOATPROCESS,
-			Reference:   fmt.Sprintf("%s-%s", denomination.MainCoinAssetSymbol, assetTransactions[0].TransactionReference),
+			Reference:   fmt.Sprintf("%s-%s", txNetworkAsset.AssetSymbol, assetTransactions[0].TransactionReference),
 		}
 		sendSingleTransactionResponse := dto.SendTransactionResponse{}
 		if err := services.SendSingleTransaction(cache, logger, config, sendSingleTransactionRequest, &sendSingleTransactionResponse, &serviceErr); err != nil {
@@ -533,13 +545,13 @@ func fundSweepFee(floatAccount model.HotWalletAsset, denomination model.Denomina
 	return nil, false
 }
 
-func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, sweepFund float64) (SweepParam, error) {
+func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, txNetworkAsset model.Network, sweepFund float64) (SweepParam, error) {
 
 	sweepParam := SweepParam{}
 	serviceErr := dto.ServicesRequestErr{}
 
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
+	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, txNetworkAsset.NativeDecimals,  logger, userAssetRepository)
 	if err != nil {
 		return sweepParam, err
 	}
@@ -549,6 +561,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 	prec := uint(64)
 	onchainBalanceRequest := dto.OnchainBalanceRequest{
 		AssetSymbol: floatAccount.AssetSymbol,
+		Network: floatAccount.Network,
 		Address:     floatAccount.Address,
 	}
 	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
@@ -560,14 +573,14 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 	logger.Info("SWEEP_OPERATION : Float on-chain balance for this hot wallet %+v is %+v", floatAccount.AssetSymbol, floatOnChainBalance)
 
 	// Get float manager parameters to calculate float range
-	floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
+	floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, floatAccount.Network, repository, logger)
 	if err != nil {
 		return sweepParam, err
 	}
 	minimumFloatBalance, maximumFloatBalance := GetFloatBalanceRange(floatManagerParams, totalUsersBalance, logger)
 
 	// Get total deposit sum from the last run of this job
-	depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
+	depositSumFromLastRun, err := getDepositsSumForAssetFromDate(repository, floatAccount.AssetSymbol, floatAccount.Network, logger, floatAccount)
 	if err != nil {
 		logger.Info("error with float manager process, while trying to get the total deposit sum from last run : %+v", err)
 		return sweepParam, err
@@ -575,7 +588,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 	logger.Info("depositSumFromLastRun for this hot wallet (%s) is %+v", floatAccount.AssetSymbol, depositSumFromLastRun)
 
 	// Get total withdrawal sum from the last run of this job
-	withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, logger, floatAccount)
+	withdrawalSumFromLastRun, err := getWithdrawalsSumForAssetFromDate(repository, floatAccount.AssetSymbol, floatAccount.Network, logger, floatAccount)
 	if err != nil {
 		logger.Info("error with float manager process, while trying to get the total withdrawal sum from last run : %+v", err)
 		return sweepParam, err
@@ -584,7 +597,7 @@ func GetSweepParams(cache *utility.MemoryCache, logger *utility.Logger, config C
 
 	floatDeficit := GetFloatDeficit(depositSumFromLastRun, withdrawalSumFromLastRun, minimumFloatBalance, maximumFloatBalance, floatOnChainBalance, logger)
 
-	brokerageAccountResponse, err := GetBrokerAccountFor(floatAccount.AssetSymbol, repository, cache, config, logger, serviceErr)
+	brokerageAccountResponse, err := GetBrokerAccountFor(floatAccount.AssetSymbol, txNetworkAsset, repository, cache, config, logger, serviceErr)
 	if err != nil {
 		return sweepParam, err
 	}
@@ -621,17 +634,17 @@ func GetSweepPercentages(floatOnChainBalance, minimumFloatBalance, floatDeficit,
 	return floatPercent, brokeragePercent
 }
 
-func GetBrokerAccountFor(assetSymbol string, repository database.BaseRepository, cache *utility.MemoryCache, config Config.Data, logger *utility.Logger, serviceErr dto.ServicesRequestErr) (dto.DepositAddressResponse, error) {
+func GetBrokerAccountFor(assetSymbol string, txNetworkAsset model.Network, repository database.BaseRepository, cache *utility.MemoryCache, config Config.Data, logger *utility.Logger, serviceErr dto.ServicesRequestErr) (dto.DepositAddressResponse, error) {
 
 	brokerageAccountResponse := dto.DepositAddressResponse{}
 	denomination := model.Denomination{}
-	err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination)
+	err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol}, &denomination)
 	if err != nil {
 		return brokerageAccountResponse, err
 	}
 
-	if *denomination.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, assetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
+	if *txNetworkAsset.IsToken {
+		err = services.GetDepositAddress(cache, logger, config, assetSymbol, txNetworkAsset.AssetSymbol, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, assetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
@@ -682,10 +695,10 @@ func GeTFloatPercent(accountDeficit, sweepFund *big.Float) *big.Int {
 	return floatPercentInInt
 }
 
-func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset) (string, string, error) {
+func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, repository database.BaseRepository, floatAccount model.HotWalletAsset, txNetworkAsset model.Network) (string, string, error) {
 
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, logger, userAssetRepository)
+	totalUsersBalance, err := GetTotalUserBalance(repository, floatAccount.AssetSymbol, txNetworkAsset.NativeDecimals, logger, userAssetRepository)
 	if err != nil {
 		return "", "", err
 	}
@@ -696,6 +709,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	serviceErr := dto.ServicesRequestErr{}
 	onchainBalanceRequest := dto.OnchainBalanceRequest{
 		AssetSymbol: floatAccount.AssetSymbol,
+		Network: floatAccount.Network,
 		Address:     floatAccount.Address,
 	}
 	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
@@ -708,13 +722,9 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 
 	// Get broker account
 	brokerageAccountResponse := dto.DepositAddressResponse{}
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: floatAccount.AssetSymbol, IsEnabled: true}, &denomination); err != nil {
-		return "", "", err
-	}
 
-	if *denomination.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, denomination.MainCoinAssetSymbol, &brokerageAccountResponse, serviceErr)
+	if *txNetworkAsset.IsToken {
+		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, txNetworkAsset.AssetSymbol, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
@@ -724,7 +734,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	logger.Info("SWEEP_OPERATION : Brokerage account for this hot wallet %+v is %+v", floatAccount.AssetSymbol, brokerageAccountResponse)
 
 	// Get float manager parameters to calculate minimum float
-	floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, repository, logger)
+	floatManagerParams, err := getFloatParamFor(floatAccount.AssetSymbol, floatAccount.Network, repository, logger)
 	if err != nil {
 		return "", "", err
 	}
@@ -742,10 +752,10 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	return brokerageAccountResponse.Address, brokerageAccountResponse.Tag, nil
 }
 
-func getFloatDetails(repository database.BaseRepository, symbol string, logger *utility.Logger) (model.HotWalletAsset, error) {
+func getFloatDetails(repository database.BaseRepository, symbol, network string, logger *utility.Logger) (model.HotWalletAsset, error) {
 	//Get the float address
 	var floatAccount model.HotWalletAsset
-	if err := repository.Get(&model.HotWalletAsset{AssetSymbol: symbol}, &floatAccount); err != nil {
+	if err := repository.Get(&model.HotWalletAsset{AssetSymbol: symbol, Network: network}, &floatAccount); err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id and trying to get float detials", err)
 		return model.HotWalletAsset{}, err
 	}

@@ -13,9 +13,9 @@ import (
 )
 
 // GenerateAddress ...
-func (service BaseService) GenerateAddress(userID uuid.UUID, symbol string, coinType int64, serviceErr interface{}) (string, error) {
+func (service BaseService) GenerateAddress(userID uuid.UUID, symbol, network string, coinType int64, serviceErr interface{}) (string, error) {
 
-	generatedAddress, err := GenerateAddressWithoutSub(service.Cache, service.Logger, service.Config, userID, symbol, serviceErr)
+	generatedAddress, err := GenerateAddressWithoutSub(service.Cache, service.Logger, service.Config, userID, symbol, network, serviceErr)
 	if err != nil {
 		return "", err
 	}
@@ -28,7 +28,7 @@ func (service BaseService) GenerateAddress(userID uuid.UUID, symbol string, coin
 	return generatedAddress, nil
 }
 
-func GenerateAddressWithoutSub(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, userID uuid.UUID, symbol string, serviceErr interface{}) (string, error) {
+func GenerateAddressWithoutSub(cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, userID uuid.UUID, symbol, network string, serviceErr interface{}) (string, error) {
 
 	authToken, err := GetAuthToken(cache, logger, config)
 	if err != nil {
@@ -40,6 +40,7 @@ func GenerateAddressWithoutSub(cache *utility.MemoryCache, logger *utility.Logge
 
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
+	requestData.Network = network
 
 	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
@@ -62,7 +63,7 @@ func GenerateAddressWithoutSub(cache *utility.MemoryCache, logger *utility.Logge
 }
 
 // GenerateAllAddresses ...
-func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType string) ([]dto.AllAddressResponse, error) {
+func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string, coinType int64, addressType, network string) ([]dto.AllAddressResponse, error) {
 	var APIClient *Client
 	var serviceErr dto.ServicesRequestErr
 	authToken, err := GetAuthToken(service.Cache, service.Logger, service.Config)
@@ -74,10 +75,14 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	metaData := utility.GetRequestMetaData("createAllAddresses", service.Config)
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
-	if addressType == "" {
+	if addressType == "" && network == "" {
 		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	} else {
+	} else if addressType != "" && network == "" {
 		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s", metaData.Endpoint, metaData.Action, addressType))
+	} else if addressType == "" && network != "" {
+		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?network=%s", metaData.Endpoint, metaData.Action, network))
+	} else {
+		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s&network=%s", metaData.Endpoint, metaData.Action, addressType,network))
 	}
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
@@ -98,7 +103,6 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 		addressArray = append(addressArray, item.Data)
 	}
 
-	//call subscribe
 	if err := service.subscribeAddress(serviceErr, addressArray, coinType); err != nil {
 		return []dto.AllAddressResponse{}, err
 	}

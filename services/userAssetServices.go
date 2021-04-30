@@ -6,9 +6,9 @@ import (
 	Config "wallet-adapter/config"
 	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/errorcode"
 	"wallet-adapter/model"
 	"wallet-adapter/utility"
-	AddressProvider "wallet-adapter/utility/addressProvider"
 	"wallet-adapter/utility/constants"
 
 	"github.com/jinzhu/gorm"
@@ -32,6 +32,9 @@ var (
 	}
 )
 
+// Create additional network table
+
+
 func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
 
 	// Get assets from rate service
@@ -52,6 +55,11 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
 			logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
 		}
+		for _, network := range asset.Networks {
+			if err := DB.Where(model.Network{AssetSymbol: asset.AssetSymbol, Network: network.Network}).Assign(network).FirstOrCreate(&network).Error; err != nil {
+				logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+			}
+		}
 	}
 	logger.Info("Supported assets seeded successfully")
 
@@ -59,46 +67,82 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 
 func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto.TWDenomination) []model.Denomination {
 	normalizedAssets := []model.Denomination{}
+	normalizedNetworks := []model.Network{}
 
 	for _, denom := range denominations {
-		isToken, addressProvider := GetDynamicDenominationValues(denom)
+		for _, network := range denom.AdditionalNetworks {
+			normalizedNetwork := normalizeNetwork(denom.Symbol, network)
+			normalizedNetworks = append(normalizedNetworks, normalizedNetwork)
+		}
+		// Add default network to network array
+		defaultNetwork := normalizeDefaultNetwork(denom)
+		normalizedNetworks = append(normalizedNetworks, defaultNetwork)
 
 		normalizedAsset := model.Denomination{
-			Name:                denom.Name,
-			AssetSymbol:         denom.Symbol,
-			CoinType:            denom.CoinType,
-			RequiresMemo:        denom.RequiresMemo,
-			Decimal:             denom.NativeDecimals,
-			IsEnabled:           denom.Enabled,
-			IsToken:             &isToken,
-			MainCoinAssetSymbol: getMainCoinAssetSymbol(denom.CoinType, TWDenominations),
-			SweepFee:            sweepFee[denom.CoinType],
-			TradeActivity:       denom.TradeActivity,
-			DepositActivity:     denom.DepositActivity,
-			WithdrawActivity:    denom.WithdrawActivity,
-			TransferActivity:    denom.TransferActivity,
-			MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s", denom.Symbol)),
-			IsBatchable:         isBatchable[denom.CoinType],
-			IsMultiAddresses : IsMultiAddresses[denom.CoinType],
-			AddressProvider:     addressProvider,
+			Name:             denom.Name,
+			AssetSymbol:      denom.Symbol,
+			TradeActivity:    denom.TradeActivity,
+			TransferActivity: denom.TransferActivity,
+			DefaultNetwork:   denom.Network,
+			Networks: normalizedNetworks,
 		}
 		normalizedAssets = append(normalizedAssets, normalizedAsset)
 	}
-
 	return normalizedAssets
-
 }
 
-func GetDynamicDenominationValues(denom dto.AssetDenomination) (bool, string) {
-	isToken := false
-	addressProvider := ""
+func normalizeDefaultNetwork(denom dto.AssetDenomination) model.Network {
+	isToken, addressProvider := GetDynamicDenominationValues(denom.TokenType, denom.CoinType)
+	defaultNetwork := model.Network{
+		AssetSymbol:      denom.Symbol,
+		CoinType:         denom.CoinType,
+		RequiresMemo:     denom.RequiresMemo,
+		NativeDecimals:   denom.NativeDecimals,
+		IsToken:          &isToken,
+		SweepFee:         sweepFee[denom.CoinType],
+		DepositActivity:  denom.DepositActivity,
+		WithdrawActivity: denom.WithdrawActivity,
+		MinimumSweepable: viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s_%s", denom.Symbol, denom.Network)),
+		IsBatchable:      isBatchable[denom.CoinType],
+		IsMultiAddresses: IsMultiAddresses[denom.CoinType],
+		AddressProvider:  addressProvider,
+		Network:          denom.Network,
+	}
+	return defaultNetwork
+}
 
-	if !strings.EqualFold(denom.TokenType, "NATIVE") {
+func normalizeNetwork(assetSymbol string, network dto.AdditionalNetwork) model.Network {
+	isToken := false
+	_, addressProvider := GetDynamicDenominationValues("", network.CoinType)
+	if network.NativeAsset != assetSymbol {
 		isToken = true
-		if denom.CoinType == constants.ETH_COINTYPE {
+	}
+	additionalNetwork := model.Network{
+		AssetSymbol:         assetSymbol,
+		CoinType:            network.CoinType,
+		RequiresMemo:        network.RequiresMemo,
+		NativeDecimals :     network.NativeDecimal,
+		IsToken:             &isToken,
+		SweepFee:            sweepFee[network.CoinType],
+		DepositActivity:     network.DepositActivity,
+		WithdrawActivity:    network.WithdrawActivity,
+		MinimumSweepable:    viper.GetFloat64(fmt.Sprintf("MINIMUMSWEEP.%s_%s", network.NativeAsset, network.Network)),
+		IsBatchable:         isBatchable[network.CoinType],
+		IsMultiAddresses:    IsMultiAddresses[network.CoinType],
+		AddressProvider:     addressProvider,
+		Network:            network.Network,
+	}
+	return additionalNetwork
+}
+
+func GetDynamicDenominationValues(tokenType string, coinType int64) (bool, string) {
+	isToken := false
+	addressProvider := model.AddressProvider.BUNDLE
+
+	if tokenType != "" && !strings.EqualFold(tokenType, "NATIVE") {
+		isToken = true
+		if coinType == constants.ETH_COINTYPE {
 			addressProvider = model.AddressProvider.BINANCE
-		} else {
-			addressProvider = AddressProvider.Providers[denom.Symbol]
 		}
 	}
 	return isToken, addressProvider
@@ -114,46 +158,68 @@ func getMainCoinAssetSymbol(coinType int64, TWDenominations []dto.TWDenomination
 	return ""
 }
 
-func (service BaseService) IsWithdrawalActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+func (service BaseService) IsWithdrawalActive(assetSymbol, network string, repository database.IUserAssetRepository) (bool, error) {
+
+	// Check if withdrawal is allowed on the network
+	networkAsset, err := GetNetworkByAssetAndNetwork(repository, network, assetSymbol)
+	if err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			return false, nil
+		}
 		return false, err
 	}
 
-	if !strings.EqualFold(denomination.WithdrawActivity, utility.ACTIVE) {
+	if !strings.EqualFold(networkAsset.WithdrawActivity, utility.ACTIVE) {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-func (service BaseService) IsDepositActive(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+func (service BaseService) IsDepositActive(assetSymbol, network string, repository database.IUserAssetRepository) (bool, error) {
+
+	// Check if deposit is allowed on the network
+	networkAsset, err := GetNetworkByAssetAndNetwork(repository, network, assetSymbol)
+	if err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			return false, nil
+		}
 		return false, err
 	}
 
-	if !strings.EqualFold(denomination.DepositActivity, utility.ACTIVE) {
+	if !strings.EqualFold(networkAsset.DepositActivity, utility.ACTIVE) {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-func (service BaseService) IsBatchable(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+func (service BaseService) IsBatchable(assetSymbol, network string, repository database.IUserAssetRepository) (bool, error) {
+
+	networkAsset, err := GetNetworkByAssetAndNetwork(repository, network, assetSymbol)
+	if err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			return false, nil
+		}
 		return false, err
 	}
 
-	return *denomination.IsBatchable, nil
+	if !*networkAsset.IsBatchable  {
+		return false, nil
+	}
+
+	return true, nil
 }
 
-func (service BaseService) IsMultipleAddresses(assetSymbol string, repository database.IUserAssetRepository) (bool, error) {
-	denomination := model.Denomination{}
-	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol, IsEnabled: true}, &denomination); err != nil {
+func (service BaseService) IsMultipleAddresses(assetSymbol, network string, repository database.IUserAssetRepository) (bool, error) {
+
+	networkAsset, err := GetNetworkByAssetAndNetwork(repository, network, assetSymbol);
+	if err != nil {
+		if err.Error() == errorcode.SQL_404 {
+			return false, nil
+		}
 		return false, err
 	}
 
-	return *denomination.IsMultiAddresses, nil
+	return *networkAsset.IsMultiAddresses, nil
 }

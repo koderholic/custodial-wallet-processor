@@ -24,6 +24,7 @@ type UserAddress struct {
 	V2Address   string    `gorm:"VARCHAR(255);" json:"v2Address"`
 	Memo        string    `gorm:"VARCHAR(15);" json:"memo"`
 	AddressProvider string `gorm:"VARCHAR(150) NOT NULL Default='Bundle';" json:"address_provider"`
+	Network string    `json:"network"`
 	IsPrimaryAddress bool `json:"is_primary_address"`
 	SweepCount int `json:"sweep_count"`
 	NextSweepTime *time.Time `json:"next_sweep_count"`

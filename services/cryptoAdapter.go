@@ -71,7 +71,7 @@ func GetOnchainBalance(cache *utility.MemoryCache, logger *utility.Logger, confi
 	}
 	metaData := utility.GetRequestMetaData("getOnchainBalance", config)
 
-	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol))
+	APIClient := NewClient(nil, logger, config, fmt.Sprintf("%s%s?address=%s&assetSymbol=%s&network=%s", metaData.Endpoint, metaData.Action, requestData.Address, requestData.AssetSymbol, requestData.Network))
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", nil)
 	if err != nil {
 		return err
@@ -111,12 +111,13 @@ func GetBroadcastedTXNStatusByRef(transactionRef, assetSymbol string, cache *uti
 }
 
 // GetBroadcastedTXNStatusByRef ...
-func GetBroadcastedTXNDetailsByRef(transactionRef, assetSymbol string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (bool, dto.TransactionStatusResponse, error) {
+func GetBroadcastedTXNDetailsByRef(transactionRef, assetSymbol, network string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data) (bool, dto.TransactionStatusResponse, error) {
 	serviceErr := dto.ServicesRequestErr{}
 
 	transactionStatusRequest := dto.TransactionStatusRequest{
 		Reference:   transactionRef,
 		AssetSymbol: assetSymbol,
+		Network: network,
 	}
 	transactionStatusResponse := dto.TransactionStatusResponse{}
 	if err := TransactionStatus(cache, logger, config, transactionStatusRequest, &transactionStatusResponse, &serviceErr); err != nil {

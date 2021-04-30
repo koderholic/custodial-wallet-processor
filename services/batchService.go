@@ -12,16 +12,17 @@ type BatchService struct {
 	BaseService
 }
 
-func (service BatchService) GetWaitingBatchId(repository database.IBatchRepository, assetSymbol string) (uuid.UUID, error) {
+func (service BatchService) GetWaitingBatchId(repository database.IBatchRepository, assetSymbol, network string) (uuid.UUID, error) {
 
 	var currentBatch model.BatchRequest
-	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE, AssetSymbol: assetSymbol}, &currentBatch); err != nil {
+	if err := repository.GetByFieldName(&model.BatchRequest{Status: model.BatchStatus.WAIT_MODE, AssetSymbol: assetSymbol, Network: network}, &currentBatch); err != nil {
 		if err.Error() != errorcode.SQL_404 {
 			service.Logger.Error("Error response from batch service : ", err)
 			return uuid.UUID{}, err
 		}
 		// Create new batch entry
 		currentBatch.AssetSymbol = assetSymbol
+		currentBatch.Network = network
 		if err := repository.Create(&currentBatch); err != nil {
 			service.Logger.Error("Error response from batch service : ", err)
 			return uuid.UUID{}, err

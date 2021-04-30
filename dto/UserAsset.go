@@ -36,6 +36,7 @@ type ChainData struct {
 	TransactionHash  string `json:"transactionHash" validate:"required"`
 	TransactionFee   string `json:"transactionFee" validate:"required"`
 	RecipientAddress string `json:"recipientAddress"`
+	Network string `json:"network"`
 	BlockHeight      int64  `json:"blockHeight"`
 }
 
@@ -64,6 +65,7 @@ type TransactionReceipt struct {
 
 type AssetAddress struct {
 	Address string `json:"address,omitempty"`
+	Network string    `json:"network"`
 	Memo    string `json:"memo,omitempty"`
 	Type    string `json:"type,omitempty"`
 }
@@ -71,4 +73,5 @@ type AssetAddress struct {
 type AllAssetAddresses struct {
 	Addresses          []AssetAddress `json:"addresses"`
 	DefaultAddressType string         `json:"defaultAddressType"`
+	DefaultNetwork string         `json:"defaultNetwork"`
 }

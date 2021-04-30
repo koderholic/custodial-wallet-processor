@@ -11,4 +11,5 @@ type FloatManagerParam struct {
 	PercentMinimumTriggerLevel     float64
 	PercentMaximumTriggerLevel     float64
 	AssetSymbol                    string
+	Network                    string
 }

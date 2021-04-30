@@ -14,11 +14,7 @@ type UserAsset struct {
 	DenominationID   uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"-"`
 	AvailableBalance string    `gorm:"type:decimal(64,18) CHECK(available_balance >= 0);not null;" json:"available_balance"`
 	AssetSymbol      string    `gorm:"-" json:"asset_symbol,omitempty"`
-	Decimal          int       `gorm:"-" json:"decimal,omitempty"`
-	CoinType         int64     `gorm:"-" json:"coinType,omitempty"`
-	RequiresMemo     bool      `gorm:"-" json:"requiresMemo,omitempty"`
-	AddressProvider string    `gorm:"-" json:"address_provider,omitempty"`
-	MainCoinAssetSymbol string         `gorm:"-" json:"main_coin_asset_symbol"`
+	DefaultNetwork         string     `gorm:"-" json:"defaultNetwork,omitempty"`
 }
 
 func (userAsset *UserAsset) AfterFind() {

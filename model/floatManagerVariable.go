@@ -6,6 +6,7 @@ type FloatManager struct {
 	BaseModel
 	ResidualAmount        float64
 	AssetSymbol           string
+	Network           string
 	TotalUserBalance      float64
 	DepositSum            float64
 	WithdrawalSum         float64

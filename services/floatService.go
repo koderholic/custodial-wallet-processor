@@ -16,6 +16,7 @@ func InitFloatParams(DB *gorm.DB, logger *utility.Logger) error {
 	for _, asset := range hotWalletAssets {
 		floatParam := model.FloatManagerParam{
 			AssetSymbol: asset.AssetSymbol,
+			Network: asset.Network,
 			MinPercentMaxUserBalance     : 0.1,
 			MaxPercentMaxUserBalance      : 0.3,
 			MinPercentTotalUserBalance    : 0.075,
