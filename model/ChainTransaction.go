@@ -14,6 +14,7 @@ type ChainTransaction struct {
 	TransactionHash  string    `json:"transaction_hash"`
 	TransactionFee   string    `json:"transaction_fee"`
 	AssetSymbol      string    `json:"asset_symbol"`
+	Network      string    `json:"network"`
 	RecipientAddress string    `json:"recipient_address"`
 	BlockHeight      int64     `gorm:"type:BIGINT" json:"block_height"`
 	BatchRequest     `sql:"-"`

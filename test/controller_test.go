@@ -149,7 +149,7 @@ func (s *Suite) SetupTest() {
 }
 
 func (s *Suite) TearDownTest() {
-	s.DB.DropTableIfExists(&model.Denomination{}, &model.BatchRequest{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{})
+	s.DB.DropTableIfExists(&model.Denomination{}, &model.BatchRequest{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{}, &model.Network{})
 }
 
 // RegisterRoutes ...
@@ -187,7 +187,7 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 
 // RunDbMigrations ... This creates corresponding tables for dtos on the db for testing
 func (s *Suite) RunMigration() {
-	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.SharedAddress{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{})
+	s.DB.AutoMigrate(&model.Denomination{}, &model.BatchRequest{}, &model.SharedAddress{}, &model.ChainTransaction{}, &model.Transaction{}, &model.UserAddress{}, &model.UserAsset{}, &model.HotWalletAsset{}, &model.TransactionQueue{},  &model.Network{})
 }
 
 // DBSeeder .. This seeds supported assets into the database for testing
@@ -196,19 +196,30 @@ func (s *Suite) DBSeeder() {
 	isNonNative := false
 
 	assets := []model.Denomination{
-		{Name: "Binance Coin", AssetSymbol: "BNB", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "Binance USD", AssetSymbol: "BUSD", CoinType: 714, Decimal: 8, IsEnabled: true, IsToken: &isToken, MainCoinAssetSymbol: "BNB", SweepFee: 37500, TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "Ethereum Coin", AssetSymbol: "ETH", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "Bitcoin", AssetSymbol: "BTC", CoinType: 0, Decimal: 8, IsEnabled: true, IsToken: &isNonNative, MainCoinAssetSymbol: "BTC", TradeActivity: "ACTIVE", DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", TransferActivity: "ACTIVE"},
-		{Name: "ChainLink", AssetSymbol: "LINK", CoinType: 60, Decimal: 18, IsEnabled: true, IsToken: &isToken, MainCoinAssetSymbol: "ETH", TradeActivity: "ACTIVE", DepositActivity: "NONE", WithdrawActivity: "NONE", TransferActivity: "NONE"},
+		{Name: "Binance Coin", DefaultNetwork: "BEP2", AssetSymbol: "BNB",  TradeActivity: "ACTIVE",TransferActivity: "ACTIVE"},
+		{Name: "Binance USD", DefaultNetwork: "BEP2", AssetSymbol: "BUSD",  TradeActivity: "ACTIVE",  TransferActivity: "ACTIVE"},
+		{Name: "Ethereum Coin", DefaultNetwork: "ERC20", AssetSymbol: "ETH", TradeActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "Bitcoin", DefaultNetwork: "BTC", AssetSymbol: "BTC",  TradeActivity: "ACTIVE", TransferActivity: "ACTIVE"},
+		{Name: "ChainLink", DefaultNetwork: "ERC20", AssetSymbol: "LINK",  TradeActivity: "ACTIVE",  TransferActivity: "NONE"},
+		{Name: "PancakeSwap", DefaultNetwork: "BEP20", AssetSymbol: "CAKE",  TradeActivity: "ACTIVE",  TransferActivity: "ACTIVE"},
 	}
 
 	for _, asset := range assets {
 		if err := s.DB.FirstOrCreate(&asset, model.Denomination{AssetSymbol: asset.AssetSymbol}).Error; err != nil {
 			s.Logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
 		}
+		if asset.AssetSymbol == "CAKE" {
+			if err := s.DB.Create(&model.Network{CoinType: 0, NativeDecimals: 8, IsToken: &isNonNative,  AddressProvider :"Bundle", IsBatchable: &isToken, IsMultiAddresses: &isToken, DepositActivity: "UNAVAILABLE", WithdrawActivity: "UNAVAILABLE", AssetSymbol: asset.AssetSymbol, NativeAsset: asset.AssetSymbol, Network : asset.DefaultNetwork, RequiresMemo: true,}).Error; err != nil {
+				s.Logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+			}
+			continue
+		}
+		if err := s.DB.Create(&model.Network{CoinType: 0, NativeDecimals: 8, IsToken: &isNonNative,  AddressProvider :"Bundle", IsBatchable: &isToken, IsMultiAddresses: &isToken, DepositActivity: "ACTIVE", WithdrawActivity: "ACTIVE", AssetSymbol: asset.AssetSymbol, NativeAsset: asset.AssetSymbol, Network : asset.DefaultNetwork, RequiresMemo: true,}).Error; err != nil {
+			s.Logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+		}
+
 	}
-	s.Logger.Info("Supported assets seeded successfully")
+	s.Logger.Info("Supported assets and network seeded successfully")
 }
 
 func (s *Suite) Test_CreateUserAsset() {
@@ -580,7 +591,7 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 	}
 
 	if response.Code != http.StatusOK || getAssetResponse.Assets[0].AvailableBalance != "203.741122091" {
-		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %+v\n", http.StatusOK, "203.741122091", response.Code, getAssetResponse.Assets[0].AvailableBalance)
+		s.T().Errorf("Expected statusCode to be %d and asset balance to be %s. Got %d and %+v\n", http.StatusOK, "203.74112209100002", response.Code, getAssetResponse.Assets[0].AvailableBalance)
 	}
 }
 
@@ -590,7 +601,7 @@ func (s *Suite) Test_OnchainCreditUserAsset() {
 // 	createAssetRequest.Header.Set("x-auth-token", authToken)
 // 	createResponse := httptest.NewRecorder()
 // 	s.Router.ServeHTTP(createResponse, createAssetRequest)
-// 	resBody, err := ioutil.ReadAll(createResponse.Body)
+// 	resBody, err := ioutil.ReadAll(createResponse.Body).
 // 	if err != nil {
 // 		require.NoError(s.T(), err)
 // 	}

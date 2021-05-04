@@ -69,6 +69,7 @@ type Transaction struct {
 	SweptStatus          bool         `gorm:"not null;default:false" json:"swept_status,omitempty"`
 	Batch                BatchRequest `sql:"-" json:"omitempty"`
 	AssetSymbol          string       `gorm:"type:VARCHAR(36);not null;" json:"asset_symbol,omitempty"`
+	Network          string       `json:"network,omitempty"`
 }
 
 func (transaction Transaction) Map(tx *dto.TransactionResponse) {

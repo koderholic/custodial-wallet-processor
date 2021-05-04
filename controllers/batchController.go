@@ -102,7 +102,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 	batchedRecipients := []dto.BatchRecipients{}
 	batchedTransactionsIds := []uuid.UUID{}
 	queuedBatchedTransactionsIds := []uuid.UUID{}
-	floatAccount, err := services.GetHotWalletAddressFor(processor.Cache, processor.Repository.Db(), processor.Logger, processor.Config, batch.AssetSymbol)
+	floatAccount, err := services.GetHotWalletAddressFor(processor.Cache, processor.Repository.Db(), processor.Logger, processor.Config, batch.AssetSymbol, batch.Network)
 	if err != nil {
 		return err
 	}
@@ -119,6 +119,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 	sendBatchTransactionRequest := dto.BatchRequest{
 		AssetSymbol:   batch.AssetSymbol,
+		Network: batch.Network,
 		ChangeAddress: floatAccount,
 		Origins:       []string{floatAccount},
 		Recipients:    batchedRecipients,
@@ -135,7 +136,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 				for _, value := range sendBatchTransactionRequest.Recipients {
 					total += value.Value
 				}
-				if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, *big.NewInt(total)); err != nil {
+				if err := processor.ProcessBatchTxnWithInsufficientFloat(batch.AssetSymbol, batch.Network, *big.NewInt(total)); err != nil {
 				}
 				return err
 			}
@@ -155,6 +156,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 		TransactionHash: sendBatchTransactionResponse.TransactionHash,
 		BatchID:         batch.ID,
 		AssetSymbol:     batch.AssetSymbol,
+		Network:     batch.Network,
 	}
 	if err := processor.Repository.Create(&chainTransaction); err != nil {
 		if err := processor.UpdateBatchedTransactionsStatus(batch, chainTransaction, model.BatchStatus.RETRY_MODE); err != nil {
@@ -172,7 +174,7 @@ func (processor *BatchTransactionProcessor) processBatch(batch model.BatchReques
 
 func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.BatchRequest) error {
 	// Checks status of the TXN broadcast to chain
-	txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(batch.ID.String(), batch.AssetSymbol, processor.Cache, processor.Logger, processor.Config)
+	txnExist, broadcastedTXNDetails, err := services.GetBroadcastedTXNDetailsByRef(batch.ID.String(), batch.AssetSymbol, batch.Network, processor.Cache, processor.Logger, processor.Config)
 	if err != nil {
 		return err
 	}
@@ -188,11 +190,12 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 		TransactionHash: broadcastedTXNDetails.TransactionHash,
 		BatchID:         batch.ID,
 		AssetSymbol:     batch.AssetSymbol,
+		Network:     batch.Network,
 	}
 	switch broadcastedTXNDetails.Status {
 	case utility.FAILED:
 		if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction,
-			model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}); err != nil {
+			model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash, Network: batch.Network}); err != nil {
 			return err
 		}
 		// Update batch transactions status
@@ -203,7 +206,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 	case utility.SUCCESSFUL:
 		chainTransaction.Status = true
 		if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction,
-			model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash, Status: true}); err != nil {
+			model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash, Status: true, Network: batch.Network}); err != nil {
 			return err
 		}
 		// Update batch transactions status
@@ -215,7 +218,7 @@ func (processor *BatchTransactionProcessor) retryBatchProcessing(batch model.Bat
 		// It creates a chain transaction for the batch with the transaction hash returned by crypto adapter if exist
 		if broadcastedTXNDetails.TransactionHash != "" {
 			if err := processor.Repository.UpdateOrCreate(model.ChainTransaction{BatchID: batch.ID}, &chainTransaction,
-				model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash}); err != nil {
+				model.ChainTransaction{TransactionHash: broadcastedTXNDetails.TransactionHash, Network: batch.Network}); err != nil {
 				return err
 			}
 			// Update batch transactions status
@@ -257,7 +260,7 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 		}
 
 		if err := tx.Model(&model.Transaction{}).Where("id IN (?)", batchedTransactionsIds).
-			Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID}).Error; err != nil {
+			Updates(model.Transaction{TransactionStatus: status, OnChainTxId: chainTransaction.ID, Network: batch.Network}).Error; err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -282,13 +285,13 @@ func (processor *BatchTransactionProcessor) UpdateBatchedTransactionsStatus(batc
 
 }
 
-func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol string, amount big.Int) error {
+func (processor *BatchTransactionProcessor) ProcessBatchTxnWithInsufficientFloat(assetSymbol, network string, amount big.Int) error {
 
 	DB := database.Database{Logger: processor.Logger, Config: processor.Config, DB: processor.Repository.Db()}
 	baseRepository := database.BaseRepository{Database: DB}
 
 	serviceErr := dto.ServicesRequestErr{}
-	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, processor.Config, processor.Cache, processor.Logger, serviceErr, baseRepository)
+	tasks.NotifyColdWalletUsersViaSMS(amount, assetSymbol, network, processor.Config, processor.Cache, processor.Logger, serviceErr, baseRepository)
 	if !processor.SweepTriggered {
 		go tasks.SweepTransactions(processor.Cache, processor.Logger, processor.Config, baseRepository)
 		processor.SweepTriggered = true

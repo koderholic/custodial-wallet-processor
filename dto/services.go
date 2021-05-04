@@ -10,16 +10,20 @@ import (
 type GenerateAddressRequest struct {
 	UserID      uuid.UUID `json:"userId"`
 	AssetSymbol string    `json:"symbol"`
+	Network string    `json:"network"`
+
 }
 
 // GenerateAddressResponse ... Model definition for generate address successful response, key-management service
 type GenerateAddressResponse struct {
 	Address string    `json:"address"`
+	Network string    `json:"network"`
 	UserID  uuid.UUID `json:"userId"`
 }
 
 type AllAddressResponse struct {
 	Type string `json:"type"`
+	Network string    `json:"network"`
 	Data string `json:"data"`
 }
 
@@ -35,6 +39,7 @@ type SendSingleTransactionRequest struct {
 	Memo        string   `json:"memo"`
 	Amount      *big.Int `json:"amount"`
 	AssetSymbol string   `json:"assetSymbol"`
+	Network string   `json:"network"`
 	IsSweep     bool     `json:"isSweep"`
 	ProcessType string   `json:"processType"`
 	Reference   string   `json:"reference"`
@@ -75,6 +80,7 @@ type ServicesRequestSuccess struct {
 type TransactionStatusRequest struct {
 	TransactionHash string `json:"transactionHash"`
 	AssetSymbol     string `json:"assetSymbol"`
+	Network     string `json:"network"`
 	Reference       string `json:"reference"`
 }
 
@@ -113,6 +119,7 @@ type LockReleaseRequest struct {
 // OnchainBalanceRequest ... Request definition for get on-chain balance, crypto-adapter service
 type OnchainBalanceRequest struct {
 	AssetSymbol string `json:"assetSymbol"`
+	Network string `json:"network"`
 	Address     string `json:"address"`
 }
 
@@ -221,6 +228,7 @@ type SendSmsResponse struct {
 type TransactionListInfo struct {
 	Decimal         int
 	AssetSymbol     string
+	Network string
 	UserId          uuid.UUID
 	AddressProvider string
 }

@@ -11,10 +11,10 @@ import (
 
 func TestConversion(t *testing.T) {
 	amount := big.NewInt(1699)
-	denomination := model.Denomination{
-		Decimal: 8,
+	network := model.Network{
+		NativeDecimals: 8,
 	}
-	result := tasks.ConvertBigIntToDecimalUnit(*amount, denomination)
+	result := tasks.ConvertBigIntToDecimalUnit(*amount, network)
 	if !strings.EqualFold(fmt.Sprintf("%f", result), "0.000017") {
 		t.Fail()
 	}

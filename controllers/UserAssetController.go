@@ -39,7 +39,7 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		denominationSymbol := requestData.Assets[i]
 		denomination := model.Denomination{}
 
-		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol, IsEnabled: true}, &denomination); err != nil {
+		if err := controller.Repository.GetByFieldName(&model.Denomination{AssetSymbol: denominationSymbol}, &denomination); err != nil {
 			if err.Error() == errorcode.SQL_404 {
 				ReturnError(responseWriter, "CreateUserAssets", http.StatusNotFound, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("Asset (%s) is currently not supported", denominationSymbol)), controller.Logger)
 				return
@@ -59,7 +59,6 @@ func (controller UserAssetController) CreateUserAssets(responseWriter http.Respo
 		userAsset.UserID = userAssetmodel.UserID
 		userAsset.AssetSymbol = userAssetmodel.AssetSymbol
 		userAsset.AvailableBalance = userAssetmodel.AvailableBalance
-		userAsset.Decimal = userAssetmodel.Decimal
 
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
@@ -100,7 +99,6 @@ func (controller UserAssetController) GetUserAssets(responseWriter http.Response
 		userAsset.UserID = userAssetmodel.UserID
 		userAsset.AssetSymbol = userAssetmodel.AssetSymbol
 		userAsset.AvailableBalance = userAssetmodel.AvailableBalance
-		userAsset.Decimal = userAssetmodel.Decimal
 
 		responseData.Assets = append(responseData.Assets, userAsset)
 	}
@@ -137,7 +135,6 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 	responseData.UserID = userAssets.UserID
 	responseData.AssetSymbol = userAssets.AssetSymbol
 	responseData.AvailableBalance = userAssets.AvailableBalance
-	responseData.Decimal = userAssets.Decimal
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
@@ -155,8 +152,9 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	address := routeParams["address"]
 	assetSymbol := requestReader.URL.Query().Get("assetSymbol")
 	userAssetMemo := requestReader.URL.Query().Get("userAssetMemo")
+	network := requestReader.URL.Query().Get("network")
 
-	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v, symbol : %s", address, userAssetMemo, assetSymbol)
+	controller.Logger.Info("Incoming request details for GetUserAssetByAddress : address : %+v, memo : %v, symbol : %s, network : %s", address, userAssetMemo, assetSymbol, network)
 
 	// Ensure assetSymbol is not empty
 	if assetSymbol == "" {
@@ -171,10 +169,18 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 		return
 	}
 
+	if network == "" {
+		network, err = services.GetDefaultNetworkByAssetSymbol(controller.Repository, assetSymbol)
+		if err != nil {
+			ReturnError(responseWriter, "GetUserAssetByAddress", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", errorcode.SYSTEM_ERR), controller.Logger)
+			return
+		}
+	}
+
 	if IsV2Address {
-		userAsset, err = services.GetAssetForV2Address(controller.Repository, controller.Logger, address, assetSymbol, userAssetMemo)
+		userAsset, err = services.GetAssetForV2Address(controller.Repository, controller.Logger, address, assetSymbol, userAssetMemo, network)
 	} else {
-		userAsset, err = services.GetAssetForV1Address(controller.Repository, controller.Logger, address, assetSymbol)
+		userAsset, err = services.GetAssetForV1Address(controller.Repository, controller.Logger, address, assetSymbol, network)
 	}
 
 	if err != nil {
@@ -192,7 +198,6 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	responseData.UserID = userAsset.UserID
 	responseData.AssetSymbol = userAsset.AssetSymbol
 	responseData.AvailableBalance = userAsset.AvailableBalance
-	responseData.Decimal = userAsset.Decimal
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)
@@ -226,9 +231,15 @@ func (controller UserAssetController) CreditUserAsset(responseWriter http.Respon
 		return
 	}
 
+	assetNetworkDetails, err := services.GetNetworkByAssetAndNetwork(controller.Repository, assetDetails.DefaultNetwork, assetDetails.AssetSymbol)
+	if err != nil {
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetNetworkDetails with assetSymbol = %s and network : %s", utility.GetSQLErr(err), assetDetails.AssetSymbol, assetDetails.DefaultNetwork)), controller.Logger)
+		return
+	}
+
 	// increment user account by value
 	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
-	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetNetworkDetails.NativeDecimals)
 
 	tx := controller.Repository.Db().Begin()
 	defer func() {
@@ -319,10 +330,16 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		return
 	}
 
+	assetNetworkDetails, err := services.GetNetworkByAssetAndNetwork(controller.Repository, assetDetails.DefaultNetwork, assetDetails.AssetSymbol)
+	if err != nil {
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetNetworkDetails with assetSymbol = %s and network : %s", utility.GetSQLErr(err), assetDetails.AssetSymbol, assetDetails.DefaultNetwork)), controller.Logger)
+		return
+	}
+
 	// // increment user account by value
 	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
 	previousBalance := assetDetails.AvailableBalance
-	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+	currentAvailableBalance := utility.Add(requestData.Value, assetDetails.AvailableBalance, assetNetworkDetails.NativeDecimals)
 
 	tx := controller.Repository.Db().Begin()
 	defer func() {
@@ -349,10 +366,12 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		TransactionFee:   requestData.ChainData.TransactionFee,
 		BlockHeight:      requestData.ChainData.BlockHeight,
 		RecipientAddress: requestData.ChainData.RecipientAddress,
+		Network: requestData.ChainData.Network,
 	}
 	if err := tx.Where(model.ChainTransaction{
 		TransactionHash:  requestData.ChainData.TransactionHash,
 		RecipientAddress: requestData.ChainData.RecipientAddress,
+		Network: requestData.ChainData.Network,
 	}).Assign(newChainTransaction).FirstOrCreate(&chainTransaction).Error; err != nil {
 		tx.Rollback()
 		ReturnError(responseWriter, "OnChainCreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("SYSTEM_ERR", utility.GetSQLErr(err)), controller.Logger)
@@ -384,6 +403,7 @@ func (controller UserAssetController) OnChainCreditUserAsset(responseWriter http
 		TransactionStartDate: time.Now(),
 		TransactionEndDate:   time.Now(),
 		AssetSymbol:          assetDetails.AssetSymbol,
+		Network: requestData.ChainData.Network,
 	}
 
 	if err := tx.Create(&transaction).Error; err != nil {
@@ -455,13 +475,18 @@ func (controller UserAssetController) InternalTransfer(responseWriter http.Respo
 		return
 	}
 
+	initiatorAssetNetworkDetails, err := services.GetNetworkByAssetAndNetwork(controller.Repository, initiatorAssetDetails.DefaultNetwork, initiatorAssetDetails.AssetSymbol)
+	if err != nil {
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetNetworkDetails with assetSymbol = %s and network : %s", utility.GetSQLErr(err), initiatorAssetDetails.AssetSymbol, initiatorAssetDetails.DefaultNetwork)), controller.Logger)
+		return
+	}
 	// Increment initiator asset balance and decrement recipient asset balance
 	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
-	initiatorCurrentBalance := utility.Subtract(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal)
-	recipientCurrentBalance := utility.Add(requestData.Value, recipientAssetDetails.AvailableBalance, recipientAssetDetails.Decimal)
+	initiatorCurrentBalance := utility.Subtract(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetNetworkDetails.NativeDecimals)
+	recipientCurrentBalance := utility.Add(requestData.Value, recipientAssetDetails.AvailableBalance, initiatorAssetNetworkDetails.NativeDecimals)
 
 	// Checks if initiator has enough value to transfer
-	if !utility.IsGreater(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetDetails.Decimal) {
+	if !utility.IsGreater(requestData.Value, initiatorAssetDetails.AvailableBalance, initiatorAssetNetworkDetails.NativeDecimals) {
 		ReturnError(responseWriter, "InternalTransfer", http.StatusBadRequest, errorcode.INSUFFICIENT_FUNDS_ERR, apiResponse.PlainError("INPUT_ERR", errorcode.INSUFFICIENT_FUNDS_ERR), controller.Logger)
 		return
 	}
@@ -561,13 +586,18 @@ func (controller UserAssetController) DebitUserAsset(responseWriter http.Respons
 		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetDetails with id = %s", utility.GetSQLErr(err), requestData.AssetID)), controller.Logger)
 		return
 	}
+	assetNetworkDetails, err := services.GetNetworkByAssetAndNetwork(controller.Repository, assetDetails.DefaultNetwork, assetDetails.AssetSymbol)
+	if err != nil {
+		ReturnError(responseWriter, "CreditUserAssets", http.StatusInternalServerError, err, apiResponse.PlainError("INPUT_ERR", fmt.Sprintf("%s, for get assetNetworkDetails with assetSymbol = %s and network : %s", utility.GetSQLErr(err), assetDetails.AssetSymbol, assetDetails.DefaultNetwork)), controller.Logger)
+		return
+	}
 
 	// // decrement user account by value
 	value := strconv.FormatFloat(requestData.Value, 'g', utility.DigPrecision, 64)
-	currentAvailableBalance := utility.Subtract(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal)
+	currentAvailableBalance := utility.Subtract(requestData.Value, assetDetails.AvailableBalance, assetNetworkDetails.NativeDecimals)
 
 	// Checks if user asset has enough value to for the transaction
-	if !utility.IsGreater(requestData.Value, assetDetails.AvailableBalance, assetDetails.Decimal) {
+	if !utility.IsGreater(requestData.Value, assetDetails.AvailableBalance, assetNetworkDetails.NativeDecimals) {
 		ReturnError(responseWriter, "DebitUserAsset", http.StatusBadRequest, errorcode.INSUFFICIENT_FUNDS_ERR, apiResponse.PlainError("INSUFFICIENT_FUNDS_ERR", errorcode.INSUFFICIENT_FUNDS_ERR), controller.Logger)
 		return
 	}
@@ -760,7 +790,7 @@ func (controller UserAssetController) verifyTransactionStatus(transaction model.
 	}
 
 	// Get status of the TXN
-	txnExist, broadcastedTX, err := services.GetBroadcastedTXNDetailsByRef(broadcastTXRef, transactionQueue.AssetSymbol, controller.Cache, controller.Logger, controller.Config)
+	txnExist, broadcastedTX, err := services.GetBroadcastedTXNDetailsByRef(broadcastTXRef, transactionQueue.AssetSymbol, transactionQueue.Network, controller.Cache, controller.Logger, controller.Config)
 	if err != nil {
 		controller.Logger.Error("verifyTransactionStatus logs : Error checking the broadcasted state for queued transaction (%+v) : %s", transactionQueue.ID, err)
 		return "", err

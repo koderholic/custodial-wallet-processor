@@ -20,8 +20,8 @@ type IUserAssetRepository interface {
 	GetAssetAddressDetails(address, model interface{}) error
 	FindOrCreateAssets(checkExistOrUpdate, model interface{}) error
 	BulkUpdate(ids interface{}, model interface{}, update interface{}) error
-	GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error
-	GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error
+	GetAssetByAddressSymbolAndNetwork(address, assetSymbol, network string, model interface{}) error
+	GetAssetBySymbolMemoAddressAndNetwork(assetSymbol, memo, address, network string, model interface{}) error
 	Db() *gorm.DB
 }
 
@@ -32,7 +32,8 @@ type UserAssetRepository struct {
 
 // GetAssetsByID ...
 func (repo *UserAssetRepository) GetAssetsByID(id, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,denominations.coin_type, denominations.requires_memo, denominations.address_provider, denominations.main_coin_asset_symbol, user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(id).Find(model).Error; err != nil {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.default_network, user_assets.*").Joins("INNER JOIN denominations ON denominations.id = user_assets.denomination_id ").Where(id).Find(model).Error; err != nil {
+
 		repo.Logger.Error("Error with repository GetAssetsByID %s", err)
 		return utility.AppError{
 			ErrType: "INPUT_ERR",
@@ -94,7 +95,7 @@ func (repo *UserAssetRepository) UpdateAssetBalByID(amount, model interface{}) e
 
 // FindOrCreate ...
 func (repo *UserAssetRepository) FindOrCreateAssets(checkExistOrUpdate interface{}, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(checkExistOrUpdate).Find(model).Error; err != nil {
+	if err := repo.DB.Select("denominations.asset_symbol,denominations.default_network, user_assets.*").Joins("INNER JOIN denominations ON denominations.id = user_assets.denomination_id inner join networks ON networks.network = denominations.default_network and networks.asset_symbol = denominations.asset_symbol").Where(checkExistOrUpdate).Find(model).Error; err != nil {
 		if err.Error() == "record not found" {
 			if err := repo.DB.Create(model).Error; err != nil {
 				repo.Logger.Error("Error with repository Create : %s", err)
@@ -103,7 +104,7 @@ func (repo *UserAssetRepository) FindOrCreateAssets(checkExistOrUpdate interface
 					Err:     errors.New(strings.Join(strings.Split(err.Error(), " ")[2:], " ")),
 				}
 			}
-			if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal,user_assets.*").Joins("inner join denominations ON denominations.id = user_assets.denomination_id").Where(checkExistOrUpdate).Find(model).Error; err != nil {
+			if err := repo.DB.Select("denominations.asset_symbol,denominations.default_network, user_assets.*").Joins("INNER JOIN denominations ON denominations.id = user_assets.denomination_id").Where(checkExistOrUpdate).Find(model).Error; err != nil {
 				repo.Logger.Error("Error with repository GetAssetsByID %s", err)
 				return utility.AppError{
 					ErrType: "INPUT_ERR",
@@ -138,8 +139,8 @@ func (repo *UserAssetRepository) GetMaxUserBalance(denomination uuid.UUID) (floa
 
 // GetAssetByAddress... Get user asset matching the given address
 func (repo *UserAssetRepository) GetAssetAddressDetails(address, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.address, user_addresses.address_provider, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.default_network, user_addresses.address, user_assets.*").
+		Joins("INNER JOIN denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
 		Where("address = ?", address).
 		First(model).Error; err != nil {
@@ -158,13 +159,11 @@ func (repo *UserAssetRepository) GetAssetAddressDetails(address, model interface
 	return nil
 }
 
-
-// GetAssetByAddressAndSymbol... Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.decimal, user_addresses.address, user_assets.*").
-		Joins("inner join denominations ON denominations.id = user_assets.denomination_id").
+func (repo *UserAssetRepository) GetAssetByAddressSymbolAndNetwork(address, assetSymbol, network string, model interface{}) error {
+	if err := repo.DB.Select("denominations.asset_symbol, denominations.default_network, user_addresses.address, user_assets.*").
+		Joins("INNER JOIN denominations ON denominations.id = user_assets.denomination_id").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
-		Where("address = ? && asset_symbol = ?", address, assetSymbol).
+		Where("address = ? && asset_symbol = ? && user_addresses.network = ?", address, assetSymbol, network).
 		First(model).Error; err != nil {
 		repo.Logger.Info("GetAssetByAddressAndSymbol logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
 		if gorm.IsRecordNotFoundError(err) {
@@ -182,14 +181,14 @@ func (repo *UserAssetRepository) GetAssetByAddressAndSymbol(address, assetSymbol
 }
 
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
-func (repo *UserAssetRepository) GetAssetBySymbolMemoAndAddress(assetSymbol, memo, address string, model interface{}) error {
+func (repo *UserAssetRepository) GetAssetBySymbolMemoAddressAndNetwork(assetSymbol, memo, address, network string, model interface{}) error {
 	if err := repo.DB.Raw(`
-		SELECT d.asset_symbol, d.decimal, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
+		SELECT d.asset_symbol, n.decimal, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
 		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
 		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
-		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ?`, assetSymbol, memo, address).
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ? AND a.network = ?`, assetSymbol, memo, address, network).
 		Scan(model).Error; err != nil {
-		repo.Logger.Info(`GetAssetBySymbolMemoAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
+		repo.Logger.Info(`GetAssetBySymbolMemoNetwAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		if gorm.IsRecordNotFoundError(err) {
 			return utility.AppError{
 				ErrType: errorcode.RECORD_NOT_FOUND,

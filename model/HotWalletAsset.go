@@ -5,6 +5,7 @@ import "time"
 type HotWalletAsset struct {
 	BaseModel
 	Address                 string     `gorm:"VARCHAR(100);not null" json:"address"`
+	Network string    `json:"network"`
 	AssetSymbol             string     `gorm:"VARCHAR(30);not null" json:"asset_symbol"`
 	Balance                 int64      `json:"balance"`
 	IsDisabled              bool       `gorm:"default:0" json:"is_disabled"`

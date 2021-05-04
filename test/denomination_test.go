@@ -18,7 +18,7 @@ import (
 
 func (s *Suite) Test_GetAddressForNonActiveAsset() {
 
-	createAssetInputData := []byte(`{"assets" : ["LINK"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetInputData := []byte(`{"assets" : ["CAKE"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
 	createAssetRequest.Header.Set("x-auth-token", authToken)
 
@@ -48,7 +48,7 @@ func (s *Suite) Test_GetAddressForNonActiveAsset() {
 }
 
 func (s *Suite) Test_ExternalTransferForNonActiveAsset() {
-	createAssetInputData := []byte(`{"assets" : ["LINK","ETH","BTC"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
+	createAssetInputData := []byte(`{"assets" : ["CAKE","ETH","BTC"],"userId" : "a10fce7b-7844-43af-9ed1-e130723a1ea3"}`)
 	createAssetRequest, _ := http.NewRequest("POST", test.CreateAssetEndpoint, bytes.NewBuffer(createAssetInputData))
 	createAssetRequest.Header.Set("x-auth-token", authToken)
 	createResponse := httptest.NewRecorder()
@@ -81,7 +81,7 @@ func (s *Suite) Test_ExternalTransferForNonActiveAsset() {
 		require.NoError(s.T(), errors.New("Expected debit asset to not error"))
 	}
 
-	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516"}`)
+	externalTransferInputData := []byte(`{"recipientAddress" : "bnb1k05t5h6h7t4mq9tvafz2mx8c29jz2w4r0l0hda","value" : 10.00,"debitReference" : "ra29bv7y111p945e17515","transactionReference" : "ra29bv7y111p945e17516", "network":"BEP20"}`)
 	externalTransferRequest, _ := http.NewRequest("POST", test.TransferExternalEndpoint, bytes.NewBuffer(externalTransferInputData))
 	externalTransferRequest.Header.Set("x-auth-token", authToken)
 	externalTransferResponse := httptest.NewRecorder()

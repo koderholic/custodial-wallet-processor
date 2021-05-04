@@ -31,6 +31,7 @@ func (s *Suite) TestGetSweepAddressAndMemo() {
 	cache := utility.InitializeCache(cacheDuration, purgeInterval)
 	baseRepository := database.BaseRepository{Database: s.Database}
 	userAssetRepository := database.UserAssetRepository{BaseRepository: baseRepository}
+	falseVal := false
 
 	floatAccount := model.HotWalletAsset{
 		BaseModel: model.BaseModel{
@@ -40,12 +41,26 @@ func (s *Suite) TestGetSweepAddressAndMemo() {
 		AssetSymbol: "BNB",
 		IsDisabled:  false,
 	}
+	floatNetwork := model.Network{
+		AssetSymbol: "BNB",
+		Network: "BEP2",
+		NativeDecimals: 8,
+		NativeAsset: "BNB",
+		IsMultiAddresses: &falseVal,
+		IsToken: &falseVal,
+		IsBatchable: &falseVal,
+		CoinType: 714,
+		MinimumSweepable: 0.002,
+		SweepFee: 37500000,
+
+			}
 
 	// Get float chain balance
 	prec := uint(64)
 	serviceErr := dto.ServicesRequestErr{}
 	onchainBalanceRequest := dto.OnchainBalanceRequest{
-		AssetSymbol: floatAccount.AssetSymbol,
+		AssetSymbol: floatNetwork.AssetSymbol,
+		Network: floatNetwork.Network,
 		Address:     floatAccount.Address,
 	}
 	floatOnChainBalanceResponse := dto.OnchainBalanceResponse{}
@@ -53,7 +68,7 @@ func (s *Suite) TestGetSweepAddressAndMemo() {
 	floatOnChainBalance, _ := new(big.Float).SetPrec(prec).SetString(floatOnChainBalanceResponse.Balance)
 
 	// Get total users balance
-	totalUserBalance, err := tasks.GetTotalUserBalance(baseRepository, floatAccount.AssetSymbol, s.Logger, userAssetRepository)
+	totalUserBalance, err := tasks.GetTotalUserBalance(baseRepository, floatAccount.AssetSymbol, 8, s.Logger, userAssetRepository)
 	if err != nil {
 		s.T().Errorf("Expected GetTotalUserBalance to not error, got %s\n", err)
 	}
@@ -61,7 +76,7 @@ func (s *Suite) TestGetSweepAddressAndMemo() {
 	valueOfMinimumFloatPercent := new(big.Float)
 	valueOfMinimumFloatPercent.Mul(big.NewFloat(0.01), totalUserBalance)
 
-	toAddress, _, _ := tasks.GetSweepAddressAndMemo(cache, s.Logger, s.Config, baseRepository, floatAccount)
+	toAddress, _, _ := tasks.GetSweepAddressAndMemo(cache, s.Logger, s.Config, baseRepository, floatAccount, floatNetwork)
 
 	if floatOnChainBalance.Cmp(valueOfMinimumFloatPercent) > 0 {
 		if toAddress == "bnb1x2kvd50cmggdmuqlqgznksyeskquym2zcmvlhg" {
@@ -224,7 +239,7 @@ func (s *Suite) TestSumSweepTx() {
 }
 
 func (s *Suite) TestCheckSweepMinimum() {
-	denomination := model.Denomination{
+	denomination := model.Network{
 		AssetSymbol:      "ETH",
 		MinimumSweepable: 0.9,
 	}

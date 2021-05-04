@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"wallet-adapter/database"
 	"wallet-adapter/dto"
+	"wallet-adapter/model"
 	"wallet-adapter/utility"
 
 	"github.com/trustwallet/blockatlas/pkg/logger"
@@ -56,4 +58,28 @@ func (service BaseService) GetTWDenominations() ([]dto.TWDenomination, error) {
 	logger.Info("Response from GetTWDenominations : %+v", responseData)
 	return responseData, nil
 
+}
+
+func (service BaseService) GetNetworksByDenom(repository database.IUserAssetRepository, denom string) ([]model.Network, error)  {
+	additionalNetworks := []model.Network{}
+	if err := repository.GetByFieldName(&model.Network{AssetSymbol: denom}, &additionalNetworks); err != nil {
+		return additionalNetworks, err
+	}
+	return additionalNetworks, nil
+}
+
+func GetNetworkByAssetAndNetwork(repository database.IUserAssetRepository, network, assetSymbol string) (model.Network, error)  {
+	networkAsset := model.Network{}
+	if err := repository.GetByFieldName(&model.Network{Network: network, AssetSymbol: assetSymbol}, &networkAsset); err != nil {
+		return networkAsset, err
+	}
+	return networkAsset, nil
+}
+
+func GetDefaultNetworkByAssetSymbol(repository database.IUserAssetRepository, assetSymbol string) (string, error)  {
+	denomination := model.Denomination{}
+	if err := repository.GetByFieldName(&model.Denomination{AssetSymbol: assetSymbol}, &denomination); err != nil {
+		return "", err
+	}
+	return denomination.DefaultNetwork, nil
 }

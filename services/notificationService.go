@@ -66,7 +66,7 @@ func SendSmsNotification(cache *utility.MemoryCache, logger *utility.Logger, con
 	return nil
 }
 
-func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
+func BuildAndSendSms(assetSymbol, network string, amount *big.Float, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr interface{}) {
 	logger.Info("Sending sms notification for asset ", assetSymbol)
 	formattedPhoneNumber := config.ColdWalletSmsNumber
 	if !strings.HasPrefix(config.ColdWalletSmsNumber, "+") {
@@ -81,13 +81,13 @@ func BuildAndSendSms(assetSymbol string, amount *big.Float, cache *utility.Memor
 	}
 
 	sendSmsRequest := dto.SendSmsRequest{
-		Message:     fmt.Sprintf("%s - Please fund Bundle hot wallet address for %s with at least %f %s", notificationEnv, assetSymbol, amount, assetSymbol),
+		Message:     fmt.Sprintf("%s - Please fund Bundle hot wallet address for %s - %s with at least %f %s", notificationEnv, assetSymbol, network, amount, assetSymbol),
 		PhoneNumber: formattedPhoneNumber,
 		SmsType:     utility.NOTIFICATION_SMS_TYPE,
 		Country:     utility.NOTIFICATION_SMS_COUNTRY,
 	}
 	sendSmsResponse := dto.SendSmsResponse{}
 	if err := SendSmsNotification(cache, logger, config, sendSmsRequest, &sendSmsResponse, serviceErr); err != nil {
-		logger.Error(fmt.Sprintf("error with sending sms notification for asset %s : %s", assetSymbol, err))
+		logger.Error(fmt.Sprintf("error with sending sms notification for asset %s - %s : %s", assetSymbol, network, err))
 	}
 }

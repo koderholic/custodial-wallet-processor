@@ -5,6 +5,17 @@ type AssetDenominations struct {
 	Denominations []AssetDenomination `json:"denominations"`
 }
 
+type AdditionalNetwork struct {
+	NativeAsset                string         `json:"nativeAsset,omitempty"`
+	CoinType            int64          `json:"coinType,omitempty"`
+	RequiresMemo        bool           `json:"requiresMemo,omitempty"`
+	NativeDecimal             int            `json:"nativeDecimal,omitempty"`
+	ChainDenomId  	string `json:"chainDenomId,omitempty"`
+	Network 	string `json:"network,omitempty"`
+	DepositActivity     string         `json:"depositActivity"`
+	WithdrawActivity    string         `json:"withdrawActivity"`
+}
+
 type AssetDenomination struct {
 	TradeActivity    string `json:"tradeActivity"`
 	DepositActivity  string `json:"depositActivity"`
@@ -17,6 +28,8 @@ type AssetDenomination struct {
 	TokenType        string `json:"tokenType"`
 	RequiresMemo     bool   `json:"requiresMemo"`
 	Enabled          bool   `json:"enabled"`
+	Network           string `json:"network"`
+	AdditionalNetworks []AdditionalNetwork
 }
 
 type TWDenomination struct {
