@@ -34,7 +34,7 @@ func Up20210325083552(tx *sql.Tx) error {
 		is_enabled tinyint(1) DEFAULT 1,
 		
 	
-		PRIMARY KEY (id)
+		PRIMARY KEY (id),
 		CONSTRAINT uix_networks_asset_symbol_network UNIQUE (asset_symbol, network)
 		);
 		`)
