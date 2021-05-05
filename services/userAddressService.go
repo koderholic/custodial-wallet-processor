@@ -198,7 +198,7 @@ func (service BaseService) GetMultipleAddresses(repository database.IUserAssetRe
 		if err != nil {
 			return []dto.AssetAddress{}, err
 		}
-		assetAddresses = TransformAddressesResponse(responseAddresses)
+		assetAddresses = TransformAddressesResponse(responseAddresses, network)
 	} else {
 		availableAddress := map[string]bool{}
 		for _, address := range userAddresses {
@@ -218,7 +218,7 @@ func (service BaseService) GetMultipleAddresses(repository database.IUserAssetRe
 					if err != nil {
 						return []dto.AssetAddress{}, err
 					}
-					transformedResponse := TransformAddressesResponse(responseAddresses)
+					transformedResponse := TransformAddressesResponse(responseAddresses, network)
 					assetAddresses = append(assetAddresses, transformedResponse...)
 				}
 			}
@@ -274,7 +274,7 @@ func (service BaseService) CreateAuxiliaryBTCAddress(repository database.IUserAs
 	if err != nil {
 		return dto.AssetAddress{}, err
 	}
-	assetAddresses := TransformAddressesResponse(responseAddresses)
+	assetAddresses := TransformAddressesResponse(responseAddresses, network)
 
 	return assetAddresses[0], nil
 }
@@ -295,13 +295,13 @@ func (service BaseService)  CreateAuxiliaryAddressWithoutMemo(repository databas
 }
 
 
-func TransformAddressesResponse(responseAddresses []dto.AllAddressResponse) []dto.AssetAddress {
+func TransformAddressesResponse(responseAddresses []dto.AllAddressResponse, network string) []dto.AssetAddress {
 	assetAddresses := []dto.AssetAddress{}
 	for _, item := range responseAddresses {
 		address := dto.AssetAddress{
 			Address: item.Data,
 			Type:    item.Type,
-			Network: item.Network,
+			Network: network,
 		}
 		assetAddresses = append(assetAddresses, address)
 	}

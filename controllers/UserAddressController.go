@@ -55,6 +55,7 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 				continue
 			}
 			networkAsset := mapNetworkToAssetStruct(network, userAsset)
+			fmt.Printf("networkAsset >>> %+v", networkAsset)
 
 			addresses, err := controller.GetAddressesForNetwork(networkAsset, userAddressService)
 			if err != nil {
@@ -89,12 +90,19 @@ func mapNetworkToAssetStruct(network model.Network, userAsset model.UserAsset) d
 		AssetID: userAsset.ID,
 		DefaultNetwork: userAsset.DefaultNetwork,
 		DenominationID:  userAsset.DenominationID,
-		AssetSymbol:     network.NativeAsset,
-		NativeDecimals:         network.NativeDecimals,
+		AssetSymbol:     userAsset.AssetSymbol,
+		NativeAsset:     network.NativeAsset,
+		NativeDecimals:  network.NativeDecimals,
 		CoinType:        network.CoinType,
 		RequiresMemo:    network.RequiresMemo,
 		AddressProvider: network.AddressProvider,
 		Network:         network.Network,
+		IsMultiAddresses: network.IsMultiAddresses,
+		IsBatchable: network.IsBatchable,
+		IsToken: network.IsToken,
+		DepositActivity: network.DepositActivity,
+		WithdrawActivity: network.WithdrawActivity,
+
 	}
 	return networkAsset
 }
