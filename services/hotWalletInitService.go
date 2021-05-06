@@ -44,14 +44,15 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 			if coinTypeToAddrMap[networkAsset.CoinType] != "" {
 				address = coinTypeToAddrMap[networkAsset.CoinType]
 			} else {
-				address, err = GenerateAddressWithoutSub(cache, logger, config, serviceID, networkAsset.NativeAsset, networkAsset.Network, &externalServiceErr)
+				address, err = GenerateAddressWithoutSub(cache, logger, config, serviceID, networkAsset.AssetSymbol, networkAsset.Network, &externalServiceErr)
 				if err != nil {
 					return err
 				}
 				coinTypeToAddrMap[networkAsset.CoinType] = address
 			}
 
-			if err := DB.Create(&model.HotWalletAsset{Address: address, AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}).Error; err != nil {
+			hotWallet := model.HotWalletAsset{Address: address, AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}
+			if err := DB.Where(model.HotWalletAsset{AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}).Assign(hotWallet).FirstOrCreate(&hotWallet).Error; err != nil {
 				logger.Error("Error with creating hot wallet asset record %s : %s on network : %s", networkAsset.AssetSymbol, networkAsset.Network, err)
 			}
 		}
