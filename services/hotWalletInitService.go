@@ -52,7 +52,7 @@ func InitHotWallet(cache *utility.MemoryCache, DB *gorm.DB, logger *utility.Logg
 			}
 
 			hotWallet := model.HotWalletAsset{Address: address, AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}
-			if err := DB.Where(model.HotWalletAsset{AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}).Assign(hotWallet).FirstOrCreate(&hotWallet).Error; err != nil {
+			if err := DB.Where(model.HotWalletAsset{AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}).Assign(model.HotWalletAsset{AssetSymbol: networkAsset.AssetSymbol, Network: networkAsset.Network}).FirstOrCreate(&hotWallet).Error; err != nil {
 				logger.Error("Error with creating hot wallet asset record %s : %s on network : %s", networkAsset.AssetSymbol, networkAsset.Network, err)
 			}
 		}
