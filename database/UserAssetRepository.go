@@ -186,7 +186,7 @@ func (repo *UserAssetRepository) GetAssetBySymbolMemoAddressAndNetwork(assetSymb
 		SELECT d.asset_symbol, d.default_network, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
 		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
 		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
-		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ? AND a.network = ?`, assetSymbol, memo, address, network).
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ? AND sa.network = ?`, assetSymbol, memo, address, network).
 		Scan(model).Error; err != nil {
 		repo.Logger.Info(`GetAssetBySymbolMemoNetwAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		if gorm.IsRecordNotFoundError(err) {
