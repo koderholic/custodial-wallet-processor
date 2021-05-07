@@ -71,8 +71,10 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 
 	for _, denom := range denominations {
 		for _, network := range denom.AdditionalNetworks {
-			normalizedNetwork := normalizeNetwork(denom.Symbol, network)
-			normalizedNetworks = append(normalizedNetworks, normalizedNetwork)
+			if network.Network != "" {
+				normalizedNetwork := normalizeNetwork(denom.Symbol, network)
+				normalizedNetworks = append(normalizedNetworks, normalizedNetwork)
+			}
 		}
 		// Add default network to network array
 		defaultNetwork := normalizeDefaultNetwork(denom)
