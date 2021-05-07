@@ -25,7 +25,7 @@ func InitFloatParams(DB *gorm.DB, logger *utility.Logger) error {
 			PercentMinimumTriggerLevel  : 0.8,
 			PercentMaximumTriggerLevel     : 0.3,
 		}
-		if err := DB.Where(model.FloatManagerParam{AssetSymbol: asset.AssetSymbol}).FirstOrCreate(&floatParam).Error; err != nil {
+		if err := DB.Where(model.FloatManagerParam{AssetSymbol: asset.AssetSymbol, Network: asset.Network}).FirstOrCreate(&floatParam).Error; err != nil {
 			logger.Error("Error with creating float params for asset %s : %s", asset.AssetSymbol, err)
 		}
 	}
