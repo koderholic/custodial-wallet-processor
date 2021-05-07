@@ -55,7 +55,6 @@ func (controller UserAssetController) GetAllAssetAddresses(responseWriter http.R
 				continue
 			}
 			networkAsset := mapNetworkToAssetStruct(network, userAsset)
-			fmt.Printf("networkAsset >>> %+v", networkAsset)
 
 			addresses, err := controller.GetAddressesForNetwork(networkAsset, userAddressService)
 			if err != nil {

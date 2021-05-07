@@ -62,7 +62,7 @@ func (service BaseService) GetTWDenominations() ([]dto.TWDenomination, error) {
 
 func (service BaseService) GetNetworksByDenom(repository database.IUserAssetRepository, denom string) ([]model.Network, error)  {
 	additionalNetworks := []model.Network{}
-	if err := repository.GetByFieldName(&model.Network{AssetSymbol: denom}, &additionalNetworks); err != nil {
+	if err := repository.FetchByFieldName(&model.Network{AssetSymbol: denom}, &additionalNetworks); err != nil {
 		return additionalNetworks, err
 	}
 	return additionalNetworks, nil
