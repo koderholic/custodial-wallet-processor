@@ -183,7 +183,7 @@ func (repo *UserAssetRepository) GetAssetByAddressSymbolAndNetwork(address, asse
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetBySymbolMemoAddressAndNetwork(assetSymbol, memo, address, network string, model interface{}) error {
 	if err := repo.DB.Raw(`
-		SELECT d.asset_symbol, n.decimal, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
+		SELECT d.asset_symbol, d.default_network, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
 		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
 		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
 		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ? AND a.network = ?`, assetSymbol, memo, address, network).
