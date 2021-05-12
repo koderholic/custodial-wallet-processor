@@ -3,6 +3,7 @@ module wallet-adapter
 go 1.13
 
 require (
+	github.com/PuerkitoBio/purell v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/getsentry/sentry-go v0.5.1
