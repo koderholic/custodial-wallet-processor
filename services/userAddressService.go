@@ -161,22 +161,22 @@ func CheckV2Address(repository database.IUserAssetRepository, address string) (b
 
 }
 
-func GetAssetForV1Address(repository database.IUserAssetRepository, logger *utility.Logger, address, assetSymbol, network string) (model.UserAsset, error) {
-	var userAsset model.UserAsset
+func GetAssetForV1Address(repository database.IUserAssetRepository, logger *utility.Logger, address, assetSymbol, network string) (model.UserNetworkAsset, error) {
+	var userAsset model.UserNetworkAsset
 	if err := repository.GetAssetByAddressSymbolAndNetwork(address, assetSymbol, network, &userAsset); err != nil {
 		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s, assetSymbol : %s, metwork : %s, error : %+v", address, assetSymbol, network, err)
-		return model.UserAsset{}, err
+		return model.UserNetworkAsset{}, err
 	}
 	logger.Info("GetAssetForV1Address logs : address : %s, assetSymbol : %s, assest : %+v", address, assetSymbol, userAsset)
 
 	return userAsset, nil
 }
 
-func GetAssetForV2Address(repository database.IUserAssetRepository, logger *utility.Logger, address, assetSymbol, memo, network string) (model.UserAsset, error) {
-	var userAsset model.UserAsset
+func GetAssetForV2Address(repository database.IUserAssetRepository, logger *utility.Logger, address, assetSymbol, memo, network string) (model.UserNetworkAsset, error) {
+	var userAsset model.UserNetworkAsset
 	if err := repository.GetAssetBySymbolMemoAddressAndNetwork(assetSymbol, memo, address, network, &userAsset); err != nil {
 		logger.Info("GetAssetForV2Address logs : error with fetching asset for address : %s and memo : %s, assetSymbol : %s, network : %s, error : %+v", address, memo, assetSymbol, network, err)
-		return model.UserAsset{}, err
+		return model.UserNetworkAsset{}, err
 	}
 	logger.Info("GetAssetForV2Address logs : address : %s and memo : %s, assetSymbol : %s, assest : %+v", address, memo, assetSymbol, userAsset)
 
