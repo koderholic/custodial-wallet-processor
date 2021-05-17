@@ -77,7 +77,8 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 			}
 		}
 		// Add default network to network array
-		defaultNetwork := normalizeDefaultNetwork(denom)
+		nativeSymbol := getMainCoinAssetSymbol(denom.CoinType, TWDenominations)
+		defaultNetwork := normalizeDefaultNetwork(denom, nativeSymbol)
 		normalizedNetworks = append(normalizedNetworks, defaultNetwork)
 
 		normalizedAsset := model.Denomination{
@@ -93,13 +94,14 @@ func normalizeAsset(denominations []dto.AssetDenomination, TWDenominations []dto
 	return normalizedAssets
 }
 
-func normalizeDefaultNetwork(denom dto.AssetDenomination) model.Network {
+func normalizeDefaultNetwork(denom dto.AssetDenomination, nativeSymbol string) model.Network {
 	isToken, addressProvider := GetDynamicDenominationValues(denom.TokenType, denom.CoinType)
 	defaultNetwork := model.Network{
 		AssetSymbol:      denom.Symbol,
 		CoinType:         denom.CoinType,
 		RequiresMemo:     denom.RequiresMemo,
-		NativeDecimals:   denom.NativeDecimals,
+		NativeDecimals:   denom.,
+		NativeAsset :		nativeSymbol,
 		IsToken:          &isToken,
 		SweepFee:         sweepFee[denom.CoinType],
 		DepositActivity:  denom.DepositActivity,
@@ -124,6 +126,7 @@ func normalizeNetwork(assetSymbol string, network dto.AdditionalNetwork) model.N
 		CoinType:            network.CoinType,
 		RequiresMemo:        network.RequiresMemo,
 		NativeDecimals :     network.NativeDecimal,
+		NativeAsset :		network.NativeAsset,
 		IsToken:             &isToken,
 		SweepFee:            sweepFee[network.CoinType],
 		DepositActivity:     network.DepositActivity,
