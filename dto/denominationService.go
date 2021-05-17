@@ -9,7 +9,7 @@ type AdditionalNetwork struct {
 	NativeAsset                string         `json:"nativeAsset,omitempty"`
 	CoinType            int64          `json:"coinType,omitempty"`
 	RequiresMemo        bool           `json:"requiresMemo,omitempty"`
-	NativeDecimal             int            `json:"nativeDecimal,omitempty"`
+	NativeDecimal             int            `json:"nativeDecimals,omitempty"`
 	ChainDenomId  	string `json:"chainDenomId,omitempty"`
 	Network 	string `json:"network,omitempty"`
 	DepositActivity     string         `json:"depositActivity"`
@@ -23,7 +23,8 @@ type AssetDenomination struct {
 	TransferActivity string `json:"transferActivity"`
 	Name             string `json:"name"`
 	Symbol           string `json:"symbol"`
-	NativeDecimals   int    `json:"nativeDecimals"`
+	NativeAsset  string    `json:"nativeAsset"`
+	NativeDecimal             int            `json:"nativeDecimals,omitempty"`
 	CoinType         int64  `json:"coinType"`
 	TokenType        string `json:"tokenType"`
 	RequiresMemo     bool   `json:"requiresMemo"`
