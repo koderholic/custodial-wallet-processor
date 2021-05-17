@@ -25,11 +25,9 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/spf13/viper v1.6.2
-	github.com/stretchr/testify v1.4.0
-	github.com/swaggo/http-swagger v0.0.0-20190614090009-c2865af9083e
+	github.com/stretchr/testify v1.6.1
 	github.com/toolkits/file v0.0.0-20160325033739-a5b3c5147e07 // indirect
 	github.com/trustwallet/blockatlas v1.0.37
 	golang.org/x/net v0.0.0-20210222171744-9060382bd457 // indirect
-	golang.org/x/tools v0.0.0-20200302225559-9b52d559c609 // indirect
 	gopkg.in/go-playground/validator.v9 v9.30.2
 )
