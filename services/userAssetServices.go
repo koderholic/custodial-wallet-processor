@@ -100,7 +100,7 @@ func normalizeDefaultNetwork(denom dto.AssetDenomination, nativeSymbol string) m
 		AssetSymbol:      denom.Symbol,
 		CoinType:         denom.CoinType,
 		RequiresMemo:     denom.RequiresMemo,
-		NativeDecimals:   denom.,
+		NativeDecimals:   denom.NativeDecimal,
 		NativeAsset :		nativeSymbol,
 		IsToken:          &isToken,
 		SweepFee:         sweepFee[denom.CoinType],
