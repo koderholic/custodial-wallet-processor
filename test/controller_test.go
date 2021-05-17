@@ -28,7 +28,6 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 
-	httpSwagger "github.com/swaggo/http-swagger"
 	validation "gopkg.in/go-playground/validator.v9"
 )
 
@@ -163,7 +162,6 @@ func (s *Suite) RegisterRoutes(logger *utility.Logger, Config config.Data, route
 		userAssetController := controllers.NewUserAssetController(authCache, s.Logger, s.Config, validator, &userAssetRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
-		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// User Asset Routes
 		var requestTimeout = time.Duration(s.Config.RequestTimeout) * time.Second
