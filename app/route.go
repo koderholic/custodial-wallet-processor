@@ -11,7 +11,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	httpSwagger "github.com/swaggo/http-swagger"
 	validation "gopkg.in/go-playground/validator.v9"
 
 	Config "wallet-adapter/config"
@@ -35,7 +34,6 @@ func RegisterRoutes(router *mux.Router, validator *validation.Validate, config C
 		BatchController := controllers.NewBatchController(memoryCache, logger, config, validator, &batchRepository)
 
 		apiRouter := router.PathPrefix("").Subrouter()
-		router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 		// General Routes
 		apiRouter.HandleFunc("/ping", controller.Ping).Methods(http.MethodGet)
