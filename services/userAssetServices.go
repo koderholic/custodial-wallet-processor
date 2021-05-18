@@ -32,9 +32,6 @@ var (
 	}
 )
 
-// Create additional network table
-
-
 func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data, cache *utility.MemoryCache) {
 
 	// Get assets from rate service

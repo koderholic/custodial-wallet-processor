@@ -28,12 +28,12 @@ func (service BaseService) GenerateV2AddressWithMemo(repository database.IUserAs
 	return nil
 }
 
-func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, networkAsset dto.NetworkAsset, network string) (string, error) {
+func GetV1Address(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache, config Config.Data, networkAsset dto.NetworkAsset) (string, error) {
 	var userAddress model.UserAddress
 
 	err := repository.GetByFieldName(&model.UserAddress{AssetID: networkAsset.AssetID, IsPrimaryAddress: true, Network: networkAsset.Network}, &userAddress)
 	if (err != nil && err.Error() == errorcode.SQL_404) || (err == nil && userAddress.Address == "") {
-		userAddress.Address, err = GenerateV1Address(repository, logger, cache, config, networkAsset, userAddress, true, network)
+		userAddress.Address, err = GenerateV1Address(repository, logger, cache, config, networkAsset, userAddress, true)
 		if err != nil {
 			return "", err
 		}
@@ -54,7 +54,7 @@ func GetBinanceProvidedAddressforAsset(repository database.IUserAssetRepository,
 }
 
 func GenerateV1Address(repository database.IUserAssetRepository, logger *utility.Logger, cache *utility.MemoryCache,
-	config Config.Data, networkAsset dto.NetworkAsset, userAddress model.UserAddress, isPrimaryAddress bool, network string) (string, error) {
+	config Config.Data, networkAsset dto.NetworkAsset, userAddress model.UserAddress, isPrimaryAddress bool) (string, error) {
 	service := BaseService{Config: config, Cache: cache, Logger: logger}
 
 	if networkAsset.AddressProvider == model.AddressProvider.BINANCE {
@@ -73,11 +73,11 @@ func GenerateV1Address(repository database.IUserAssetRepository, logger *utility
 		userAddress.AddressProvider = model.AddressProvider.BINANCE
 		userAddress.AssetID = networkAsset.AssetID
 		userAddress.IsPrimaryAddress = isPrimaryAddress
-		userAddress.Network = network
-		userAddress.AddressType = network
+		userAddress.Network = networkAsset.Network
+		userAddress.AddressType = networkAsset.Network
 
 	} else {
-		addressResponse, err := service.GenerateAllAddresses(networkAsset.UserID, networkAsset.AssetSymbol, networkAsset.CoinType, "", network)
+		addressResponse, err := service.GenerateAllAddresses(networkAsset.UserID, networkAsset.AssetSymbol, networkAsset.CoinType, "", networkAsset.Network)
 		if err != nil {
 			return "", err
 		}
@@ -86,8 +86,8 @@ func GenerateV1Address(repository database.IUserAssetRepository, logger *utility
 		userAddress.AddressProvider = model.AddressProvider.BUNDLE
 		userAddress.AssetID = networkAsset.AssetID
 		userAddress.IsPrimaryAddress = isPrimaryAddress
-		userAddress.Network = network
-		userAddress.AddressType = network
+		userAddress.Network = networkAsset.Network
+		userAddress.AddressType = networkAsset.Network
 	}
 
 	if err := repository.Create(&userAddress); err != nil {
@@ -285,7 +285,7 @@ func (service BaseService)  CreateAuxiliaryAddressWithoutMemo(repository databas
 	var userAddress dto.AssetAddress
 	var err error
 
-	userAddress.Address, err = GenerateV1Address(repository, service.Logger, service.Cache, service.Config, networkAsset, userAddressModel, false, network)
+	userAddress.Address, err = GenerateV1Address(repository, service.Logger, service.Cache, service.Config, networkAsset, userAddressModel, false)
 	if err != nil {
 		return dto.AssetAddress{}, err
 	}
