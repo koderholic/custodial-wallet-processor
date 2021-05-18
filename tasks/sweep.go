@@ -651,7 +651,7 @@ func GetBrokerAccountFor(assetSymbol string, txNetworkAsset model.Network, repos
 	}
 
 	if *txNetworkAsset.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, assetSymbol, txNetworkAsset.AssetSymbol, &brokerageAccountResponse, serviceErr)
+		err = services.GetDepositAddress(cache, logger, config, assetSymbol, txNetworkAsset.NativeAsset, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, assetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
@@ -731,7 +731,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	brokerageAccountResponse := dto.DepositAddressResponse{}
 
 	if *txNetworkAsset.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, txNetworkAsset.AssetSymbol, &brokerageAccountResponse, serviceErr)
+		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, txNetworkAsset.NativeAsset, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
