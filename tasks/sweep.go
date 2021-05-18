@@ -259,7 +259,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 
 	txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
 	if  err != nil {
-		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset", err)
+		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset, network is %+v and assetSymbol is %+v", err, transactionListInfo.Network, transactionListInfo.AssetSymbol)
 		return err
 	}
 
@@ -389,6 +389,7 @@ func getTransactionListInfo(repository database.BaseRepository, assetTransaction
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return dto.TransactionListInfo{}, err
 	}
+	logger.Error("QA Log from Sweep job : now calling GetNetworkByAssetAndNetwork with network %+v and %+v while trying to getTransactionListInfo", transactionListInfo.Network, transactionListInfo.AssetSymbol)
 	recipientNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
