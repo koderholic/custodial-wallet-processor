@@ -144,7 +144,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAsset model.UserAsset
+	var userAsset model.NetworkAsset
 	responseData := dto.Asset{}
 	apiResponse := utility.NewResponse()
 
@@ -198,6 +198,7 @@ func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.
 	responseData.UserID = userAsset.UserID
 	responseData.AssetSymbol = userAsset.AssetSymbol
 	responseData.AvailableBalance = userAsset.AvailableBalance
+	responseData.Decimal = userAsset.NativeDecimals
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(responseWriter).Encode(responseData)

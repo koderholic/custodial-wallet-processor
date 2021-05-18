@@ -17,6 +17,20 @@ type UserAsset struct {
 	DefaultNetwork         string     `gorm:"-" json:"defaultNetwork,omitempty"`
 }
 
+type NetworkAsset struct {
+	BaseModel
+	UserID           uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"user_id"`
+	DenominationID   uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"-"`
+	AvailableBalance string    `gorm:"type:decimal(64,18) CHECK(available_balance >= 0);not null;" json:"available_balance"`
+	AssetSymbol      string    `gorm:"-" json:"asset_symbol,omitempty"`
+	NativeDecimals         int     `gorm:"-" json:"native_decimals,omitempty"`
+	DefaultNetwork         string     `gorm:"-" json:"defaultNetwork,omitempty"`
+}
+
+func (NetworkAsset) TableName() string {
+	return "user_assets"
+}
+
 func (userAsset *UserAsset) AfterFind() {
 	balance, _ := strconv.ParseFloat(userAsset.AvailableBalance, 64)
 	userAsset.AvailableBalance = strconv.FormatFloat(balance, 'g', utility.DigPrecision, 64)
