@@ -70,12 +70,18 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 	var batchAssetTransactionsToSweep []model.Transaction
 	userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
 	for _, tx := range transactions {
-		//Filter batchable assets, save in a seperate list for batch processing and skip individual processing
-		//need recipient Asset to check assetSymbol
 		recipientAsset := model.UserAsset{}
-		//all the tx in assetTransactions have the same recipientId so just pass the 0th position
 		if err := userAssetRepository.GetAssetsByID(&model.UserAsset{BaseModel: model.BaseModel{ID: tx.RecipientID}}, &recipientAsset); err != nil {
-			logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
+			logger.Error("Error sweeping for asset with id : %+v, could not get recipient asset for transaction. Error : %+v", recipientAsset.ID, err)
+			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
+				logger.Error("Could not release lock", err)
+				return
+			}
+			return
+		}
+		txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, tx.Network, tx.AssetSymbol)
+		if err != nil {
+			logger.Error("Error sweeping for asset with id : %+v, could not get network asset for transaction with assetSymbol : %s, network : %s. Error : %+v", recipientAsset.ID, tx.AssetSymbol, tx.Network,  err)
 			if err := releaseLock(cache, logger, config, token, serviceErr); err != nil {
 				logger.Error("Could not release lock", err)
 				return
@@ -83,15 +89,9 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			return
 		}
 
-		userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
-		txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, tx.Network, tx.AssetSymbol)
-		if err != nil {
-			continue
-		}
 
-
+		//Filter batchable assets, save in a seperate list for batch processing and skip individual processing
 		if *txNetworkAsset.IsBatchable {
-			//get recipient address for transaction
 			chainTransaction := model.ChainTransaction{}
 			err = getChainTransaction(repository, tx, &chainTransaction, logger)
 			if err != nil {
@@ -102,15 +102,13 @@ func SweepTransactions(cache *utility.MemoryCache, logger *utility.Logger, confi
 			}
 			batchAddresses = append(batchAddresses, chainTransaction.RecipientAddress)
 			batchAssetTransactionsToSweep = append(batchAssetTransactionsToSweep, tx)
-			//skip futher processing for this asset, will be included a part of batch processing
-			continue
 		}
 	}
 	batchAddresses = ToUniqueAddresses(batchAddresses)
 	//remove btc transactions from list of remaining transactions
 	transactions = RemoveBatchTransactions(transactions, batchAssetTransactionsToSweep)
 	//Do other Coins apart from batchable assets
-	transactionsPerAddressPerAssetSymbol, err := GroupTxByAddressByAssetSymbol(transactions, repository, logger)
+	transactionsPerAddressPerAssetSymbol, err := GroupTxByAddressByAssetSymbolAndNetwork(transactions, repository, logger)
 	if err != nil {
 		logger.Error("Error grouping By Address", err)
 		return
@@ -236,10 +234,23 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		return e
 	}
 
+	txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
+	if  err != nil {
+		logger.Error("Error response from sweep job : %+v while trying to get network asset of float asset, network is %+v and assetSymbol is %+v", err, transactionListInfo.Network, transactionListInfo.AssetSymbol)
+		return err
+	}
+
 	var userAddress model.UserAddress
-	err := repository.GetByFieldName(&model.UserAddress{Address: recipientAddress}, &userAddress)
+	var queryParam *model.UserAddress
+	if txNetworkAsset.RequiresMemo {
+		queryParam = &model.UserAddress{V2Address: recipientAddress}
+	} else {
+		queryParam = &model.UserAddress{Address: recipientAddress}
+	}
+
+	err = repository.GetByFieldName(queryParam, &userAddress)
 	if err != nil {
-		logger.Error("Error getting address provider, defaulting to BUNDLE")
+		logger.Error(fmt.Sprintf("Error getting address provider for address : %s, defaulting to BUNDLE", recipientAddress))
 		userAddress.AddressProvider = model.AddressProvider.BUNDLE
 	}
 
@@ -255,12 +266,6 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 			return err
 		}
 		return nil
-	}
-
-	txNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
-	if  err != nil {
-		logger.Error("Error response from sweep job : %+v while trying to denomination of float asset, network is %+v and assetSymbol is %+v", err, transactionListInfo.Network, transactionListInfo.AssetSymbol)
-		return err
 	}
 
 	if txNetworkAsset.CoinType == constants.TRX_COINTYPE {
@@ -303,6 +308,7 @@ func sweepPerAddress(cache *utility.MemoryCache, logger *utility.Logger, config 
 		Memo:        addressMemo,
 		Amount:      big.NewInt(0),
 		AssetSymbol: transactionListInfo.AssetSymbol,
+		Network: transactionListInfo.Network,
 		IsSweep:     true,
 		ProcessType: utility.SWEEPPROCESS,
 		Reference:   fmt.Sprintf("%s-%d", recipientAddress, time.Now().Unix()),
@@ -389,8 +395,8 @@ func getTransactionListInfo(repository database.BaseRepository, assetTransaction
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return dto.TransactionListInfo{}, err
 	}
-	logger.Error("QA Log from Sweep job : now calling GetNetworkByAssetAndNetwork with network %+v and %+v while trying to getTransactionListInfo", transactionListInfo.Network, transactionListInfo.AssetSymbol)
-	recipientNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, transactionListInfo.Network, transactionListInfo.AssetSymbol)
+	logger.Error("QA Log from Sweep job : now calling GetNetworkByAssetAndNetwork with network %+v and %+v while trying to getTransactionListInfo", assetTransactions[0].Network, recipientAsset.AssetSymbol)
+	recipientNetworkAsset, err := services.GetNetworkByAssetAndNetwork(&userAssetRepository, assetTransactions[0].Network, recipientAsset.AssetSymbol)
 	if err != nil {
 		logger.Error("Error response from Sweep job : %+v while sweeping for asset with id %+v", err, recipientAsset.ID)
 		return dto.TransactionListInfo{}, err
@@ -403,7 +409,7 @@ func getTransactionListInfo(repository database.BaseRepository, assetTransaction
 	return transactionListInfo, nil
 }
 
-func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, error) {
+func GroupTxByAddressByAssetSymbolAndNetwork(transactions []model.Transaction, repository database.BaseRepository, logger *utility.Logger) (map[string][]model.Transaction, error) {
 	//loop over assetTransactions, get the chainTx and group by address
 	//group transactions by addresses
 	transactionsPerRecipientAddress := make(map[string][]model.Transaction)
@@ -422,7 +428,7 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 		}
 
 		if chainTransaction.RecipientAddress != "" {
-			key := chainTransaction.RecipientAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol
+			key := chainTransaction.RecipientAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol + utility.SWEEP_GROUPING_SEPERATOR + tx.Network
 			transactionsPerRecipientAddress[key] = append(transactionsPerRecipientAddress[key], tx)
 		} else {
 			userAssetRepository := database.UserAssetRepository{BaseRepository: repository}
@@ -432,7 +438,7 @@ func GroupTxByAddressByAssetSymbol(transactions []model.Transaction, repository 
 				logger.Info("GroupByTx - getting binance address FAILED for  %+v skipping this transaction", tx.ID)
 				continue
 			}
-			key := binanceAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol
+			key := binanceAddress + utility.SWEEP_GROUPING_SEPERATOR + tx.AssetSymbol + utility.SWEEP_GROUPING_SEPERATOR + tx.Network
 			transactionsPerRecipientAddress[key] = append(transactionsPerRecipientAddress[key], tx)
 		}
 
@@ -645,7 +651,7 @@ func GetBrokerAccountFor(assetSymbol string, txNetworkAsset model.Network, repos
 	}
 
 	if *txNetworkAsset.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, assetSymbol, txNetworkAsset.AssetSymbol, &brokerageAccountResponse, serviceErr)
+		err = services.GetDepositAddress(cache, logger, config, assetSymbol, txNetworkAsset.NativeAsset, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, assetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
@@ -725,7 +731,7 @@ func GetSweepAddressAndMemo(cache *utility.MemoryCache, logger *utility.Logger, 
 	brokerageAccountResponse := dto.DepositAddressResponse{}
 
 	if *txNetworkAsset.IsToken {
-		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, txNetworkAsset.AssetSymbol, &brokerageAccountResponse, serviceErr)
+		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, txNetworkAsset.NativeAsset, &brokerageAccountResponse, serviceErr)
 	} else {
 		err = services.GetDepositAddress(cache, logger, config, floatAccount.AssetSymbol, "", &brokerageAccountResponse, serviceErr)
 	}
