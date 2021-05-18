@@ -133,7 +133,7 @@ func (controller UserAssetController) GetAddressesForNetwork(networkAsset dto.Ne
 		if IsMultiAddresses {
 			addresses, err = userAddressService.GetMultipleAddresses(controller.Repository, networkAsset, networkAsset.Network)
 		} else {
-			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, networkAsset, networkAsset.AssetSymbol)
+			address, err = services.GetV1Address(controller.Repository, controller.Logger, controller.Cache, controller.Config, networkAsset)
 			addresses = append(addresses, dto.AssetAddress{
 				Address: address,
 				Network: networkAsset.Network,
@@ -181,7 +181,7 @@ func (controller UserAssetController) CreateAuxiliaryAddress(responseWriter http
 	}
 	networkAsset := mapNetworkToAssetStruct(networkRecord, userAsset)
 
-	responseData, err = controller.createAuxiliaryAddress(networkAsset, addressType, network)
+	responseData, err = controller.createAuxiliaryAddress(networkAsset, addressType)
 	if err != nil {
 		controller.Logger.Info("Error from CreateAuxiliaryAddress service : %s", err)
 		if err.Error() == errorcode.MULTIPLE_ADDRESS_ERROR {
@@ -218,7 +218,7 @@ func (controller UserAssetController) VerifyDepositIsSupportedAndPopulateAsset(a
 	return nil
 }
 
-func (controller UserAssetController) createAuxiliaryAddress(networkAsset dto.NetworkAsset, addressType, network string) (dto.AssetAddress, error) {
+func (controller UserAssetController) createAuxiliaryAddress(networkAsset dto.NetworkAsset, addressType string) (dto.AssetAddress, error) {
 	var assetAddress dto.AssetAddress
 	var err error
 	AddressService := services.BaseService{Config: controller.Config, Cache: controller.Cache, Logger: controller.Logger}
@@ -230,9 +230,9 @@ func (controller UserAssetController) createAuxiliaryAddress(networkAsset dto.Ne
 		}
 	} else {
 		if networkAsset.AssetSymbol == utility.COIN_BTC {
-			assetAddress, err = AddressService.CreateAuxiliaryBTCAddress(controller.Repository, networkAsset, addressType, network)
+			assetAddress, err = AddressService.CreateAuxiliaryBTCAddress(controller.Repository, networkAsset, addressType, networkAsset.Network)
 		} else {
-			assetAddress, err = AddressService.CreateAuxiliaryAddressWithoutMemo(controller.Repository, networkAsset, network)
+			assetAddress, err = AddressService.CreateAuxiliaryAddressWithoutMemo(controller.Repository, networkAsset, networkAsset.Network)
 		}
 		if err != nil {
 			return dto.AssetAddress{}, err

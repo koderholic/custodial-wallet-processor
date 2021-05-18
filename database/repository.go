@@ -203,7 +203,6 @@ func (repo *BaseRepository) Update(id, model interface{}) error {
 	return nil
 }
 
-// Delete ... Deletes a specified record from the database for a given id
 func (repo *BaseRepository) Delete(model interface{}) error {
 	if err := repo.DB.Delete(model).Error; err != nil {
 		repo.Logger.Error("Error (with repository Delete : %s", err)
