@@ -17,7 +17,7 @@ type UserAsset struct {
 	DefaultNetwork         string     `gorm:"-" json:"defaultNetwork,omitempty"`
 }
 
-type UserNetworkAsset struct {
+type NetworkAsset struct {
 	BaseModel
 	UserID           uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"user_id"`
 	DenominationID   uuid.UUID `gorm:"type:VARCHAR(36);not null" json:"-"`
@@ -27,7 +27,7 @@ type UserNetworkAsset struct {
 	DefaultNetwork         string     `gorm:"-" json:"defaultNetwork,omitempty"`
 }
 
-func (UserNetworkAsset) TableName() string {
+func (NetworkAsset) TableName() string {
 	return "user_assets"
 }
 

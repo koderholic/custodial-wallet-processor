@@ -144,7 +144,7 @@ func (controller UserAssetController) GetUserAssetById(responseWriter http.Respo
 // GetUserAssetByAddress ... Get user asset balance by address
 func (controller UserAssetController) GetUserAssetByAddress(responseWriter http.ResponseWriter, requestReader *http.Request) {
 
-	var userAsset model.UserNetworkAsset
+	var userAsset model.NetworkAsset
 	responseData := dto.Asset{}
 	apiResponse := utility.NewResponse()
 

@@ -160,10 +160,10 @@ func (repo *UserAssetRepository) GetAssetAddressDetails(address, model interface
 }
 
 func (repo *UserAssetRepository) GetAssetByAddressSymbolAndNetwork(address, assetSymbol, network string, model interface{}) error {
-	if err := repo.DB.Select("denominations.asset_symbol, denominations.default_network, networks.native_decimals, user_addresses.address, user_addresses.network, user_assets.*").
+	if err := repo.DB.Select("denominations.asset_symbol, networks.native_decimals, user_assets.*").
 		Joins("INNER JOIN denominations ON denominations.id = user_assets.denomination_id").
-		Joins("INNER JOIN networks ON networks.asset_symbol = denominations.asset_symbol").
 		Joins("inner join user_addresses ON user_addresses.asset_id = user_assets.id").
+		Joins("INNER JOIN networks ON networks.asset_symbol = denominations.asset_symbol and networks.network = user_addresses.network").
 		Where("user_addresses.address = ? && denominations.asset_symbol = ? && user_addresses.network = ?", address, assetSymbol, network).
 		First(model).Error; err != nil {
 		repo.Logger.Info("GetAssetByAddressAndSymbol logs : error with fetching asset for address : %s, assetSymbol : %s, error : %+v", address, assetSymbol, err)
@@ -184,10 +184,12 @@ func (repo *UserAssetRepository) GetAssetByAddressSymbolAndNetwork(address, asse
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetBySymbolMemoAddressAndNetwork(assetSymbol, memo, address, network string, model interface{}) error {
 	if err := repo.DB.Raw(`
-		SELECT d.asset_symbol, d.default_network, n.native_decimals, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
-		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
-		INNER JOIN networks n ON n.asset_symbol = d.asset_symbol and n.network = sa.network 
-		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ?`, assetSymbol, memo, address).
+		SELECT d.asset_symbol, n.native_decimals, a.* FROM user_assets a INNER JOIN user_memos m a ON a.user_id = m.user_id
+		
+		INNER JOIN denominations d ON d.id = a.denomination_id 
+		INNER JOIN shared_addresses sa ON d.asset_symbol = sa.asset_symbol
+		INNER JOIN networks n ON n.asset_symbol = d.asset_symbol and n.network = sa.network
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ? AND sa.network = ?`, assetSymbol, memo, address, network).
 		Scan(model).Error; err != nil {
 		repo.Logger.Info(`GetAssetBySymbolMemoNetwAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		if gorm.IsRecordNotFoundError(err) {
