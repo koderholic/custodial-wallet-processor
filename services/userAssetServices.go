@@ -51,7 +51,14 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 	for _, asset := range assets {
 		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
 			logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+			continue
 		}
+
+		if err := DB.Where("asset_symbol =? ", asset.AssetSymbol ).Delete(model.Network{}).Error; err != nil {
+			logger.Error("Error with deleting network records for asset symbol : %s, error : %s", asset.AssetSymbol, err)
+			continue
+		}
+
 		for _, network := range asset.Networks {
 			if err := DB.Where(model.Network{AssetSymbol: asset.AssetSymbol, Network: network.Network}).Assign(network).FirstOrCreate(&network).Error; err != nil {
 				logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
