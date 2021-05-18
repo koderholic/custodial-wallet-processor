@@ -183,10 +183,10 @@ func (repo *UserAssetRepository) GetAssetByAddressSymbolAndNetwork(address, asse
 // GetAssetByAddressAndMemo...  Get user asset matching the given condition
 func (repo *UserAssetRepository) GetAssetBySymbolMemoAddressAndNetwork(assetSymbol, memo, address, network string, model interface{}) error {
 	if err := repo.DB.Raw(`
-		SELECT d.asset_symbol, d.default_network, a.* FROM user_memos m INNER JOIN user_assets a ON a.user_id = m.user_id
+		SELECT d.asset_symbol, a.* FROM user_assets a INNER JOIN user_memos m a ON a.user_id = m.user_id
 		INNER JOIN denominations d ON d.id = a.denomination_id INNER JOIN
 		shared_addresses sa ON d.asset_symbol = sa.asset_symbol 
-		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ?`, assetSymbol, memo, address).
+		WHERE d.asset_symbol = ? AND m.memo = ? AND sa.address = ? AND sa.network = ?`, assetSymbol, memo, address, network).
 		Scan(model).Error; err != nil {
 		repo.Logger.Info(`GetAssetBySymbolMemoNetwAndAddress logs : error with fetching asset for memo : %s and assetSymbol : %s, address : %s, error : %+v`, memo, assetSymbol, address, err)
 		if gorm.IsRecordNotFoundError(err) {

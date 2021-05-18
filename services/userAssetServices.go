@@ -49,20 +49,30 @@ func SeedSupportedAssets(DB *gorm.DB, logger *utility.Logger, config Config.Data
 	assets := normalizeAsset(assetDenominations.Denominations, TWDenominations)
 
 	for _, asset := range assets {
-		if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
-			logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
-			continue
-		}
+		err := DB.Transaction(func(tx *gorm.DB) error {
 
-		if err := DB.Where("asset_symbol =? ", asset.AssetSymbol ).Delete(model.Network{}).Error; err != nil {
-			logger.Error("Error with deleting network records for asset symbol : %s, error : %s", asset.AssetSymbol, err)
-			continue
-		}
-
-		for _, network := range asset.Networks {
-			if err := DB.Where(model.Network{AssetSymbol: asset.AssetSymbol, Network: network.Network}).Assign(network).FirstOrCreate(&network).Error; err != nil {
+			// return any error will rollback
+			if err := DB.Where(model.Denomination{AssetSymbol: asset.AssetSymbol}).Assign(asset).FirstOrCreate(&asset).Error; err != nil {
 				logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+				return err
 			}
+
+			if err := DB.Where("asset_symbol =? ", asset.AssetSymbol ).Delete(model.Network{}).Error; err != nil {
+				logger.Error("Error with deleting network records for asset symbol : %s, error : %s", asset.AssetSymbol, err)
+				return err
+			}
+
+			for _, network := range asset.Networks {
+				if err := DB.Where(model.Network{AssetSymbol: asset.AssetSymbol, Network: network.Network}).Assign(network).FirstOrCreate(&network).Error; err != nil {
+					logger.Error("Error with creating asset record %s : %s", asset.AssetSymbol, err)
+				}
+			}
+
+			// return nil will commit the whole transaction
+			return nil
+		})
+		if err != nil {
+			continue
 		}
 	}
 	logger.Info("Supported assets seeded successfully")
