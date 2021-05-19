@@ -516,7 +516,7 @@ func ToUniqueAddresses(addresses []string) []string {
 func fundSweepFee(floatAccount model.HotWalletAsset, txNetworkAsset model.Network, recipientAddress, network string, cache *utility.MemoryCache, logger *utility.Logger, config Config.Data, serviceErr dto.ServicesRequestErr, assetTransactions []model.Transaction, repository database.BaseRepository) (error, bool) {
 
 	request := dto.OnchainBalanceRequest{
-		AssetSymbol: txNetworkAsset.AssetSymbol,
+		AssetSymbol: txNetworkAsset.NativeAsset,
 		Network: network,
 		Address:     recipientAddress,
 	}
@@ -533,7 +533,8 @@ func fundSweepFee(floatAccount model.HotWalletAsset, txNetworkAsset model.Networ
 			FromAddress: floatAccount.Address,
 			ToAddress:   recipientAddress,
 			Amount:      big.NewInt(txNetworkAsset.SweepFee),
-			AssetSymbol: txNetworkAsset.AssetSymbol,
+			AssetSymbol: txNetworkAsset.NativeAsset,
+			Network: network,
 			//this currently only supports coins that supports Memo,  other coins will be ignored
 			Memo:        utility.SWEEPMEMOBNB,
 			ProcessType: utility.FLOATPROCESS,
