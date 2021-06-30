@@ -75,14 +75,12 @@ func (service BaseService) GenerateAllAddresses(userID uuid.UUID, symbol string,
 	metaData := utility.GetRequestMetaData("createAllAddresses", service.Config)
 	requestData.UserID = userID
 	requestData.AssetSymbol = symbol
-	if addressType == "" && network == "" {
-		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
-	} else if addressType != "" && network == "" {
+	requestData.Network = network
+
+	if addressType != ""{
 		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s", metaData.Endpoint, metaData.Action, addressType))
-	} else if addressType == "" && network != "" {
-		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?network=%s", metaData.Endpoint, metaData.Action, network))
 	} else {
-		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s?addressType=%s&network=%s", metaData.Endpoint, metaData.Action, addressType,network))
+		APIClient = NewClient(nil, service.Logger, service.Config, fmt.Sprintf("%s%s", metaData.Endpoint, metaData.Action))
 	}
 	APIRequest, err := APIClient.NewRequest(metaData.Type, "", requestData)
 	if err != nil {
